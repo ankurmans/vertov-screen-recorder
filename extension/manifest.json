@@ -1,0 +1,62 @@
+{
+  "manifest_version": 3,
+  "name": "Vertov: screen recorder",
+  "short_name": "Vertov",
+  "version": "0.1.0",
+  "description": "Record a tab, your screen or your camera and get a share link the moment you stop. Optional click capture turns recordings into briefs for AI agents.",
+  "minimum_chrome_version": "116",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Record with Vertov",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": [
+    "storage",
+    "offscreen",
+    "tabCapture",
+    "scripting",
+    "tabs",
+    "alarms",
+    "declarativeNetRequestWithHostAccess"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
+  "commands": {
+    "toggle-recording": {
+      "suggested_key": {
+        "default": "Alt+Shift+R"
+      },
+      "description": "Start recording this tab, or stop the current recording"
+    }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "connect.html",
+        "bubble.html"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
+}

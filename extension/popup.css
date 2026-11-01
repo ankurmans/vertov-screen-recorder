@@ -1,0 +1,28 @@
+.popup { width: 320px; padding: 14px; }
+.head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.head img { width: 22px; height: 22px; }
+.head strong { flex: 1; font-size: 14px; }
+.head a { color: var(--muted); font-size: 12px; text-decoration: none; }
+.head a:hover { color: var(--text); }
+.modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 3px; border-radius: 10px; background: var(--panel); margin-bottom: 10px; }
+.modes button { border: 0; background: none; border-radius: 8px; padding: 7px 4px; font-size: 13px; color: var(--muted); }
+.modes button[aria-pressed="true"] { background: var(--bg); color: var(--text); font-weight: 600; box-shadow: 0 1px 2px rgb(0 0 0 / 0.08); }
+.row { display: flex; align-items: center; gap: 8px; padding: 7px 2px; }
+.row label { flex: 1; display: flex; align-items: center; gap: 8px; }
+.row select { max-width: 150px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); padding: 4px 6px; font-size: 12px; }
+.toggle { appearance: none; width: 30px; height: 18px; border-radius: 99px; background: var(--line); position: relative; cursor: pointer; flex: none; }
+.toggle::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform 0.15s; }
+.toggle:checked { background: var(--accent); }
+.toggle:checked::after { transform: translateX(12px); }
+.preview { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; background: #000; margin: 4px 0 6px; transform: scaleX(-1); }
+.hint { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+.error { font-size: 12px; color: var(--accent); margin: 8px 0 0; }
+.timer { font-size: 32px; font-weight: 600; font-variant-numeric: tabular-nums; text-align: center; margin: 6px 0 2px; }
+.status { text-align: center; color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+details { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 8px; }
+summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+textarea, input[type="url"] { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font-size: 12px; background: var(--bg); margin-top: 6px; }
+.small { font-size: 12px; }
+.results { font-size: 12px; margin: 6px 0 0; padding-left: 16px; }
+.foot { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; font-size: 12px; color: var(--muted); }
