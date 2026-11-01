@@ -1,0 +1,91 @@
+import { useEffect, useState } from "react"
+import { formatTimeAgo } from "@/lib/format"
+
+interface Insights {
+  views: number
+  averageCompletion: number | null
+  viewers: Array<{
+    name: string | null
+    avatar: string | null
+    percent: number
+    place: string | null
+    at: string
+  }>
+}
+
+/** Owner-only: who watched and how far they got. */
+export function InsightsPanel({ uploadId, className }: { uploadId: string; className?: string }) {
+  const [insights, setInsights] = useState<Insights | null>(null)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    const load = () =>
+      fetch(`/api/insights/${uploadId}`)
+        .then((response) => (response.ok ? response.json<Insights>() : Promise.reject(new Error())))
+        .then((body: Insights) => !cancelled && setInsights(body))
+        .catch(() => !cancelled && setFailed(true))
+    void load()
+    const timer = setInterval(() => void load(), 15000)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [uploadId])
+
+  if (failed) return <p className="p-4 text-sm text-neutral-500">Couldn't load insights.</p>
+  if (!insights) return <p className="p-4 text-sm text-neutral-400">Loading…</p>
+
+  return (
+    <div className={`flex flex-col overflow-hidden rounded-2xl border border-neutral-200 bg-white ${className ?? ""}`}>
+      <div className="grid grid-cols-2 gap-px border-b border-neutral-200 bg-neutral-200">
+        <Stat label="Views" value={String(insights.views)} />
+        <Stat
+          label="Avg. watched"
+          value={insights.averageCompletion == null ? "—" : `${Math.round(insights.averageCompletion * 100)}%`}
+        />
+      </div>
+      <ul className="min-h-0 flex-1 divide-y divide-neutral-100 overflow-y-auto">
+        {insights.viewers.length === 0 && (
+          <li className="p-4 text-sm text-neutral-500">
+            No one has watched yet. Your own plays don't count. Share the link and check back.
+          </li>
+        )}
+        {insights.viewers.map((viewer, index) => (
+          <li key={index} className="flex items-center gap-3 px-4 py-3">
+            {viewer.avatar ? (
+              <img src={viewer.avatar} alt="" className="size-8 rounded-full" />
+            ) : (
+              <span className="flex size-8 items-center justify-center rounded-full bg-neutral-100 text-sm">👤</span>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-neutral-900">
+                {viewer.name ?? "Anonymous viewer"}
+              </p>
+              <p className="truncate text-xs text-neutral-500">
+                {[viewer.place, formatTimeAgo(viewer.at)].filter(Boolean).join(" · ")}
+              </p>
+            </div>
+            <div className="w-20">
+              <div className="h-1.5 overflow-hidden rounded-full bg-neutral-100">
+                <div className="h-full rounded-full bg-indigo-600" style={{ width: `${Math.round(viewer.percent * 100)}%` }} />
+              </div>
+              <p className="mt-0.5 text-right text-[11px] text-neutral-500 tabular-nums">
+                {Math.round(viewer.percent * 100)}%
+              </p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-white px-4 py-3">
+      <p className="text-xs text-neutral-500">{label}</p>
+      <p className="text-xl font-semibold text-neutral-900 tabular-nums">{value}</p>
+    </div>
+  )
+}

@@ -1,0 +1,54 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "vertov",
+  // Wraps the TanStack Start handler so the Worker can also consume the processing queue.
+  "main": "./src/server.ts",
+  "compatibility_date": "2026-07-17",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  },
+  "upload_source_maps": true,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "vertov",
+      "database_id": "REPLACE_WITH_YOUR_D1_ID",
+      "migrations_dir": "drizzle"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "bucket_name": "vertov-media"
+    }
+  ],
+  "ai": {
+    "binding": "AI"
+  },
+  "containers": [
+    {
+      "class_name": "Exporter",
+      // Wrangler builds and pushes this image on deploy (Docker must be running).
+      "image": "./exporter/Dockerfile",
+      "instance_type": "standard-4",
+      "max_instances": 5
+    }
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "EXPORTER", "class_name": "Exporter" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Exporter"] }],
+  // Daily free-plan cleanup (src/lib/retention.server.ts); a no-op unless HOSTED or RETENTION_DAYS is set.
+  "triggers": { "crons": ["17 9 * * *"] },
+  "queues": {
+    "producers": [{ "binding": "PROCESS_QUEUE", "queue": "vertov-process" }],
+    "consumers": [
+      {
+        "queue": "vertov-process",
+        "max_batch_size": 1,
+        "max_retries": 3
+      }
+    ]
+  }
+}
