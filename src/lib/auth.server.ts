@@ -80,7 +80,13 @@ function buildAuth(origin: string) {
     socialProviders: google ?? {},
     plugins: [
       // A passkey needs an account to live on, so passkey sign-up starts anonymous.
-      anonymous({ emailDomainName: "passkey.invalid" }),
+      anonymous({
+        emailDomainName: "passkey.invalid",
+        // Signing in with Google or an email link while a guest: the guest's videos and workspaces move to that account.
+        onLinkAccount: async ({ anonymousUser, newUser }) => {
+          await moveAccountData(anonymousUser.user.id, newUser.user.id);
+        },
+      }),
       magicLink({
         expiresIn: 60 * 15,
         sendMagicLink: async ({ email, url }) => {
@@ -203,3 +209,19 @@ const magicLinkHtml = (url: string) => `<!doctype html><html><body style="margin
 <a href="${url}" style="display:inline-block;background:#4f46e5;color:#fff;border-radius:10px;padding:12px 20px;font-weight:600;font-size:15px;text-decoration:none">Sign in</a>
 <p style="margin:22px 0 0;font-size:13px;color:#737373">Didn't ask for this? You can ignore it.</p>
 </div></body></html>`;
+
+/** Hands everything a guest account owns to the account they signed in with. */
+export async function moveAccountData(fromId: string, toId: string): Promise<void> {
+  if (fromId === toId) return;
+  await env.DB.batch([
+    env.DB.prepare("UPDATE uploads SET owner_id = ? WHERE owner_id = ?").bind(toId, fromId),
+    env.DB.prepare("UPDATE folders SET owner_id = ? WHERE owner_id = ?").bind(toId, fromId),
+    env.DB.prepare("UPDATE OR IGNORE workspace_members SET user_id = ? WHERE user_id = ?").bind(toId, fromId),
+    env.DB.prepare("DELETE FROM workspace_members WHERE user_id = ?").bind(fromId),
+    env.DB.prepare("UPDATE workspaces SET created_by = ? WHERE created_by = ?").bind(toId, fromId),
+    env.DB.prepare("UPDATE spaces SET created_by = ? WHERE created_by = ?").bind(toId, fromId),
+    env.DB.prepare("UPDATE workspace_invites SET created_by = ? WHERE created_by = ?").bind(toId, fromId),
+    env.DB.prepare("UPDATE video_requests SET created_by = ? WHERE created_by = ?").bind(toId, fromId),
+    env.DB.prepare("UPDATE api_keys SET user_id = ? WHERE user_id = ?").bind(toId, fromId),
+  ]);
+}
