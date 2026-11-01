@@ -38,8 +38,15 @@ const SECTIONS: Array<{ title: string; body: Array<string> }> = [
   {
     title: "This website",
     body: [
-      "The home page comes in two versions and we count, per day and per version, how many times each was opened and how many sign-up buttons were clicked. A cookie called vv remembers which version you saw. The counts hold no identifier, no IP address and nothing about you.",
+      "We count, per day, how many times the home page was opened and how many sign-up buttons were clicked. The counts hold no identifier, no IP address and nothing about you, and they set no cookie.",
       "If you open the chat on the home page, your question is matched against the page's own text in your browser. It is not sent anywhere.",
+    ],
+  },
+  {
+    title: "Signing in with Google",
+    body: [
+      `If you choose Google, ${APP_NAME} receives your name, email address and profile picture, and nothing else. We use them only to create your account and show who recorded a video. We never read your Google mail, files, calendar or contacts, and we do not share Google account data with anyone.`,
+      "Guest accounts need no sign-in at all. If you add a passkey or sign in with Google or an email link later, your videos move to that account.",
     ],
   },
   {
