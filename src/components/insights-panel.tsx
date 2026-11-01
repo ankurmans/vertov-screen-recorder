@@ -4,6 +4,7 @@ import { formatTimeAgo } from "@/lib/format"
 interface Insights {
   views: number
   averageCompletion: number | null
+  emails?: Array<{ email: string; at: string }>
   viewers: Array<{
     name: string | null
     avatar: string | null
@@ -45,6 +46,24 @@ export function InsightsPanel({ uploadId, className }: { uploadId: string; class
           value={insights.averageCompletion == null ? "—" : `${Math.round(insights.averageCompletion * 100)}%`}
         />
       </div>
+      <a
+        href={`/api/insights/${uploadId}?format=csv`}
+        className="border-b border-neutral-200 px-4 py-2 text-right text-xs font-medium text-neutral-600 hover:text-neutral-900"
+      >
+        Download CSV
+      </a>
+      {insights.emails && insights.emails.length > 0 && (
+        <div className="border-b border-neutral-200 px-4 py-3 text-sm">
+          <p className="font-medium text-neutral-900">{insights.emails.length} email{insights.emails.length === 1 ? "" : "s"} collected</p>
+          <ul className="mt-1 max-h-24 overflow-y-auto text-neutral-600">
+            {insights.emails.map((entry) => (
+              <li key={entry.email} className="truncate">
+                {entry.email}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <ul className="min-h-0 flex-1 divide-y divide-neutral-100 overflow-y-auto">
         {insights.viewers.length === 0 && (
           <li className="p-4 text-sm text-neutral-500">

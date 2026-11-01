@@ -1,18 +1,21 @@
 import { createFileRoute, redirect, useNavigate, useRouter } from "@tanstack/react-router"
+import { SecuritySettings } from "@/components/security-settings"
+import { SlackSettings } from "@/components/slack-settings"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
 import { ArrowLeftIcon, CheckIcon, CopyIcon, LinkSimpleIcon, PuzzlePieceIcon } from "@phosphor-icons/react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import type { Interval, PlanId, Role } from "@/lib/plans"
 import { getSessionUser } from "@/lib/auth.server"
 import { APP_NAME } from "@/lib/brand"
+import { HEX_COLOR } from "@/lib/brand-theme"
 import { billingOptions } from "@/lib/polar.server"
 import { EXTRA_BLOCK_HOURS, EXTRA_BLOCK_PRICE, PAID_PLANS, PLANS, canManage, formatHours, yearlyPrice } from "@/lib/plans"
 import { listApiKeys } from "@/lib/api-keys.server"
 import { listInvites, listMembers } from "@/lib/workspace-api.server"
 import { getWorkspaceContext, isHosted, toPublicWorkspace, usageOf } from "@/lib/workspace.server"
 
-type Tab = "general" | "members" | "agents" | "billing"
+type Tab = "general" | "members" | "agents" | "security" | "billing"
 
 const loadSettings = createServerFn({ method: "GET" }).handler(async () => {
   const request = getRequest()
@@ -36,7 +39,7 @@ const loadSettings = createServerFn({ method: "GET" }).handler(async () => {
 
 export const Route = createFileRoute("/settings")({
   validateSearch: (search: Record<string, unknown>): { tab?: Tab; paid?: 1 } => ({
-    tab: search.tab === "members" || search.tab === "billing" || search.tab === "agents" ? search.tab : undefined,
+    tab: search.tab === "members" || search.tab === "billing" || search.tab === "agents" || search.tab === "security" ? search.tab : undefined,
     paid: search.paid === 1 || search.paid === "1" ? 1 : undefined,
   }),
   loader: async () => {
@@ -56,6 +59,7 @@ function SettingsPage() {
     ["general", "Workspace"],
     ["members", "Members"],
     ["agents", "Agents"],
+    ...(canManage(data.role) ? ([["security", "Security"]] as Array<[Tab, string]>) : []),
     ...(data.hosted ? ([["billing", "Billing"]] as Array<[Tab, string]>) : []),
   ]
   return (
@@ -90,7 +94,7 @@ function SettingsPage() {
           </p>
         )}
         <div className="mt-6">
-          {tab === "members" ? <MembersTab /> : tab === "agents" ? <AgentsTab /> : tab === "billing" && data.hosted ? <BillingTab /> : <GeneralTab />}
+          {tab === "members" ? <MembersTab /> : tab === "agents" ? <AgentsTab /> : tab === "security" && canManage(data.role) ? <SecuritySettings isOwner={data.role === "owner"} me={data.me} /> : tab === "billing" && data.hosted ? <BillingTab /> : <GeneralTab />}
         </div>
       </div>
     </main>
@@ -180,6 +184,9 @@ function GeneralTab() {
           ))}
         </div>
       </Card>
+      {manage && <SlackSettings />}
+      {manage && <BrandingCard />}
+      {manage && <WorkspaceInsightsCard />}
       {me && !(me.role === "owner" && data.members.filter((member) => member.role === "owner").length === 1) && (
         <button type="button" onClick={() => void leave()} className="text-sm text-red-600 hover:underline">
           Leave this workspace
@@ -589,5 +596,141 @@ function PlanGrid({
         )
       })}
     </ul>
+  )
+}
+
+function BrandingCard() {
+  const data = Route.useLoaderData()
+  const router = useRouter()
+  const [color, setColor] = useState(data.workspace.brandColor ?? "")
+  const [busy, setBusy] = useState(false)
+  const valid = color === "" || HEX_COLOR.test(color)
+
+  async function upload(file: File | undefined) {
+    if (!file) return
+    setBusy(true)
+    const response = await fetch("/api/workspace/brand", { method: "POST", headers: { "content-type": file.type }, body: file }).catch(() => null)
+    setBusy(false)
+    if (response?.ok) await router.invalidate()
+    else alert("Use a PNG, JPEG or WebP logo under 512 KB.")
+  }
+
+  return (
+    <Card title="Branding" description="Your logo and accent color on share pages and embeds. Available on every plan.">
+      <div className="flex flex-wrap items-center gap-4">
+        {data.workspace.hasLogo ? (
+          <img src={`/api/brand/${data.workspace.id}`} alt="Current logo" className="h-10 max-w-40 rounded border border-neutral-200 object-contain p-1" />
+        ) : (
+          <span className="text-sm text-neutral-500">No logo yet</span>
+        )}
+        <label className="cursor-pointer rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-800 hover:bg-neutral-50">
+          {busy ? "Uploading…" : data.workspace.hasLogo ? "Replace logo" : "Upload logo"}
+          <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" disabled={busy} onChange={(event) => void upload(event.target.files?.[0])} />
+        </label>
+        {data.workspace.hasLogo && (
+          <button type="button" onClick={() => void send("/api/workspace/brand", "DELETE").then(() => router.invalidate())} className="text-sm text-red-600 hover:underline">
+            Remove
+          </button>
+        )}
+      </div>
+      <form
+        className="mt-4 flex items-center gap-2"
+        onSubmit={(event) => {
+          event.preventDefault()
+          void send("/api/workspace", "PATCH", { brandColor: color === "" ? null : color }).then(() => router.invalidate())
+        }}
+      >
+        <input
+          type="color"
+          aria-label="Accent color picker"
+          value={HEX_COLOR.test(color) ? color : "#2563eb"}
+          onChange={(event) => setColor(event.target.value)}
+          className="size-9 cursor-pointer rounded border border-neutral-300 bg-white p-0.5"
+        />
+        <input
+          value={color}
+          onChange={(event) => setColor(event.target.value.trim())}
+          placeholder="#2563eb"
+          aria-label="Accent color"
+          className="w-32 rounded-lg border border-neutral-300 px-3 py-2 font-mono text-sm"
+        />
+        <button type="submit" disabled={!valid || color === (data.workspace.brandColor ?? "")} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40">
+          Save
+        </button>
+        {!valid && <span className="text-xs text-red-600">Use a hex color like #2563eb</span>}
+      </form>
+    </Card>
+  )
+}
+
+interface WorkspaceInsights {
+  totalVideos: number
+  totalViews: number
+  averageCompletion: number | null
+  top: Array<{ id: string; title: string | null; views: number }>
+  days: Array<{ day: string; views: number }>
+}
+
+function WorkspaceInsightsCard() {
+  const [stats, setStats] = useState<WorkspaceInsights | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    fetch("/api/workspace/insights")
+      .then((response) => (response.ok ? (response.json() as Promise<WorkspaceInsights>) : null))
+      .then((body) => !cancelled && setStats(body))
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  const peak = Math.max(1, ...(stats?.days.map((day) => day.views) ?? []))
+
+  return (
+    <Card title="Insights" description="Views across every video in this workspace.">
+      {!stats ? (
+        <p className="text-sm text-neutral-500">Loading…</p>
+      ) : (
+        <div className="space-y-5">
+          <dl className="grid grid-cols-3 gap-3 text-center">
+            {[
+              ["Videos", stats.totalVideos.toLocaleString()],
+              ["Views", stats.totalViews.toLocaleString()],
+              ["Avg. watched", stats.averageCompletion == null ? "—" : `${Math.round(stats.averageCompletion * 100)}%`],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-xl bg-neutral-50 px-3 py-3">
+                <dd className="text-xl font-semibold text-neutral-900">{value}</dd>
+                <dt className="text-xs text-neutral-500">{label}</dt>
+              </div>
+            ))}
+          </dl>
+          <div>
+            <p className="text-xs font-medium text-neutral-500">Views per day, last 30 days</p>
+            <div className="mt-2 flex h-20 items-end gap-0.5" role="img" aria-label="Views per day for the last 30 days">
+              {stats.days.map((day) => (
+                <div key={day.day} title={`${day.day}: ${day.views}`} className="flex-1 rounded-sm bg-neutral-900/80" style={{ height: `${Math.max(day.views > 0 ? 6 : 2, (day.views / peak) * 100)}%`, opacity: day.views > 0 ? 1 : 0.15 }} />
+              ))}
+            </div>
+          </div>
+          {stats.top.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-neutral-500">Top videos</p>
+              <ol className="mt-2 divide-y divide-neutral-100 text-sm">
+                {stats.top.map((video) => (
+                  <li key={video.id} className="flex items-center justify-between gap-3 py-1.5">
+                    <a href={`/${video.id}`} className="truncate text-neutral-800 hover:underline">
+                      {video.title?.trim() || "Untitled video"}
+                    </a>
+                    <span className="shrink-0 text-neutral-500">{video.views.toLocaleString()}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+          <a href="/api/workspace/insights?format=csv" className="inline-block rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-800 hover:bg-neutral-50">
+            Download CSV
+          </a>
+        </div>
+      )}
+    </Card>
   )
 }

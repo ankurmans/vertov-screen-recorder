@@ -141,5 +141,7 @@ export const toPublicWorkspace = (workspace: Workspace) => ({
   planPeriodEnd: workspace.planPeriodEnd,
   extraBlocks: workspace.extraBlocks,
   defaultVisibility: workspace.defaultVisibility,
+  brandColor: workspace.brandColor,
+  hasLogo: Boolean(workspace.brandLogoKey),
 })
 export type PublicWorkspace = ReturnType<typeof toPublicWorkspace>

@@ -4,6 +4,7 @@ import { z } from "zod"
 import { db } from "@/db"
 import { workspaceMembers } from "@/db/schema"
 import { json } from "@/lib/api.server"
+import { audit } from "@/lib/audit.server"
 import { canManage } from "@/lib/plans"
 import { listMembers, workspaceApi } from "@/lib/workspace-api.server"
 
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/api/workspace/members/$userId")({
       PATCH: ({ request, params }) =>
         workspaceApi(
           request,
-          async (_user, { workspace, role }) => {
+          async (user, { workspace, role }) => {
             const parsed = roleSchema.safeParse(await request.json().catch(() => null))
             if (!parsed.success) return json({ error: "Invalid role" }, 400)
             const members = await listMembers(workspace.id)
@@ -35,6 +36,7 @@ export const Route = createFileRoute("/api/workspace/members/$userId")({
               .update(workspaceMembers)
               .set({ role: parsed.data.role })
               .where(and(eq(workspaceMembers.workspaceId, workspace.id), eq(workspaceMembers.userId, params.userId)))
+            await audit(workspace.id, user.sub, "member.role_changed", target.email ?? target.name, `${target.role} to ${parsed.data.role}`)
             return json({ ok: true })
           },
           { manage: true },
@@ -54,6 +56,7 @@ export const Route = createFileRoute("/api/workspace/members/$userId")({
           await db
             .delete(workspaceMembers)
             .where(and(eq(workspaceMembers.workspaceId, workspace.id), eq(workspaceMembers.userId, params.userId)))
+          await audit(workspace.id, user.sub, self ? "member.left" : "member.removed", target.email ?? target.name)
           return json({ ok: true })
         }),
     },

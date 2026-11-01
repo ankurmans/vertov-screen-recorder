@@ -34,8 +34,17 @@ import { Route as ApiKeysRouteImport } from './routes/api/keys'
 import { Route as ApiImportRouteImport } from './routes/api/import'
 import { Route as ApiFoldersRouteImport } from './routes/api/folders'
 import { Route as ApiCombineRouteImport } from './routes/api/combine'
+import { Route as ScimV2UsersRouteImport } from './routes/scim.v2.Users'
+import { Route as ScimV2ServiceProviderConfigRouteImport } from './routes/scim.v2.ServiceProviderConfig'
+import { Route as ApiWorkspaceTransferRouteImport } from './routes/api/workspace.transfer'
 import { Route as ApiWorkspaceSwitchRouteImport } from './routes/api/workspace.switch'
+import { Route as ApiWorkspaceSlackRouteImport } from './routes/api/workspace.slack'
+import { Route as ApiWorkspaceSecurityRouteImport } from './routes/api/workspace.security'
+import { Route as ApiWorkspaceScimRouteImport } from './routes/api/workspace.scim'
 import { Route as ApiWorkspaceInvitesRouteImport } from './routes/api/workspace.invites'
+import { Route as ApiWorkspaceInsightsRouteImport } from './routes/api/workspace.insights'
+import { Route as ApiWorkspaceBrandRouteImport } from './routes/api/workspace.brand'
+import { Route as ApiWatchLaterIdRouteImport } from './routes/api/watch-later.$id'
 import { Route as ApiViewIdRouteImport } from './routes/api/view.$id'
 import { Route as ApiV1VideosRouteImport } from './routes/api/v1.videos'
 import { Route as ApiV1RedirectsRouteImport } from './routes/api/v1.redirects'
@@ -60,12 +69,18 @@ import { Route as ApiImageIdRouteImport } from './routes/api/image.$id'
 import { Route as ApiGifIdRouteImport } from './routes/api/gif.$id'
 import { Route as ApiFoldersIdRouteImport } from './routes/api/folders.$id'
 import { Route as ApiExportIdRouteImport } from './routes/api/export.$id'
+import { Route as ApiEmailGateIdRouteImport } from './routes/api/email-gate.$id'
 import { Route as ApiCommentsIdRouteImport } from './routes/api/comments.$id'
 import { Route as ApiCaptionsIdRouteImport } from './routes/api/captions.$id'
 import { Route as ApiCameraIdRouteImport } from './routes/api/camera.$id'
+import { Route as ApiBrandWorkspaceIdRouteImport } from './routes/api/brand.$workspaceId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiAssetsIdRouteImport } from './routes/api/assets.$id'
+import { Route as ApiAiIdRouteImport } from './routes/api/ai.$id'
+import { Route as ScimV2UsersIdRouteImport } from './routes/scim.v2.Users.$id'
+import { Route as ApiWorkspaceSlackTestRouteImport } from './routes/api/workspace.slack.test'
 import { Route as ApiWorkspaceMembersUserIdRouteImport } from './routes/api/workspace.members.$userId'
+import { Route as ApiWorkspaceAuditCsvRouteImport } from './routes/api/workspace.audit.csv'
 import { Route as ApiV1VideosIdRouteImport } from './routes/api/v1.videos.$id'
 import { Route as ApiUploadMultipartIdRouteImport } from './routes/api/upload.multipart.$id'
 import { Route as ApiRequestsIdSubmitRouteImport } from './routes/api/requests.$id.submit'
@@ -202,15 +217,61 @@ const ApiCombineRoute = ApiCombineRouteImport.update({
   path: '/api/combine',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ScimV2UsersRoute = ScimV2UsersRouteImport.update({
+  id: '/scim/v2/Users',
+  path: '/scim/v2/Users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScimV2ServiceProviderConfigRoute =
+  ScimV2ServiceProviderConfigRouteImport.update({
+    id: '/scim/v2/ServiceProviderConfig',
+    path: '/scim/v2/ServiceProviderConfig',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiWorkspaceTransferRoute = ApiWorkspaceTransferRouteImport.update({
+  id: '/transfer',
+  path: '/transfer',
+  getParentRoute: () => ApiWorkspaceRoute,
+} as any)
 const ApiWorkspaceSwitchRoute = ApiWorkspaceSwitchRouteImport.update({
   id: '/switch',
   path: '/switch',
+  getParentRoute: () => ApiWorkspaceRoute,
+} as any)
+const ApiWorkspaceSlackRoute = ApiWorkspaceSlackRouteImport.update({
+  id: '/slack',
+  path: '/slack',
+  getParentRoute: () => ApiWorkspaceRoute,
+} as any)
+const ApiWorkspaceSecurityRoute = ApiWorkspaceSecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => ApiWorkspaceRoute,
+} as any)
+const ApiWorkspaceScimRoute = ApiWorkspaceScimRouteImport.update({
+  id: '/scim',
+  path: '/scim',
   getParentRoute: () => ApiWorkspaceRoute,
 } as any)
 const ApiWorkspaceInvitesRoute = ApiWorkspaceInvitesRouteImport.update({
   id: '/invites',
   path: '/invites',
   getParentRoute: () => ApiWorkspaceRoute,
+} as any)
+const ApiWorkspaceInsightsRoute = ApiWorkspaceInsightsRouteImport.update({
+  id: '/insights',
+  path: '/insights',
+  getParentRoute: () => ApiWorkspaceRoute,
+} as any)
+const ApiWorkspaceBrandRoute = ApiWorkspaceBrandRouteImport.update({
+  id: '/brand',
+  path: '/brand',
+  getParentRoute: () => ApiWorkspaceRoute,
+} as any)
+const ApiWatchLaterIdRoute = ApiWatchLaterIdRouteImport.update({
+  id: '/api/watch-later/$id',
+  path: '/api/watch-later/$id',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiViewIdRoute = ApiViewIdRouteImport.update({
   id: '/api/view/$id',
@@ -332,6 +393,11 @@ const ApiExportIdRoute = ApiExportIdRouteImport.update({
   path: '/api/export/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiEmailGateIdRoute = ApiEmailGateIdRouteImport.update({
+  id: '/api/email-gate/$id',
+  path: '/api/email-gate/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCommentsIdRoute = ApiCommentsIdRouteImport.update({
   id: '/api/comments/$id',
   path: '/api/comments/$id',
@@ -347,6 +413,11 @@ const ApiCameraIdRoute = ApiCameraIdRouteImport.update({
   path: '/api/camera/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiBrandWorkspaceIdRoute = ApiBrandWorkspaceIdRouteImport.update({
+  id: '/api/brand/$workspaceId',
+  path: '/api/brand/$workspaceId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -357,12 +428,32 @@ const ApiAssetsIdRoute = ApiAssetsIdRouteImport.update({
   path: '/api/assets/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAiIdRoute = ApiAiIdRouteImport.update({
+  id: '/api/ai/$id',
+  path: '/api/ai/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScimV2UsersIdRoute = ScimV2UsersIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ScimV2UsersRoute,
+} as any)
+const ApiWorkspaceSlackTestRoute = ApiWorkspaceSlackTestRouteImport.update({
+  id: '/test',
+  path: '/test',
+  getParentRoute: () => ApiWorkspaceSlackRoute,
+} as any)
 const ApiWorkspaceMembersUserIdRoute =
   ApiWorkspaceMembersUserIdRouteImport.update({
     id: '/members/$userId',
     path: '/members/$userId',
     getParentRoute: () => ApiWorkspaceRoute,
   } as any)
+const ApiWorkspaceAuditCsvRoute = ApiWorkspaceAuditCsvRouteImport.update({
+  id: '/audit/csv',
+  path: '/audit/csv',
+  getParentRoute: () => ApiWorkspaceRoute,
+} as any)
 const ApiV1VideosIdRoute = ApiV1VideosIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -440,11 +531,14 @@ export interface FileRoutesByFullPath {
   '/embed/$id': typeof EmbedIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/request/$id': typeof RequestIdRoute
+  '/api/ai/$id': typeof ApiAiIdRoute
   '/api/assets/$id': typeof ApiAssetsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/brand/$workspaceId': typeof ApiBrandWorkspaceIdRoute
   '/api/camera/$id': typeof ApiCameraIdRoute
   '/api/captions/$id': typeof ApiCaptionsIdRoute
   '/api/comments/$id': typeof ApiCommentsIdRoute
+  '/api/email-gate/$id': typeof ApiEmailGateIdRoute
   '/api/export/$id': typeof ApiExportIdRoute
   '/api/folders/$id': typeof ApiFoldersIdRoute
   '/api/gif/$id': typeof ApiGifIdRoute
@@ -469,8 +563,17 @@ export interface FileRoutesByFullPath {
   '/api/v1/redirects': typeof ApiV1RedirectsRoute
   '/api/v1/videos': typeof ApiV1VideosRouteWithChildren
   '/api/view/$id': typeof ApiViewIdRoute
+  '/api/watch-later/$id': typeof ApiWatchLaterIdRoute
+  '/api/workspace/brand': typeof ApiWorkspaceBrandRoute
+  '/api/workspace/insights': typeof ApiWorkspaceInsightsRoute
   '/api/workspace/invites': typeof ApiWorkspaceInvitesRoute
+  '/api/workspace/scim': typeof ApiWorkspaceScimRoute
+  '/api/workspace/security': typeof ApiWorkspaceSecurityRoute
+  '/api/workspace/slack': typeof ApiWorkspaceSlackRouteWithChildren
   '/api/workspace/switch': typeof ApiWorkspaceSwitchRoute
+  '/api/workspace/transfer': typeof ApiWorkspaceTransferRoute
+  '/scim/v2/ServiceProviderConfig': typeof ScimV2ServiceProviderConfigRoute
+  '/scim/v2/Users': typeof ScimV2UsersRouteWithChildren
   '/api/admin/export/$id': typeof ApiAdminExportIdRoute
   '/api/live/$id/$n': typeof ApiLiveIdNRoute
   '/api/recordings/$id/complete': typeof ApiRecordingsIdCompleteRoute
@@ -481,7 +584,10 @@ export interface FileRoutesByFullPath {
   '/api/requests/$id/submit': typeof ApiRequestsIdSubmitRoute
   '/api/upload/multipart/$id': typeof ApiUploadMultipartIdRoute
   '/api/v1/videos/$id': typeof ApiV1VideosIdRoute
+  '/api/workspace/audit/csv': typeof ApiWorkspaceAuditCsvRoute
   '/api/workspace/members/$userId': typeof ApiWorkspaceMembersUserIdRoute
+  '/api/workspace/slack/test': typeof ApiWorkspaceSlackTestRoute
+  '/scim/v2/Users/$id': typeof ScimV2UsersIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -509,11 +615,14 @@ export interface FileRoutesByTo {
   '/embed/$id': typeof EmbedIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/request/$id': typeof RequestIdRoute
+  '/api/ai/$id': typeof ApiAiIdRoute
   '/api/assets/$id': typeof ApiAssetsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/brand/$workspaceId': typeof ApiBrandWorkspaceIdRoute
   '/api/camera/$id': typeof ApiCameraIdRoute
   '/api/captions/$id': typeof ApiCaptionsIdRoute
   '/api/comments/$id': typeof ApiCommentsIdRoute
+  '/api/email-gate/$id': typeof ApiEmailGateIdRoute
   '/api/export/$id': typeof ApiExportIdRoute
   '/api/folders/$id': typeof ApiFoldersIdRoute
   '/api/gif/$id': typeof ApiGifIdRoute
@@ -538,8 +647,17 @@ export interface FileRoutesByTo {
   '/api/v1/redirects': typeof ApiV1RedirectsRoute
   '/api/v1/videos': typeof ApiV1VideosRouteWithChildren
   '/api/view/$id': typeof ApiViewIdRoute
+  '/api/watch-later/$id': typeof ApiWatchLaterIdRoute
+  '/api/workspace/brand': typeof ApiWorkspaceBrandRoute
+  '/api/workspace/insights': typeof ApiWorkspaceInsightsRoute
   '/api/workspace/invites': typeof ApiWorkspaceInvitesRoute
+  '/api/workspace/scim': typeof ApiWorkspaceScimRoute
+  '/api/workspace/security': typeof ApiWorkspaceSecurityRoute
+  '/api/workspace/slack': typeof ApiWorkspaceSlackRouteWithChildren
   '/api/workspace/switch': typeof ApiWorkspaceSwitchRoute
+  '/api/workspace/transfer': typeof ApiWorkspaceTransferRoute
+  '/scim/v2/ServiceProviderConfig': typeof ScimV2ServiceProviderConfigRoute
+  '/scim/v2/Users': typeof ScimV2UsersRouteWithChildren
   '/api/admin/export/$id': typeof ApiAdminExportIdRoute
   '/api/live/$id/$n': typeof ApiLiveIdNRoute
   '/api/recordings/$id/complete': typeof ApiRecordingsIdCompleteRoute
@@ -550,7 +668,10 @@ export interface FileRoutesByTo {
   '/api/requests/$id/submit': typeof ApiRequestsIdSubmitRoute
   '/api/upload/multipart/$id': typeof ApiUploadMultipartIdRoute
   '/api/v1/videos/$id': typeof ApiV1VideosIdRoute
+  '/api/workspace/audit/csv': typeof ApiWorkspaceAuditCsvRoute
   '/api/workspace/members/$userId': typeof ApiWorkspaceMembersUserIdRoute
+  '/api/workspace/slack/test': typeof ApiWorkspaceSlackTestRoute
+  '/scim/v2/Users/$id': typeof ScimV2UsersIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -579,11 +700,14 @@ export interface FileRoutesById {
   '/embed/$id': typeof EmbedIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/request/$id': typeof RequestIdRoute
+  '/api/ai/$id': typeof ApiAiIdRoute
   '/api/assets/$id': typeof ApiAssetsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/brand/$workspaceId': typeof ApiBrandWorkspaceIdRoute
   '/api/camera/$id': typeof ApiCameraIdRoute
   '/api/captions/$id': typeof ApiCaptionsIdRoute
   '/api/comments/$id': typeof ApiCommentsIdRoute
+  '/api/email-gate/$id': typeof ApiEmailGateIdRoute
   '/api/export/$id': typeof ApiExportIdRoute
   '/api/folders/$id': typeof ApiFoldersIdRoute
   '/api/gif/$id': typeof ApiGifIdRoute
@@ -608,8 +732,17 @@ export interface FileRoutesById {
   '/api/v1/redirects': typeof ApiV1RedirectsRoute
   '/api/v1/videos': typeof ApiV1VideosRouteWithChildren
   '/api/view/$id': typeof ApiViewIdRoute
+  '/api/watch-later/$id': typeof ApiWatchLaterIdRoute
+  '/api/workspace/brand': typeof ApiWorkspaceBrandRoute
+  '/api/workspace/insights': typeof ApiWorkspaceInsightsRoute
   '/api/workspace/invites': typeof ApiWorkspaceInvitesRoute
+  '/api/workspace/scim': typeof ApiWorkspaceScimRoute
+  '/api/workspace/security': typeof ApiWorkspaceSecurityRoute
+  '/api/workspace/slack': typeof ApiWorkspaceSlackRouteWithChildren
   '/api/workspace/switch': typeof ApiWorkspaceSwitchRoute
+  '/api/workspace/transfer': typeof ApiWorkspaceTransferRoute
+  '/scim/v2/ServiceProviderConfig': typeof ScimV2ServiceProviderConfigRoute
+  '/scim/v2/Users': typeof ScimV2UsersRouteWithChildren
   '/api/admin/export/$id': typeof ApiAdminExportIdRoute
   '/api/live/$id/$n': typeof ApiLiveIdNRoute
   '/api/recordings/$id/complete': typeof ApiRecordingsIdCompleteRoute
@@ -620,7 +753,10 @@ export interface FileRoutesById {
   '/api/requests/$id/submit': typeof ApiRequestsIdSubmitRoute
   '/api/upload/multipart/$id': typeof ApiUploadMultipartIdRoute
   '/api/v1/videos/$id': typeof ApiV1VideosIdRoute
+  '/api/workspace/audit/csv': typeof ApiWorkspaceAuditCsvRoute
   '/api/workspace/members/$userId': typeof ApiWorkspaceMembersUserIdRoute
+  '/api/workspace/slack/test': typeof ApiWorkspaceSlackTestRoute
+  '/scim/v2/Users/$id': typeof ScimV2UsersIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -650,11 +786,14 @@ export interface FileRouteTypes {
     | '/embed/$id'
     | '/join/$token'
     | '/request/$id'
+    | '/api/ai/$id'
     | '/api/assets/$id'
     | '/api/auth/$'
+    | '/api/brand/$workspaceId'
     | '/api/camera/$id'
     | '/api/captions/$id'
     | '/api/comments/$id'
+    | '/api/email-gate/$id'
     | '/api/export/$id'
     | '/api/folders/$id'
     | '/api/gif/$id'
@@ -679,8 +818,17 @@ export interface FileRouteTypes {
     | '/api/v1/redirects'
     | '/api/v1/videos'
     | '/api/view/$id'
+    | '/api/watch-later/$id'
+    | '/api/workspace/brand'
+    | '/api/workspace/insights'
     | '/api/workspace/invites'
+    | '/api/workspace/scim'
+    | '/api/workspace/security'
+    | '/api/workspace/slack'
     | '/api/workspace/switch'
+    | '/api/workspace/transfer'
+    | '/scim/v2/ServiceProviderConfig'
+    | '/scim/v2/Users'
     | '/api/admin/export/$id'
     | '/api/live/$id/$n'
     | '/api/recordings/$id/complete'
@@ -691,7 +839,10 @@ export interface FileRouteTypes {
     | '/api/requests/$id/submit'
     | '/api/upload/multipart/$id'
     | '/api/v1/videos/$id'
+    | '/api/workspace/audit/csv'
     | '/api/workspace/members/$userId'
+    | '/api/workspace/slack/test'
+    | '/scim/v2/Users/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -719,11 +870,14 @@ export interface FileRouteTypes {
     | '/embed/$id'
     | '/join/$token'
     | '/request/$id'
+    | '/api/ai/$id'
     | '/api/assets/$id'
     | '/api/auth/$'
+    | '/api/brand/$workspaceId'
     | '/api/camera/$id'
     | '/api/captions/$id'
     | '/api/comments/$id'
+    | '/api/email-gate/$id'
     | '/api/export/$id'
     | '/api/folders/$id'
     | '/api/gif/$id'
@@ -748,8 +902,17 @@ export interface FileRouteTypes {
     | '/api/v1/redirects'
     | '/api/v1/videos'
     | '/api/view/$id'
+    | '/api/watch-later/$id'
+    | '/api/workspace/brand'
+    | '/api/workspace/insights'
     | '/api/workspace/invites'
+    | '/api/workspace/scim'
+    | '/api/workspace/security'
+    | '/api/workspace/slack'
     | '/api/workspace/switch'
+    | '/api/workspace/transfer'
+    | '/scim/v2/ServiceProviderConfig'
+    | '/scim/v2/Users'
     | '/api/admin/export/$id'
     | '/api/live/$id/$n'
     | '/api/recordings/$id/complete'
@@ -760,7 +923,10 @@ export interface FileRouteTypes {
     | '/api/requests/$id/submit'
     | '/api/upload/multipart/$id'
     | '/api/v1/videos/$id'
+    | '/api/workspace/audit/csv'
     | '/api/workspace/members/$userId'
+    | '/api/workspace/slack/test'
+    | '/scim/v2/Users/$id'
   id:
     | '__root__'
     | '/'
@@ -788,11 +954,14 @@ export interface FileRouteTypes {
     | '/embed/$id'
     | '/join/$token'
     | '/request/$id'
+    | '/api/ai/$id'
     | '/api/assets/$id'
     | '/api/auth/$'
+    | '/api/brand/$workspaceId'
     | '/api/camera/$id'
     | '/api/captions/$id'
     | '/api/comments/$id'
+    | '/api/email-gate/$id'
     | '/api/export/$id'
     | '/api/folders/$id'
     | '/api/gif/$id'
@@ -817,8 +986,17 @@ export interface FileRouteTypes {
     | '/api/v1/redirects'
     | '/api/v1/videos'
     | '/api/view/$id'
+    | '/api/watch-later/$id'
+    | '/api/workspace/brand'
+    | '/api/workspace/insights'
     | '/api/workspace/invites'
+    | '/api/workspace/scim'
+    | '/api/workspace/security'
+    | '/api/workspace/slack'
     | '/api/workspace/switch'
+    | '/api/workspace/transfer'
+    | '/scim/v2/ServiceProviderConfig'
+    | '/scim/v2/Users'
     | '/api/admin/export/$id'
     | '/api/live/$id/$n'
     | '/api/recordings/$id/complete'
@@ -829,7 +1007,10 @@ export interface FileRouteTypes {
     | '/api/requests/$id/submit'
     | '/api/upload/multipart/$id'
     | '/api/v1/videos/$id'
+    | '/api/workspace/audit/csv'
     | '/api/workspace/members/$userId'
+    | '/api/workspace/slack/test'
+    | '/scim/v2/Users/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -858,11 +1039,14 @@ export interface RootRouteChildren {
   EmbedIdRoute: typeof EmbedIdRoute
   JoinTokenRoute: typeof JoinTokenRoute
   RequestIdRoute: typeof RequestIdRoute
+  ApiAiIdRoute: typeof ApiAiIdRoute
   ApiAssetsIdRoute: typeof ApiAssetsIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiBrandWorkspaceIdRoute: typeof ApiBrandWorkspaceIdRoute
   ApiCameraIdRoute: typeof ApiCameraIdRoute
   ApiCaptionsIdRoute: typeof ApiCaptionsIdRoute
   ApiCommentsIdRoute: typeof ApiCommentsIdRoute
+  ApiEmailGateIdRoute: typeof ApiEmailGateIdRoute
   ApiExportIdRoute: typeof ApiExportIdRoute
   ApiGifIdRoute: typeof ApiGifIdRoute
   ApiImageIdRoute: typeof ApiImageIdRoute
@@ -881,6 +1065,9 @@ export interface RootRouteChildren {
   ApiV1RedirectsRoute: typeof ApiV1RedirectsRoute
   ApiV1VideosRoute: typeof ApiV1VideosRouteWithChildren
   ApiViewIdRoute: typeof ApiViewIdRoute
+  ApiWatchLaterIdRoute: typeof ApiWatchLaterIdRoute
+  ScimV2ServiceProviderConfigRoute: typeof ScimV2ServiceProviderConfigRoute
+  ScimV2UsersRoute: typeof ScimV2UsersRouteWithChildren
   ApiAdminExportIdRoute: typeof ApiAdminExportIdRoute
 }
 
@@ -1061,11 +1248,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCombineRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/scim/v2/Users': {
+      id: '/scim/v2/Users'
+      path: '/scim/v2/Users'
+      fullPath: '/scim/v2/Users'
+      preLoaderRoute: typeof ScimV2UsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scim/v2/ServiceProviderConfig': {
+      id: '/scim/v2/ServiceProviderConfig'
+      path: '/scim/v2/ServiceProviderConfig'
+      fullPath: '/scim/v2/ServiceProviderConfig'
+      preLoaderRoute: typeof ScimV2ServiceProviderConfigRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/workspace/transfer': {
+      id: '/api/workspace/transfer'
+      path: '/transfer'
+      fullPath: '/api/workspace/transfer'
+      preLoaderRoute: typeof ApiWorkspaceTransferRouteImport
+      parentRoute: typeof ApiWorkspaceRoute
+    }
     '/api/workspace/switch': {
       id: '/api/workspace/switch'
       path: '/switch'
       fullPath: '/api/workspace/switch'
       preLoaderRoute: typeof ApiWorkspaceSwitchRouteImport
+      parentRoute: typeof ApiWorkspaceRoute
+    }
+    '/api/workspace/slack': {
+      id: '/api/workspace/slack'
+      path: '/slack'
+      fullPath: '/api/workspace/slack'
+      preLoaderRoute: typeof ApiWorkspaceSlackRouteImport
+      parentRoute: typeof ApiWorkspaceRoute
+    }
+    '/api/workspace/security': {
+      id: '/api/workspace/security'
+      path: '/security'
+      fullPath: '/api/workspace/security'
+      preLoaderRoute: typeof ApiWorkspaceSecurityRouteImport
+      parentRoute: typeof ApiWorkspaceRoute
+    }
+    '/api/workspace/scim': {
+      id: '/api/workspace/scim'
+      path: '/scim'
+      fullPath: '/api/workspace/scim'
+      preLoaderRoute: typeof ApiWorkspaceScimRouteImport
       parentRoute: typeof ApiWorkspaceRoute
     }
     '/api/workspace/invites': {
@@ -1074,6 +1303,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/workspace/invites'
       preLoaderRoute: typeof ApiWorkspaceInvitesRouteImport
       parentRoute: typeof ApiWorkspaceRoute
+    }
+    '/api/workspace/insights': {
+      id: '/api/workspace/insights'
+      path: '/insights'
+      fullPath: '/api/workspace/insights'
+      preLoaderRoute: typeof ApiWorkspaceInsightsRouteImport
+      parentRoute: typeof ApiWorkspaceRoute
+    }
+    '/api/workspace/brand': {
+      id: '/api/workspace/brand'
+      path: '/brand'
+      fullPath: '/api/workspace/brand'
+      preLoaderRoute: typeof ApiWorkspaceBrandRouteImport
+      parentRoute: typeof ApiWorkspaceRoute
+    }
+    '/api/watch-later/$id': {
+      id: '/api/watch-later/$id'
+      path: '/api/watch-later/$id'
+      fullPath: '/api/watch-later/$id'
+      preLoaderRoute: typeof ApiWatchLaterIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/view/$id': {
       id: '/api/view/$id'
@@ -1243,6 +1493,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiExportIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/email-gate/$id': {
+      id: '/api/email-gate/$id'
+      path: '/api/email-gate/$id'
+      fullPath: '/api/email-gate/$id'
+      preLoaderRoute: typeof ApiEmailGateIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/comments/$id': {
       id: '/api/comments/$id'
       path: '/api/comments/$id'
@@ -1264,6 +1521,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCameraIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/brand/$workspaceId': {
+      id: '/api/brand/$workspaceId'
+      path: '/api/brand/$workspaceId'
+      fullPath: '/api/brand/$workspaceId'
+      preLoaderRoute: typeof ApiBrandWorkspaceIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -1278,11 +1542,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAssetsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/ai/$id': {
+      id: '/api/ai/$id'
+      path: '/api/ai/$id'
+      fullPath: '/api/ai/$id'
+      preLoaderRoute: typeof ApiAiIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scim/v2/Users/$id': {
+      id: '/scim/v2/Users/$id'
+      path: '/$id'
+      fullPath: '/scim/v2/Users/$id'
+      preLoaderRoute: typeof ScimV2UsersIdRouteImport
+      parentRoute: typeof ScimV2UsersRoute
+    }
+    '/api/workspace/slack/test': {
+      id: '/api/workspace/slack/test'
+      path: '/test'
+      fullPath: '/api/workspace/slack/test'
+      preLoaderRoute: typeof ApiWorkspaceSlackTestRouteImport
+      parentRoute: typeof ApiWorkspaceSlackRoute
+    }
     '/api/workspace/members/$userId': {
       id: '/api/workspace/members/$userId'
       path: '/members/$userId'
       fullPath: '/api/workspace/members/$userId'
       preLoaderRoute: typeof ApiWorkspaceMembersUserIdRouteImport
+      parentRoute: typeof ApiWorkspaceRoute
+    }
+    '/api/workspace/audit/csv': {
+      id: '/api/workspace/audit/csv'
+      path: '/audit/csv'
+      fullPath: '/api/workspace/audit/csv'
+      preLoaderRoute: typeof ApiWorkspaceAuditCsvRouteImport
       parentRoute: typeof ApiWorkspaceRoute
     }
     '/api/v1/videos/$id': {
@@ -1463,15 +1755,40 @@ const ApiUploadRouteWithChildren = ApiUploadRoute._addFileChildren(
   ApiUploadRouteChildren,
 )
 
+interface ApiWorkspaceSlackRouteChildren {
+  ApiWorkspaceSlackTestRoute: typeof ApiWorkspaceSlackTestRoute
+}
+
+const ApiWorkspaceSlackRouteChildren: ApiWorkspaceSlackRouteChildren = {
+  ApiWorkspaceSlackTestRoute: ApiWorkspaceSlackTestRoute,
+}
+
+const ApiWorkspaceSlackRouteWithChildren =
+  ApiWorkspaceSlackRoute._addFileChildren(ApiWorkspaceSlackRouteChildren)
+
 interface ApiWorkspaceRouteChildren {
+  ApiWorkspaceBrandRoute: typeof ApiWorkspaceBrandRoute
+  ApiWorkspaceInsightsRoute: typeof ApiWorkspaceInsightsRoute
   ApiWorkspaceInvitesRoute: typeof ApiWorkspaceInvitesRoute
+  ApiWorkspaceScimRoute: typeof ApiWorkspaceScimRoute
+  ApiWorkspaceSecurityRoute: typeof ApiWorkspaceSecurityRoute
+  ApiWorkspaceSlackRoute: typeof ApiWorkspaceSlackRouteWithChildren
   ApiWorkspaceSwitchRoute: typeof ApiWorkspaceSwitchRoute
+  ApiWorkspaceTransferRoute: typeof ApiWorkspaceTransferRoute
+  ApiWorkspaceAuditCsvRoute: typeof ApiWorkspaceAuditCsvRoute
   ApiWorkspaceMembersUserIdRoute: typeof ApiWorkspaceMembersUserIdRoute
 }
 
 const ApiWorkspaceRouteChildren: ApiWorkspaceRouteChildren = {
+  ApiWorkspaceBrandRoute: ApiWorkspaceBrandRoute,
+  ApiWorkspaceInsightsRoute: ApiWorkspaceInsightsRoute,
   ApiWorkspaceInvitesRoute: ApiWorkspaceInvitesRoute,
+  ApiWorkspaceScimRoute: ApiWorkspaceScimRoute,
+  ApiWorkspaceSecurityRoute: ApiWorkspaceSecurityRoute,
+  ApiWorkspaceSlackRoute: ApiWorkspaceSlackRouteWithChildren,
   ApiWorkspaceSwitchRoute: ApiWorkspaceSwitchRoute,
+  ApiWorkspaceTransferRoute: ApiWorkspaceTransferRoute,
+  ApiWorkspaceAuditCsvRoute: ApiWorkspaceAuditCsvRoute,
   ApiWorkspaceMembersUserIdRoute: ApiWorkspaceMembersUserIdRoute,
 }
 
@@ -1503,6 +1820,18 @@ const ApiV1VideosRouteWithChildren = ApiV1VideosRoute._addFileChildren(
   ApiV1VideosRouteChildren,
 )
 
+interface ScimV2UsersRouteChildren {
+  ScimV2UsersIdRoute: typeof ScimV2UsersIdRoute
+}
+
+const ScimV2UsersRouteChildren: ScimV2UsersRouteChildren = {
+  ScimV2UsersIdRoute: ScimV2UsersIdRoute,
+}
+
+const ScimV2UsersRouteWithChildren = ScimV2UsersRoute._addFileChildren(
+  ScimV2UsersRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   IdRoute: IdRoute,
@@ -1529,11 +1858,14 @@ const rootRouteChildren: RootRouteChildren = {
   EmbedIdRoute: EmbedIdRoute,
   JoinTokenRoute: JoinTokenRoute,
   RequestIdRoute: RequestIdRoute,
+  ApiAiIdRoute: ApiAiIdRoute,
   ApiAssetsIdRoute: ApiAssetsIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiBrandWorkspaceIdRoute: ApiBrandWorkspaceIdRoute,
   ApiCameraIdRoute: ApiCameraIdRoute,
   ApiCaptionsIdRoute: ApiCaptionsIdRoute,
   ApiCommentsIdRoute: ApiCommentsIdRoute,
+  ApiEmailGateIdRoute: ApiEmailGateIdRoute,
   ApiExportIdRoute: ApiExportIdRoute,
   ApiGifIdRoute: ApiGifIdRoute,
   ApiImageIdRoute: ApiImageIdRoute,
@@ -1552,6 +1884,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiV1RedirectsRoute: ApiV1RedirectsRoute,
   ApiV1VideosRoute: ApiV1VideosRouteWithChildren,
   ApiViewIdRoute: ApiViewIdRoute,
+  ApiWatchLaterIdRoute: ApiWatchLaterIdRoute,
+  ScimV2ServiceProviderConfigRoute: ScimV2ServiceProviderConfigRoute,
+  ScimV2UsersRoute: ScimV2UsersRouteWithChildren,
   ApiAdminExportIdRoute: ApiAdminExportIdRoute,
 }
 export const routeTree = rootRouteImport

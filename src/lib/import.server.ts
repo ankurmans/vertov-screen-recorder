@@ -58,6 +58,7 @@ export async function startLoomImport(
     ownerId,
     workspaceId: workspace.id,
     visibility: workspace.defaultVisibility,
+    downloadsEnabled: workspace.downloadsDefault,
     sourceUrl: `${LOOM}/share/${loomId}`,
     status: "importing",
     captureSurface: "import",

@@ -97,6 +97,10 @@ export const uploads = sqliteTable(
     gifKey: text("gif_key"),
     // The video request this was recorded for, if any.
     requestId: text("request_id"),
+    // Viewers must give an email address before the video plays.
+    requireEmail: integer("require_email", { mode: "boolean" }).notNull().default(false),
+    // JSON { [kind]: { text, at } } of generated documents (summary doc, SOP, bug report, notes, action items).
+    aiDocs: text("ai_docs"),
   },
   (table) => [
     index("idx_uploads_created_at").on(table.createdAt),
@@ -119,6 +123,18 @@ export const workspaces = sqliteTable("workspaces", {
   polarExtraSubscriptionId: text("polar_extra_subscription_id"),
   planEndedAt: text("plan_ended_at"),
   defaultVisibility: text("default_visibility").notNull().default("link"),
+  // Share-page branding: hex accent color and an R2 key for the logo.
+  brandColor: text("brand_color"),
+  brandLogoKey: text("brand_logo_key"),
+  // Slack incoming-webhook URL for new-video and comment notices.
+  slackWebhook: text("slack_webhook"),
+  // Days without a viewer before a video is removed; null uses the plan's default.
+  retentionDays: integer("retention_days"),
+  // Comma-separated email domains allowed to join; null means anyone with an invite.
+  allowedDomains: text("allowed_domains"),
+  downloadsDefault: integer("downloads_default", { mode: "boolean" }).notNull().default(true),
+  // sha256 of the SCIM bearer token.
+  scimTokenHash: text("scim_token_hash"),
   createdBy: text("created_by").notNull(),
   createdAt: text("created_at")
     .notNull()
@@ -342,3 +358,37 @@ export type Folder = typeof folders.$inferSelect;
 export type PublicUpload = Omit<Upload, "passwordHash"> & { hasPassword: boolean };
 
 export type VideoRequest = typeof videoRequests.$inferSelect;
+
+export const viewerEmails = sqliteTable(
+  "viewer_emails",
+  {
+    uploadId: text("upload_id").notNull(),
+    email: text("email").notNull(),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => [primaryKey({ columns: [table.uploadId, table.email] })],
+);
+
+export const watchLater = sqliteTable(
+  "watch_later",
+  {
+    userId: text("user_id").notNull(),
+    uploadId: text("upload_id").notNull(),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.uploadId] })],
+);
+
+export const auditLog = sqliteTable(
+  "audit_log",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    actorId: text("actor_id"),
+    action: text("action").notNull(),
+    target: text("target"),
+    detail: text("detail"),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => [index("idx_audit_workspace").on(table.workspaceId, table.createdAt)],
+);

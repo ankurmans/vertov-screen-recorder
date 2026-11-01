@@ -89,6 +89,7 @@ export const Route = createFileRoute("/api/recordings")({
             workspaceId: workspace.id,
             spaceId: parsed.data.spaceId ?? null,
             visibility: workspace.defaultVisibility,
+            downloadsEnabled: workspace.downloadsDefault,
           });
           return json({ id, url: `${new URL(request.url).origin}/${id}` }, 201);
         }),

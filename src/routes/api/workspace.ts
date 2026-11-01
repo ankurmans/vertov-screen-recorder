@@ -4,6 +4,8 @@ import { z } from "zod"
 import { db } from "@/db"
 import { workspaceMembers, workspaces } from "@/db/schema"
 import { json } from "@/lib/api.server"
+import { audit } from "@/lib/audit.server"
+import { HEX_COLOR } from "@/lib/brand-theme"
 import { listSpaces } from "@/lib/library.server"
 import { billingOptions } from "@/lib/polar.server"
 import { userApi } from "@/lib/recordings.server"
@@ -14,6 +16,7 @@ import { isHosted, newId, toPublicWorkspace, usageOf, workspaceCookie } from "@/
 const updateSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
   defaultVisibility: z.enum(["link", "workspace"]).optional(),
+  brandColor: z.string().regex(HEX_COLOR).transform((value) => value.toLowerCase()).nullable().optional(),
 })
 
 const createSchema = z.object({ name: z.string().trim().min(1).max(80) })
@@ -42,11 +45,12 @@ export const Route = createFileRoute("/api/workspace")({
       PATCH: ({ request }) =>
         workspaceApi(
           request,
-          async (_user, { workspace }) => {
+          async (user, { workspace }) => {
             const parsed = updateSchema.safeParse(await request.json().catch(() => null))
             if (!parsed.success) return json({ error: "Invalid settings" }, 400)
             if (Object.keys(parsed.data).length === 0) return json({ ok: true })
             await db.update(workspaces).set(parsed.data).where(eq(workspaces.id, workspace.id))
+            await audit(workspace.id, user.sub, "workspace.updated", Object.keys(parsed.data).join(", "))
             return json({ ok: true })
           },
           { manage: true },

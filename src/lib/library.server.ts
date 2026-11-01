@@ -32,6 +32,7 @@ export type LibraryView =
   | { kind: "mine"; folderId: string | null }
   | { kind: "space"; spaceId: string; folderId: string | null }
   | { kind: "archive" }
+  | { kind: "later" }
   | { kind: "search"; query: string };
 
 const columns = {
@@ -68,6 +69,12 @@ export async function listLibrary(workspaceId: string, userId: string, view: Lib
       break;
     case "space":
       where = and(inWorkspace, eq(uploads.spaceId, view.spaceId), live, inFolder(view.folderId));
+      break;
+    case "later":
+      where = and(
+        isNull(uploads.deletedAt),
+        sql`${uploads.id} in (select upload_id from watch_later where user_id = ${userId})`,
+      );
       break;
     case "archive":
       where = and(

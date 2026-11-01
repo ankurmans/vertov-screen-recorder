@@ -4,7 +4,7 @@ import { withCors } from "@/lib/api.server"
 import { getSessionUser } from "@/lib/auth.server"
 import { roleIn } from "@/lib/workspace.server"
 
-export type Access = "open" | "locked" | "expired" | "members" | "removed"
+export type Access = "open" | "locked" | "expired" | "members" | "removed" | "email"
 
 const ITERATIONS = 100_000
 const UNLOCK_DAYS = 30
@@ -46,6 +46,32 @@ async function unlockToken(upload: Upload): Promise<string> {
 }
 
 const cookieName = (id: string) => `rl_unlock_${id}`
+const emailCookieName = (id: string) => `rl_email_${id}`
+
+async function hmacHex(text: string): Promise<string> {
+  const secret = (env as unknown as Record<string, string | undefined>).BETTER_AUTH_SECRET || "local-dev-secret"
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, [
+    "sign",
+  ])
+  return hex(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(text)))
+}
+
+/** Cookie proving this browser gave an email address for this video. */
+export async function emailCookie(upload: Upload, email: string, request: Request): Promise<string> {
+  const secure = new URL(request.url).protocol === "https:" ? "; Secure" : ""
+  const value = `${hex(new TextEncoder().encode(email))}.${await hmacHex(`${upload.id}:email:${email}`)}`
+  return `${emailCookieName(upload.id)}=${value}; Path=/; Max-Age=${UNLOCK_DAYS * 86400}; HttpOnly; SameSite=Lax${secure}`
+}
+
+async function hasEmailCookie(upload: Upload, request: Request): Promise<boolean> {
+  const value = readCookie(request, emailCookieName(upload.id))
+  const [encoded, signature] = (value ?? "").split(".")
+  if (!encoded || !signature || encoded.length % 2 !== 0 || /[^0-9a-f]/.test(encoded)) return false
+  const bytes = new Uint8Array(encoded.length / 2)
+  for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(encoded.slice(i * 2, i * 2 + 2), 16)
+  const email = new TextDecoder().decode(bytes)
+  return (await hmacHex(`${upload.id}:email:${email}`)) === signature
+}
 
 export async function unlockCookie(upload: Upload, request: Request): Promise<string> {
   const secure = new URL(request.url).protocol === "https:" ? "; Secure" : ""
@@ -72,14 +98,16 @@ export function isExpired(upload: Upload): boolean {
 export async function accessFor(upload: Upload, request: Request): Promise<Access> {
   const expired = isExpired(upload)
   const membersOnly = upload.visibility === "workspace"
-  if (!expired && !upload.passwordHash && !membersOnly && !upload.deletedAt) return "open"
+  if (!expired && !upload.passwordHash && !membersOnly && !upload.deletedAt && !upload.requireEmail) return "open"
   const user = await getSessionUser(request)
   if (user && upload.ownerId === user.sub) return "open"
   if (upload.deletedAt) return "removed"
   if (membersOnly && !(user && (await roleIn(upload.workspaceId, user.sub)))) return "members"
   if (expired) return "expired"
-  if (!upload.passwordHash) return "open"
-  return readCookie(request, cookieName(upload.id)) === (await unlockToken(upload)) ? "open" : "locked"
+  if (upload.passwordHash && readCookie(request, cookieName(upload.id)) !== (await unlockToken(upload))) return "locked"
+  // Members of the video's workspace never have to give an address.
+  if (upload.requireEmail && !(user && (await roleIn(upload.workspaceId, user.sub))) && !(await hasEmailCookie(upload, request))) return "email"
+  return "open"
 }
 
 const DENIED: Record<Exclude<Access, "open">, string> = {
@@ -87,6 +115,7 @@ const DENIED: Record<Exclude<Access, "open">, string> = {
   expired: "This link has expired",
   members: "Only workspace members can watch this",
   removed: "This video was removed",
+  email: "Email required",
 }
 
 /** For media/asset routes: a 403 when the viewer can't see this upload, otherwise null. */

@@ -20,10 +20,14 @@ import { CaptionLayer } from "@/components/caption-layer";
 import { CommentsPanel } from "@/components/comments-panel";
 import { InsightsPanel } from "@/components/insights-panel";
 import { LikeButton } from "@/components/like-button";
+import { WatchLaterButton } from "@/components/watch-later-button";
 import { LivePlayer } from "@/components/live-player";
 import { OverlayLayer } from "@/components/overlay-layer";
 import { ShareHeader } from "@/components/share-header";
+import { brandStyle } from "@/lib/brand-theme";
+import type { Brand } from "@/lib/brand-theme";
 import { CameraTrack, EndCard, ReactionLayer } from "@/components/stage-layer";
+import { AiPanel } from "@/components/ai-panel";
 import { StudioPanel } from "@/components/studio-panel";
 import { TranscriptEditor } from "@/components/transcript-editor";
 import { TranscriptPanel } from "@/components/transcript-panel";
@@ -51,6 +55,7 @@ interface VideoShareProps {
   isOwner: boolean;
   exportReady: boolean;
   initialTime?: number;
+  brand?: Brand | null;
 }
 
 interface StoredReaction {
@@ -72,6 +77,7 @@ export function VideoShare({
   isOwner,
   exportReady,
   initialTime = 0,
+  brand,
 }: VideoShareProps) {
   const [mounted, setMounted] = useState(false);
   const [currentTime, setCurrentTime] = useState(initialTime);
@@ -94,6 +100,7 @@ export function VideoShare({
     hasPassword: upload.hasPassword,
     expiresAt: upload.expiresAt,
     downloadsEnabled: upload.downloadsEnabled,
+    requireEmail: upload.requireEmail,
     captionStyle: isCaptionStyle(upload.captionStyle) ? upload.captionStyle : "off",
   }));
   const [overlays, setOverlays] = useState<Array<Overlay>>(() => parseOverlays(upload.overlays));
@@ -380,6 +387,7 @@ export function VideoShare({
     ...(isOwner && !isRecording ? [{ value: "annotate", label: "Annotate" }] : []),
     ...(showComments ? [{ value: "comments", label: "Comments" }] : []),
     ...(isOwner ? [{ value: "insights", label: "Insights" }] : []),
+    ...(isOwner && !isRecording ? [{ value: "ai", label: "AI" }] : []),
   ];
   const tab = tabs.some((item) => item.value === activeTab) ? activeTab : (tabs[0]?.value ?? "");
   const sidebarTabs =
@@ -429,6 +437,8 @@ export function VideoShare({
       />
     ) : tab === "insights" && isOwner ? (
       <InsightsPanel uploadId={upload.id} className="h-full" />
+    ) : tab === "ai" && isOwner ? (
+      <AiPanel uploadId={upload.id} className="h-full" />
     ) : null;
 
   function updateOverlays(next: Array<Overlay>) {
@@ -515,8 +525,8 @@ export function VideoShare({
   );
 
   return (
-    <div className="flex min-h-screen flex-col bg-neutral-50">
-      <ShareHeader user={auth.user} onSignOut={() => void signOut()} />
+    <div className="flex min-h-screen flex-col bg-neutral-50" style={brandStyle(brand)}>
+      <ShareHeader user={auth.user} onSignOut={() => void signOut()} brand={brand} />
 
       <div className="flex-1 overflow-auto px-0 py-0 lg:px-6 lg:py-6">
         <div className={`flex flex-col ${hasSidebar ? "" : "mx-auto w-full max-w-5xl"}`}>
@@ -758,6 +768,7 @@ function VideoInfo({
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="mr-1 text-sm font-medium text-neutral-500">{formatViews(views)}</span>
           {showLike && <LikeButton uploadId={upload.id} auth={auth} initialCount={likeCount} />}
+          {auth.user && !isOwner && <WatchLaterButton uploadId={upload.id} />}
           {ctaLabel && ctaUrl && (
             <LinkButton href={ctaUrl} target="_blank" rel="noopener noreferrer" variant="primary" icon={<ArrowSquareOutIcon weight="bold" />}>
               {ctaLabel}

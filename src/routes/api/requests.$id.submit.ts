@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm"
 import { z } from "zod"
 import { db } from "@/db"
 import { uploads, workspaces } from "@/db/schema"
+import { notify } from "@/lib/slack.server"
 import { json } from "@/lib/api.server"
 import { allow, clientIp } from "@/lib/rate-limit.server"
 import { liveRequest, notifyRequester } from "@/lib/requests.server"
@@ -46,6 +47,7 @@ export const Route = createFileRoute("/api/requests/$id/submit")({
           await notifyRequester(live.request, who, upload.id, new URL(request.url).origin).catch((error) =>
             console.error(JSON.stringify({ message: "Request email failed", error: (error as Error).message })),
           )
+          await notify(live.request.workspaceId, `${who} sent a video for "${live.request.title}"\n${new URL(request.url).origin}/${upload.id}`)
           return json({ ok: true })
         }),
     },

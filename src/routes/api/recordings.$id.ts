@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { uploads } from "@/db/schema";
 import { hashPassword } from "@/lib/access.server";
 import { json } from "@/lib/api.server";
+import { audit } from "@/lib/audit.server";
 import { folderFits, spaceInWorkspace } from "@/lib/library.server";
 import { deleteUpload, ownedUpload, userApi } from "@/lib/recordings.server";
 import { normalizeCuts } from "@/lib/cuts";
@@ -22,6 +23,7 @@ const updateSchema = z.object({
   password: z.string().min(4).max(200).nullable().optional(),
   expiresAt: z.iso.datetime().nullable().optional(),
   downloadsEnabled: z.boolean().optional(),
+  requireEmail: z.boolean().optional(),
   cuts: z.array(z.tuple([z.number().finite(), z.number().finite()])).max(2000).optional(),
   visibility: z.enum(["link", "workspace"]).optional(),
   overlays: z.array(z.record(z.string(), z.unknown())).max(MAX_OVERLAYS).optional(),
@@ -56,6 +58,7 @@ export const Route = createFileRoute("/api/recordings/$id")({
             changes.cuts = cuts.length ? JSON.stringify(cuts) : null;
           }
           if (input.downloadsEnabled !== undefined) changes.downloadsEnabled = input.downloadsEnabled;
+          if (input.requireEmail !== undefined) changes.requireEmail = input.requireEmail;
           if (input.expiresAt !== undefined) changes.expiresAt = input.expiresAt;
           if (input.password !== undefined) {
             changes.passwordHash = input.password ? await hashPassword(input.password) : null;
@@ -112,6 +115,14 @@ export const Route = createFileRoute("/api/recordings/$id")({
           }
           if (Object.keys(changes).length === 0) return json({ id: upload.id });
           await db.update(uploads).set(changes).where(eq(uploads.id, upload.id));
+          if (upload.workspaceId) {
+            const notable: Array<string> = [];
+            if (input.visibility !== undefined) notable.push(`visibility ${input.visibility}`);
+            if (input.password !== undefined) notable.push(input.password ? "password set" : "password removed");
+            if (input.archived !== undefined) notable.push(input.archived ? "archived" : "unarchived");
+            if (input.downloadsEnabled !== undefined) notable.push(input.downloadsEnabled ? "downloads on" : "downloads off");
+            if (notable.length) await audit(upload.workspaceId, user.sub, "video.updated", upload.title ?? upload.id, notable.join(", "));
+          }
           const { passwordHash, ...visible } = changes;
           return json({ id: upload.id, ...visible, hasPassword: passwordHash === undefined ? undefined : Boolean(passwordHash) });
         }),
@@ -119,6 +130,7 @@ export const Route = createFileRoute("/api/recordings/$id")({
         userApi(request, async (user) => {
           const upload = await ownedUpload(params.id, user);
           if (!upload) return json({ error: "Recording not found" }, 404);
+          if (upload.workspaceId) await audit(upload.workspaceId, user.sub, "video.deleted", upload.title ?? upload.id);
           await deleteUpload(upload);
           return json({ deleted: true });
         }),

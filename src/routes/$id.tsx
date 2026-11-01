@@ -8,6 +8,7 @@ import { accessFor, publicUpload } from "@/lib/access.server";
 import { VideoShare } from "@/components/video-share";
 import { getAuthState, getSessionUser } from "@/lib/auth.server";
 import { APP_NAME } from "@/lib/brand";
+import { getBrand } from "@/lib/brand.server";
 import { canManage } from "@/lib/plans";
 import { roleIn } from "@/lib/workspace.server";
 import { exportSignature } from "@/lib/export.server";
@@ -42,6 +43,7 @@ const loadShare = createServerFn({ method: "GET" })
       origin: getRequestUrl().origin,
       transcript,
       likeCount: await getLikeCount(id),
+      brand: await getBrand(stored.workspaceId),
       // Resolved here (not client-side) so the comments/likes UI never
       // has to flash in once a follow-up request comes back.
       auth: await getAuthState(getRequest()),
@@ -64,6 +66,7 @@ const LOCKED_TITLES = {
   expired: "Link expired",
   members: "Members-only video",
   removed: "Video removed",
+  email: "Email required",
 } as const;
 
 export const Route = createFileRoute("/$id")({

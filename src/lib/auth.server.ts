@@ -1,6 +1,6 @@
 import { passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
-import { anonymous, magicLink, oneTap } from "better-auth/plugins";
+import { anonymous, genericOAuth, magicLink, oneTap } from "better-auth/plugins";
 import { env } from "cloudflare:workers";
 import type { AuthProvider, AuthState } from "@/lib/use-auth";
 import type { MailEnv } from "@/lib/mail.server";
@@ -37,11 +37,18 @@ export function googleClientId(): string {
   return optionalEnv("GOOGLE_CLIENT_ID") && optionalEnv("GOOGLE_CLIENT_SECRET") ? optionalEnv("GOOGLE_CLIENT_ID") : "";
 }
 
+/** Label for the company single sign-on button; null until an OIDC provider is fully configured. */
+export function ssoName(): string | null {
+  if (!optionalEnv("SSO_OIDC_ISSUER") || !optionalEnv("SSO_OIDC_CLIENT_ID") || !optionalEnv("SSO_OIDC_CLIENT_SECRET")) return null;
+  return optionalEnv("SSO_OIDC_NAME") || "SSO";
+}
+
 export function enabledProviders(origin: string): Array<AuthProvider> {
   const providers: Array<AuthProvider> = ["passkey"];
   if (optionalEnv("SES_ACCESS_KEY_ID") || isLocal(origin)) providers.push("email");
   if (optionalEnv("GOOGLE_CLIENT_ID") && optionalEnv("GOOGLE_CLIENT_SECRET"))
     providers.push("google");
+  if (ssoName()) providers.push("sso");
   return providers;
 }
 
@@ -108,6 +115,22 @@ function buildAuth(origin: string) {
       passkey({ rpID: new URL(origin).hostname, rpName: APP_NAME, origin }),
       // Lets the Google prompt on the landing page sign visitors straight in.
       ...(google ? [oneTap()] : []),
+      ...(ssoName()
+        ? [
+            genericOAuth({
+              config: [
+                {
+                  providerId: "sso",
+                  discoveryUrl: `${optionalEnv("SSO_OIDC_ISSUER").replace(/\/+$/, "")}/.well-known/openid-configuration`,
+                  clientId: optionalEnv("SSO_OIDC_CLIENT_ID"),
+                  clientSecret: optionalEnv("SSO_OIDC_CLIENT_SECRET"),
+                  scopes: ["openid", "email", "profile"],
+                  pkce: true,
+                },
+              ],
+            }),
+          ]
+        : []),
     ],
   });
 }

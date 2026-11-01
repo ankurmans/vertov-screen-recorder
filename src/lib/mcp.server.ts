@@ -3,6 +3,8 @@ import type { SessionUser } from "@/lib/auth.server"
 import type { WorkspaceContext } from "@/lib/workspace.server"
 import { db } from "@/db"
 import { comments } from "@/db/schema"
+import { aiAllowed, generateAiDoc, isAiDocKind, parseAiDocs } from "@/lib/ai-docs.server"
+import { ownedUpload } from "@/lib/recordings.server"
 import { agentPrompt, createVideoFromUrl, memberCanSee, videoForAgent } from "@/lib/agent.server"
 import { APP_NAME } from "@/lib/brand"
 import { listLibrary, listSpaces, spaceInWorkspace } from "@/lib/library.server"
@@ -71,6 +73,16 @@ const TOOLS: Array<Tool> = [
     description:
       "The video as a Markdown brief for acting on it: what the person showed and said, in order, with timestamps. Use this when someone sends you a recording of what they want done.",
     inputSchema: idInput,
+  },
+  {
+    name: "get_ai_doc",
+    description: "A document already written from a video's transcript (kinds: summary-doc, sop, bug-report, meeting-notes, action-items, message). Only the video's owner or a workspace manager can read it.",
+    inputSchema: { type: "object", properties: { video: { type: "string" }, kind: { type: "string" } }, required: ["video", "kind"] },
+  },
+  {
+    name: "generate_ai_doc",
+    description: "Write a document from a video's transcript: summary-doc, sop, bug-report, meeting-notes, action-items, or message (a short note to send with the link). Needs a plan with AI.",
+    inputSchema: { type: "object", properties: { video: { type: "string" }, kind: { type: "string" } }, required: ["video", "kind"] },
   },
   {
     name: "add_comment",
@@ -154,6 +166,20 @@ async function callTool(name: string, args: Record<string, unknown>, user: Sessi
       if (!upload || !memberCanSee(upload, user, workspace.id, role)) return fail("Video not found in this workspace.")
       if (name === "get_video_prompt") return text(await agentPrompt(upload, origin))
       return text(JSON.stringify(await videoForAgent(upload, origin, true), null, 2))
+    }
+    case "get_ai_doc":
+    case "generate_ai_doc": {
+      const id = videoId(args.video)
+      const upload = id ? await ownedUpload(id, user) : null
+      if (!upload || upload.workspaceId !== workspace.id) return fail("Video not found, or you can't manage it.")
+      if (!isAiDocKind(args.kind)) return fail("kind must be summary-doc, sop, bug-report, meeting-notes, action-items or message.")
+      if (name === "get_ai_doc") {
+        const doc = parseAiDocs(upload.aiDocs)[args.kind]
+        return doc ? text(doc.text) : fail("Nothing written yet. Call generate_ai_doc first.")
+      }
+      if (!(await aiAllowed(upload))) return fail("AI documents are part of the paid plans.")
+      const doc = await generateAiDoc(upload, args.kind)
+      return doc ? text(doc.text) : fail("There's no transcript to write from yet.")
     }
     case "add_comment": {
       const id = videoId(args.video)

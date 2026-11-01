@@ -2,11 +2,12 @@ import { createFileRoute } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
 import { useState } from "react"
-import { enabledProviders, safeRedirectPath } from "@/lib/auth.server"
+import { enabledProviders, safeRedirectPath, ssoName } from "@/lib/auth.server"
 import {
   sendMagicLink,
   signInWithGoogle,
   signInWithPasskey,
+  signInWithSso,
   signUpWithPasskey,
 } from "@/lib/auth-client"
 import { Eye } from "@/components/eye"
@@ -18,6 +19,7 @@ const loadSignIn = createServerFn({ method: "GET" })
     const request = getRequest()
     return {
       providers: enabledProviders(new URL(request.url).origin),
+      ssoLabel: ssoName() ?? "SSO",
       redirect: safeRedirectPath(data ?? null),
     }
   })
@@ -33,7 +35,7 @@ export const Route = createFileRoute("/signin")({
 })
 
 function SignInPage() {
-  const { providers, redirect } = Route.useLoaderData()
+  const { providers, redirect, ssoLabel } = Route.useLoaderData()
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [busy, setBusy] = useState(false)
@@ -82,6 +84,16 @@ function SignInPage() {
               className="rounded-lg border border-neutral-200 px-3 py-2.5 text-sm font-medium text-neutral-800 hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
             >
               Continue with Google
+            </button>
+          )}
+          {providers.includes("sso") && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => run(() => signInWithSso(redirect), () => {})}
+              className="rounded-lg border border-neutral-200 px-3 py-2.5 text-sm font-medium text-neutral-800 hover:bg-neutral-50 disabled:opacity-50 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800"
+            >
+              Continue with {ssoLabel}
             </button>
           )}
         </div>

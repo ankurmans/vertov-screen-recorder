@@ -5,6 +5,7 @@ import { db } from "@/db"
 import { apiKeys } from "@/db/schema"
 import { listApiKeys } from "@/lib/api-keys.server"
 import { json } from "@/lib/api.server"
+import { audit } from "@/lib/audit.server"
 import { newId } from "@/lib/workspace.server"
 import { workspaceApi } from "@/lib/workspace-api.server"
 
@@ -35,10 +36,11 @@ export const Route = createFileRoute("/api/keys")({
           const tokenHash = hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token)))
           const id = newId("k")
           await db.insert(apiKeys).values({ id, userId: user.sub, workspaceId: workspace.id, name: parsed.data.name, tokenHash, prefix: token.slice(0, 7) })
+          await audit(workspace.id, user.sub, "api_key.created", parsed.data.name)
           return json({ id, name: parsed.data.name, token }, 201)
         }),
       DELETE: ({ request }) =>
-        workspaceApi(request, async (user) => {
+        workspaceApi(request, async (user, { workspace }) => {
           if (user.workspaceId) return json({ error: "Use the website to manage keys" }, 403)
           const parsed = revokeSchema.safeParse(await request.json().catch(() => null))
           if (!parsed.success) return json({ error: "Invalid key" }, 400)
@@ -46,6 +48,7 @@ export const Route = createFileRoute("/api/keys")({
             .update(apiKeys)
             .set({ revokedAt: new Date().toISOString() })
             .where(and(eq(apiKeys.id, parsed.data.id), eq(apiKeys.userId, user.sub)))
+          await audit(workspace.id, user.sub, "api_key.revoked", parsed.data.id)
           return json({ ok: true })
         }),
     },

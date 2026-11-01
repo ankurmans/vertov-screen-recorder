@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { comments } from "@/db/schema";
 import { denyUnlessViewable } from "@/lib/access.server";
 import { json, optionsResponse } from "@/lib/api.server";
+import { notify } from "@/lib/slack.server";
 import { getSessionUser } from "@/lib/auth.server";
 import { ensureSchema, getUploadById } from "@/lib/uploads.server";
 
@@ -112,6 +113,7 @@ export const Route = createFileRoute("/api/comments/$id")({
           timestamp: parsed.data.timestamp ?? null,
         };
         await db.insert(comments).values(comment);
+        await notify(upload.workspaceId, `${comment.authorName} commented on ${upload.title || "a video"}: ${comment.text.slice(0, 200)}\n${new URL(request.url).origin}/${upload.id}`);
         const stored = await db.query.comments.findFirst({
           where: eq(comments.id, comment.id),
         });

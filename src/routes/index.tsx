@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
 import {
   ArchiveIcon,
+  ClockIcon,
   CaretDownIcon,
   CheckIcon,
   FilmStripIcon,
@@ -32,7 +33,7 @@ import { getWorkspaceContext, isHosted, toPublicWorkspace, usageOf } from "@/lib
 
 interface LibrarySearch {
   import?: 1
-  view?: "space" | "archive"
+  view?: "space" | "archive" | "later"
   space?: string
   folder?: string
   q?: string
@@ -54,7 +55,9 @@ const loadLibrary = createServerFn({ method: "GET" })
       ? { kind: "search", query: data.q }
       : data.view === "archive"
         ? { kind: "archive" }
-        : space
+        : data.view === "later"
+          ? { kind: "later" }
+          : space
           ? { kind: "space", spaceId: space.id, folderId: data.folder ?? null }
           : { kind: "mine", folderId: data.folder ?? null }
     const [videos, folders, flagged, usage] = await Promise.all([
@@ -86,7 +89,7 @@ const DESCRIPTION =
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>): LibrarySearch => ({
     import: search.import === 1 || search.import === "1" ? 1 : undefined,
-    view: search.view === "space" || search.view === "archive" ? search.view : undefined,
+    view: search.view === "space" || search.view === "archive" || search.view === "later" ? search.view : undefined,
     space: typeof search.space === "string" ? search.space : undefined,
     folder: typeof search.folder === "string" ? search.folder : undefined,
     q: typeof search.q === "string" && search.q.trim() ? search.q : undefined,
@@ -161,7 +164,9 @@ function Library({ data }: { data: LoadedLibrary }) {
       ? `Results for “${view.query}”`
       : view.kind === "archive"
         ? "Archive"
-        : currentFolder
+        : view.kind === "later"
+          ? "Watch later"
+          : currentFolder
           ? currentFolder.name
           : currentSpace
             ? currentSpace.name
@@ -295,6 +300,9 @@ function Library({ data }: { data: LoadedLibrary }) {
             <div className="space-y-0.5">
               <NavLink active={view.kind === "mine" && !folderId} icon={<UserIcon size={16} />} onClick={() => void navigate({ search: {} })}>
                 My videos
+              </NavLink>
+              <NavLink active={view.kind === "later"} icon={<ClockIcon size={16} />} onClick={() => void navigate({ search: { view: "later" } })}>
+                Watch later
               </NavLink>
               <NavLink active={view.kind === "archive"} icon={<ArchiveIcon size={16} />} onClick={() => void navigate({ search: { view: "archive" } })}>
                 Archive
@@ -634,6 +642,8 @@ function EmptyState({ view, spaceId }: { view: LibraryView; spaceId: string | nu
   if (view.kind === "search") return <p className="mt-10 text-sm text-neutral-500">No video mentions “{view.query}”.</p>
   if (view.kind === "archive")
     return <p className="mt-10 text-sm text-neutral-500">Archived videos land here. They keep their links; they just leave your main library.</p>
+  if (view.kind === "later")
+    return <p className="mt-10 text-sm text-neutral-500">Videos you save with Watch later on a share page show up here.</p>
   if (view.folderId) return <p className="mt-10 text-sm text-neutral-500">This folder is empty. Use Move on any video to put it here.</p>
   return (
     <div className="mt-8 rounded-2xl border border-dashed border-neutral-300 bg-white p-12 text-center">

@@ -16,6 +16,7 @@ export interface StudioState {
   hasPassword: boolean
   expiresAt: string | null
   downloadsEnabled: boolean
+  requireEmail: boolean
   captionStyle: CaptionStyle
 }
 
@@ -316,6 +317,16 @@ export function StudioPanel({
               }}
             >
               {state.downloadsEnabled ? "⬇ Viewers can download" : "⬇ Downloads off"}
+            </Chip>
+            <Chip
+              active={state.requireEmail}
+              onClick={() => {
+                const requireEmail = !state.requireEmail
+                onChange({ ...state, requireEmail })
+                void save({ requireEmail })
+              }}
+            >
+              {state.requireEmail ? "✉ Viewers give their email" : "✉ Ask viewers for email"}
             </Chip>
           </div>
         </Field>

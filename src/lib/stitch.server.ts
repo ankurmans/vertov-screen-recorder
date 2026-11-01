@@ -45,6 +45,7 @@ export async function startStitch(
     ownerId: user.sub,
     workspaceId: workspace.id,
     visibility: workspace.defaultVisibility,
+    downloadsEnabled: workspace.downloadsDefault,
     status: "rendering",
     captureSurface: "stitch",
     title: title?.trim().slice(0, 200) || `${sources[0].title || "Video"} + ${sources.length - 1} more`,

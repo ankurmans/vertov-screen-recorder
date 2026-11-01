@@ -34,6 +34,18 @@ export async function signInWithGoogle(callbackURL: string) {
   if (res.error) throw new Error(res.error.message ?? "Google sign-in isn't available.")
 }
 
+/** Company single sign-on (OIDC): asks the server for the provider's login URL and goes there. */
+export async function signInWithSso(callbackURL: string) {
+  const res = await fetch("/api/auth/sign-in/oauth2", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ providerId: "sso", callbackURL }),
+  })
+  const body = ((await res.json().catch(() => ({}))) ?? {}) as { url?: string; message?: string }
+  if (!res.ok || !body.url) throw new Error(body.message ?? "Single sign-on isn't available.")
+  location.assign(body.url)
+}
+
 /** Landing-page "Start recording": signs in as a guest (if not already signed in) and returns whether it worked. */
 export async function startAsGuest(): Promise<boolean> {
   try {

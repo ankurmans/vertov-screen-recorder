@@ -9,6 +9,9 @@ import { OverlayLayer } from "@/components/overlay-layer";
 import { CameraTrack, EndCard } from "@/components/stage-layer";
 import { VideoPlayer } from "@/components/video-player-lazy";
 import { APP_NAME } from "@/lib/brand";
+import { getBrand } from "@/lib/brand.server";
+import { brandStyle } from "@/lib/brand-theme";
+import type { Brand } from "@/lib/brand-theme";
 import { isCaptionStyle } from "@/lib/caption-styles";
 import { parseCuts } from "@/lib/cuts";
 import { parseOverlays } from "@/lib/overlays";
@@ -26,7 +29,7 @@ const loadEmbed = createServerFn({ method: "GET" })
     const open = access === "open";
     // Styled captions are drawn from the transcript, so it travels with the page.
     const transcript = open && upload.captionStyle !== "off" ? await getTranscript(upload) : null;
-    return { upload: open ? publicUpload(upload) : null, transcript, id, origin: getRequestUrl().origin };
+    return { upload: open ? publicUpload(upload) : null, transcript, id, origin: getRequestUrl().origin, brand: open ? await getBrand(upload.workspaceId) : null };
   });
 
 export const Route = createFileRoute("/embed/$id")({
@@ -44,7 +47,7 @@ export const Route = createFileRoute("/embed/$id")({
 
 /** Chrome-free player for iframes: the composed stage and a link back to the page. */
 function EmbedPage() {
-  const { upload, transcript, id, origin } = Route.useLoaderData();
+  const { upload, transcript, id, origin, brand } = Route.useLoaderData();
   if (!upload) {
     return (
       <main className="flex h-dvh w-full items-center justify-center bg-neutral-950 p-6 text-center text-white">
@@ -54,10 +57,10 @@ function EmbedPage() {
       </main>
     );
   }
-  return <EmbedPlayer upload={upload} transcript={transcript} origin={origin} />;
+  return <EmbedPlayer upload={upload} transcript={transcript} origin={origin} brand={brand} />;
 }
 
-function EmbedPlayer({ upload, transcript, origin }: { upload: PublicUpload; transcript: Transcript | null; origin: string }) {
+function EmbedPlayer({ upload, transcript, origin, brand }: { upload: PublicUpload; transcript: Transcript | null; origin: string; brand: Brand | null }) {
   const [mounted, setMounted] = useState(false);
   const [time, setTime] = useState(0);
   const overlays = useMemo(() => parseOverlays(upload.overlays), [upload.overlays]);
@@ -89,7 +92,7 @@ function EmbedPlayer({ upload, transcript, origin }: { upload: PublicUpload; tra
   );
 
   return (
-    <main className="flex h-dvh w-full items-center justify-center overflow-hidden bg-black">
+    <main className="flex h-dvh w-full items-center justify-center overflow-hidden bg-black" style={brandStyle(brand)}>
       <div className="relative max-h-full w-full" style={{ maxWidth: `calc(100dvh * ${geometry.stageAspect})` }}>
         {mounted && (
           <VideoPlayer
@@ -137,7 +140,8 @@ function EmbedPlayer({ upload, transcript, origin }: { upload: PublicUpload; tra
           rel="noopener noreferrer"
           className="absolute top-2 left-2 z-30 max-w-[70%] truncate rounded-full bg-black/60 px-3 py-1 text-xs font-medium text-white backdrop-blur hover:bg-black/80"
         >
-          {upload.title ?? "Watch"} · {APP_NAME} ↗
+          {brand?.logo && <img src={brand.logo} alt="" className="mr-1.5 inline-block h-4 max-w-16 object-contain align-text-bottom" />}
+          {upload.title ?? "Watch"} · {brand?.logo ? brand.name : APP_NAME} ↗
         </a>
       </div>
     </main>

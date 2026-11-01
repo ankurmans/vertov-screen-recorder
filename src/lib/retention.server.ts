@@ -34,7 +34,6 @@ const iso = (msAgo: number) => new Date(Date.now() - msAgo).toISOString()
 
 export async function runRetention(): Promise<Record<string, number>> {
   const idle = idleDays()
-  if (!idle) return { skipped: 1 }
   const mail = withMailer<MailEnv>({
     SES_ACCESS_KEY_ID: String(Reflect.get(env, "SES_ACCESS_KEY_ID") ?? "") || undefined,
     SES_SECRET_ACCESS_KEY: String(Reflect.get(env, "SES_SECRET_ACCESS_KEY") ?? "") || undefined,
@@ -43,15 +42,28 @@ export async function runRetention(): Promise<Record<string, number>> {
   })
   const counts = { cleared: 0, warned: 0, finalWarned: 0, removed: 0, purged: 0 }
 
+  // A workspace can set its own retention_days, which applies on any plan and replaces the default below.
+  const customDays = sql`(select ${workspaces.retentionDays} from ${workspaces} where ${workspaces.id} = ${uploads.workspaceId})`
+  const customScope = sql`${uploads.workspaceId} in (select id from ${workspaces} where ${workspaces.retentionDays} is not null)`
+  const defaultOf = !idle
+    ? sql`0 = 1`
+    : isHosted()
+      ? sql`${uploads.workspaceId} in (select id from ${workspaces} where ${workspaces.plan} = 'free' and ${workspaces.retentionDays} is null)`
+      : sql`${uploads.workspaceId} not in (select id from ${workspaces} where ${workspaces.retentionDays} is not null)`
+  const freeOnly = sql`(${defaultOf} or ${customScope})`
+
   // Workspaces that are now paying keep everything; drop any warnings from their free days.
-  const freeOnly = isHosted()
-    ? sql`${uploads.workspaceId} in (select id from ${workspaces} where ${workspaces.plan} = 'free')`
-    : sql`1 = 1`
   if (isHosted()) {
     const cleared = await db
       .update(uploads)
       .set({ retentionNoticeAt: null, retentionFinalAt: null })
-      .where(and(isNotNull(uploads.retentionNoticeAt), isNull(uploads.deletedAt), sql`${uploads.workspaceId} in (select id from ${workspaces} where ${workspaces.plan} <> 'free')`))
+      .where(
+        and(
+          isNotNull(uploads.retentionNoticeAt),
+          isNull(uploads.deletedAt),
+          sql`${uploads.workspaceId} in (select id from ${workspaces} where ${workspaces.plan} <> 'free' and ${workspaces.retentionDays} is null)`,
+        ),
+      )
     counts.cleared = cleared.meta.changes
   }
 
@@ -66,7 +78,8 @@ export async function runRetention(): Promise<Record<string, number>> {
         isNull(uploads.deletedAt),
         isNull(uploads.retentionNoticeAt),
         isNotNull(uploads.ownerId),
-        lte(sql`coalesce(${uploads.lastViewedAt}, ${uploads.createdAt})`, iso((idle - NOTICE_LEAD_DAYS) * DAY)),
+        sql`((${defaultOf} and coalesce(${uploads.lastViewedAt}, ${uploads.createdAt}) <= ${iso(((idle ?? 0) - NOTICE_LEAD_DAYS) * DAY)})
+          or (${customScope} and julianday(coalesce(${uploads.lastViewedAt}, ${uploads.createdAt})) <= julianday('now') - (${customDays} - ${NOTICE_LEAD_DAYS})))`,
       ),
     )
     .limit(BATCH)

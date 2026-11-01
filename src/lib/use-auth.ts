@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { authClient } from "@/lib/auth-client";
 
-export type AuthProvider = "passkey" | "email" | "google";
+export type AuthProvider = "passkey" | "email" | "google" | "sso";
 
 export interface AuthUser {
   id: string;
