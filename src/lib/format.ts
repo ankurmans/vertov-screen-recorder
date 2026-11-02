@@ -9,9 +9,13 @@ export function formatTimeAgo(dateString: string): string {
   const difference = Math.floor((Date.now() - date.getTime()) / 1000)
   if (difference < 60) return "just now"
   if (difference < 3600) return `${Math.floor(difference / 60)} min ago`
-  if (difference < 86400) return `${Math.floor(difference / 3600)} hours ago`
+  if (difference < 86400) {
+    const hours = Math.floor(difference / 3600)
+    return `${hours} ${hours === 1 ? "hour" : "hours"} ago`
+  }
   if (difference < 2592000) {
-    return `${Math.floor(difference / 86400)} days ago`
+    const days = Math.floor(difference / 86400)
+    return `${days} ${days === 1 ? "day" : "days"} ago`
   }
   return date.toLocaleDateString()
 }

@@ -1,3 +1,5 @@
+import { FirstVideo, LibraryNextStep, LibraryControls, sortLibraryVideos, useLibraryPresentation } from "@/components/library-controls"
+import type { LibraryLayout } from "@/components/library-controls"
 import { CommandPaletteButton } from "@/components/command-palette"
 import { libraryUrl, validateLibrarySearch } from "@/lib/library-search"
 import type { LibrarySearch } from "@/lib/library-search"
@@ -11,6 +13,9 @@ import {
   CaretDownIcon,
   CheckIcon,
   FilmStripIcon,
+  PlayIcon,
+  EyeIcon,
+  CopyIcon,
   FolderIcon,
   FolderPlusIcon,
   GearSixIcon,
@@ -102,6 +107,10 @@ function Library({ data }: { data: LoadedLibrary }) {
   const navigate = useNavigate({ from: "/app" })
   const router = useRouter()
   const [videos, setVideos] = useState(data.videos)
+  const presentation = useLibraryPresentation()
+  const orderedVideos = sortLibraryVideos(videos, presentation.sort)
+  const shownDuration = videos.reduce((total, video) => total + (video.duration ?? 0), 0)
+  const shownViews = videos.reduce((total, video) => total + video.views, 0)
   const [adding, setAdding] = useState(Boolean(search.import))
   const [requesting, setRequesting] = useState(Boolean(search.request))
   const [query, setQuery] = useState(search.q ?? "")
@@ -214,7 +223,7 @@ function Library({ data }: { data: LoadedLibrary }) {
   }
 
   return (
-    <main className="min-h-dvh bg-neutral-50">
+    <main className="library-shell min-h-dvh">
       <SaveAccountBanner google={googleEnabled} />
       <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-neutral-200 bg-white/85 px-4 backdrop-blur">
         <a href="/app" aria-label="Vertov home"><BrandMark size={28} /></a>
@@ -270,8 +279,8 @@ function Library({ data }: { data: LoadedLibrary }) {
         />
       )}
 
-      <div className="mx-auto flex max-w-7xl gap-8 px-4 py-6">
-        <nav aria-label="Library" className="hidden w-52 shrink-0 md:block">
+      <div className="mx-auto flex max-w-[1480px] gap-8 px-4 py-8 lg:gap-12 lg:px-8">
+        <nav aria-label="Library" className="hidden w-48 shrink-0 md:block">
           <div className="sticky top-20 space-y-6">
             <div className="space-y-0.5">
               <NavLink active={view.kind === "mine" && !folderId} icon={<UserIcon size={16} />} onClick={() => void navigate({ search: {} })}>
@@ -318,10 +327,10 @@ function Library({ data }: { data: LoadedLibrary }) {
         <section className="min-w-0 flex-1">
           <MobileNav
             spaces={spaces}
-            active={view.kind === "archive" ? "archive" : (spaceId ?? "mine")}
+            active={view.kind === "archive" ? "archive" : view.kind === "later" ? "later" : (spaceId ?? "mine")}
             onPick={(target) =>
               void navigate({
-                search: target === "mine" ? {} : target === "archive" ? { view: "archive" } : { view: "space", space: target },
+                search: target === "mine" ? {} : target === "archive" ? { view: "archive" } : target === "later" ? { view: "later" } : { view: "space", space: target },
               })
             }
           />
@@ -357,9 +366,11 @@ function Library({ data }: { data: LoadedLibrary }) {
                   ← {currentSpace?.name ?? "My videos"}
                 </button>
               )}
-              <h1 className="truncate text-2xl font-semibold tracking-tight text-neutral-900">{heading}</h1>
+              <h1 className="library-heading truncate">{heading}</h1>
               <p className="mt-0.5 text-sm text-neutral-500">
                 {videos.length} {videos.length === 1 ? "video" : "videos"}
+                {shownDuration > 0 && <span title="Combined duration of the videos shown"> · {formatDuration(shownDuration)} total</span>}
+                {shownViews > 0 && <> · {formatViews(shownViews)}</>}
                 {currentSpace && !currentFolder && " · everyone in the workspace can see these"}
               </p>
             </div>
@@ -425,13 +436,16 @@ function Library({ data }: { data: LoadedLibrary }) {
           )}
 
           {videos.length === 0 ? (
-            <EmptyState view={view} spaceId={spaceId} />
+            <EmptyState view={view} spaceId={spaceId} onUpload={() => setAdding(true)} onRequest={() => setRequesting(true)} onBrowse={() => void navigate({ search: {} })} />
           ) : (
-            <ul className="mt-6 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-              {videos.map((video) => (
+            <>
+            <LibraryControls {...presentation} />
+            <ul aria-label="Recordings" className={presentation.layout === "grid" ? "mt-5 grid gap-5 sm:grid-cols-2 xl:grid-cols-3" : "mt-5 flex flex-col gap-3"}>
+              {orderedVideos.map((video) => (
                 <VideoCard
                   key={video.id}
                   video={video}
+                  layout={presentation.layout}
                   mine={video.ownerId === user.sub || canManage(role)}
                   showOwner={video.ownerId !== user.sub}
                   onDeleted={() => setVideos((items) => items.filter((item) => item.id !== video.id))}
@@ -442,6 +456,8 @@ function Library({ data }: { data: LoadedLibrary }) {
                 />
               ))}
             </ul>
+            {view.kind === "mine" && !folderId && videos.length <= 3 && !combining && <LibraryNextStep onUpload={() => setAdding(true)} onRequest={() => setRequesting(true)} />}
+            </>
           )}
         </section>
       </div>
@@ -481,7 +497,7 @@ function NavLink({ active, icon, onClick, children }: { active: boolean; icon: R
 }
 
 function MobileNav({ spaces, active, onPick }: { spaces: Array<Space>; active: string; onPick: (target: string) => void }) {
-  const items = [{ id: "mine", name: "My videos" }, ...spaces.map((space) => ({ id: space.id, name: space.name })), { id: "archive", name: "Archive" }]
+  const items = [{ id: "mine", name: "My videos" }, { id: "later", name: "Watch later" }, ...spaces.map((space) => ({ id: space.id, name: space.name })), { id: "archive", name: "Archive" }]
   return (
     <div className="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 md:hidden">
       {items.map((item) => (
@@ -613,27 +629,11 @@ function useOutsideClose(open: boolean, close: () => void) {
   return ref
 }
 
-function EmptyState({ view, spaceId }: { view: LibraryView; spaceId: string | null }) {
-  if (view.kind === "search") return <p className="mt-10 text-sm text-neutral-500">No video mentions “{view.query}”.</p>
-  if (view.kind === "archive")
-    return <p className="mt-10 text-sm text-neutral-500">Archived videos land here. They keep their links; they just leave your main library.</p>
-  if (view.kind === "later")
-    return <p className="mt-10 text-sm text-neutral-500">Videos you save with Watch later on a share page show up here.</p>
-  if (view.folderId) return <p className="mt-10 text-sm text-neutral-500">This folder is empty. Use Move on any video to put it here.</p>
-  return (
-    <div className="mt-8 rounded-2xl border border-dashed border-neutral-300 bg-white p-12 text-center">
-      <p className="text-lg font-medium text-neutral-800">{spaceId ? "Nothing in this space yet" : "Your first video is one click away"}</p>
-      <p className="mt-1 text-sm text-neutral-500">
-        {spaceId ? "Record straight into it, or move a video here from your library." : "Record your screen and camera. The link is ready the second you stop."}
-      </p>
-      <a
-        href={spaceId ? `/record?space=${spaceId}` : "/record"}
-        className="mt-5 inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500"
-      >
-        <span className="size-2 rounded-full bg-white" /> Record a video
-      </a>
-    </div>
-  )
+function EmptyState({ view, spaceId, onUpload, onRequest, onBrowse }: { view: LibraryView; spaceId: string | null; onUpload: () => void; onRequest: () => void; onBrowse: () => void }) {
+  if ((view.kind === "mine" || view.kind === "space") && !view.folderId) return <FirstVideo spaceId={spaceId} onUpload={onUpload} onRequest={onRequest} onBrowse={onBrowse} />
+  const title = view.kind === "search" ? "No matches yet" : view.kind === "archive" ? "Nothing tucked away" : view.kind === "later" ? "Save something for later" : "A little room to organize"
+  const detail = view.kind === "search" ? `No video mentions “${view.query}”. Try a shorter phrase or a few words from the recording.` : view.kind === "archive" ? "Archive videos from their menu to clear your library without changing their share links." : view.kind === "later" ? "Choose Watch later on a video’s share page. It will be waiting here." : "Use Move from a video’s menu to bring it into this folder."
+  return <div className="library-empty"><FilmStripIcon size={36} className="mb-4 text-neutral-400" /><h2 className="text-xl font-semibold tracking-tight text-neutral-900">{title}</h2><p className="mt-2 max-w-sm text-sm leading-relaxed text-neutral-500">{detail}</p><button type="button" onClick={onBrowse} className="mt-5 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-50">Back to my videos</button></div>
 }
 
 function MoveDialog({
@@ -713,6 +713,7 @@ function MoveDialog({
 
 function VideoCard({
   video,
+  layout,
   mine,
   showOwner,
   onDeleted,
@@ -722,6 +723,7 @@ function VideoCard({
   onTogglePick,
 }: {
   video: LibraryVideo
+  layout: LibraryLayout
   mine: boolean
   showOwner: boolean
   onDeleted: () => void
@@ -732,6 +734,15 @@ function VideoCard({
   onTogglePick: () => void
 }) {
   const [copied, setCopied] = useState(false)
+  const [copyError, setCopyError] = useState(false)
+  const [previewAllowed, setPreviewAllowed] = useState(false)
+  useEffect(() => {
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)")
+    const pointer = window.matchMedia("(hover: hover) and (pointer: fine)")
+    const update = () => setPreviewAllowed(!motion.matches && pointer.matches)
+    update(); motion.addEventListener("change", update); pointer.addEventListener("change", update)
+    return () => { motion.removeEventListener("change", update); pointer.removeEventListener("change", update) }
+  }, [])
   const [hovering, setHovering] = useState(false)
   const [menu, setMenu] = useState(false)
   const menuRef = useOutsideClose(menu, () => setMenu(false))
@@ -741,10 +752,11 @@ function VideoCard({
   const ready = video.status === "ready" && !video.deletedAt
   const item = "block w-full rounded-lg px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100"
   return (
-    <li className="group relative rounded-xl border border-neutral-200 bg-white shadow-sm transition-shadow hover:shadow-md">
+    <li className={`library-video-card group relative ${layout === "list" ? "is-list" : ""}`}>
       <a
         href={`/${video.id}`}
-        className="relative block aspect-video overflow-hidden rounded-t-xl bg-neutral-200"
+        aria-label={`Open ${title}`}
+        className="library-thumbnail relative block aspect-video overflow-hidden"
         onMouseEnter={() => setHovering(true)}
         onMouseLeave={() => setHovering(false)}
         onClick={(event) => {
@@ -762,10 +774,11 @@ function VideoCard({
             {pick.index >= 0 ? pick.index + 1 : "·"}
           </span>
         )}
+        {!video.posterKey && <div className="library-poster-placeholder"><span className="library-frame-corner" /><FilmStripIcon size={36} weight="thin" /><span className="library-frame-label">{video.deletedAt ? "Recording unavailable" : video.status === "ready" ? "Ready to share" : "Getting ready"}</span></div>}
         {video.posterKey && (
           <img src={`/api/poster/${video.id}`} alt="" loading="lazy" className={`size-full object-cover ${video.deletedAt ? "opacity-40 grayscale" : ""}`} />
         )}
-        {hovering && ready && (
+        {hovering && ready && previewAllowed && (
           // Hover preview straight from R2; range requests mean it only fetches what plays.
           <video
             src={`/api/media/${video.id}#t=1`}
@@ -776,6 +789,7 @@ function VideoCard({
             className="absolute inset-0 size-full bg-black object-cover"
           />
         )}
+        {ready && !pick && <span className="library-play-cue" aria-hidden="true"><PlayIcon size={20} weight="fill" /></span>}
         {video.duration != null && (
           <span className="absolute right-2 bottom-2 rounded bg-black/75 px-1.5 py-0.5 text-xs font-medium text-white tabular-nums">
             {formatDuration(video.duration)}
@@ -796,29 +810,36 @@ function VideoCard({
           {video.visibility === "workspace" && <Badge tone="dark">Members only</Badge>}
         </span>
       </a>
-      <div className="flex items-start justify-between gap-2 p-3">
+      <div className="library-card-body flex items-start justify-between gap-2 p-4">
         <div className="min-w-0">
-          <a href={`/${video.id}`} className="block truncate font-medium text-neutral-900">
+          <a href={`/${video.id}`} title={title} className="line-clamp-2 text-sm leading-snug font-semibold text-neutral-900 hover:text-red-700">
             {title}
           </a>
-          <p className="mt-0.5 truncate text-xs text-neutral-500">
+          <p className="mt-2 flex flex-wrap items-center gap-x-1 text-xs text-neutral-500">
             {showOwner && video.ownerName ? `${video.ownerName} · ` : ""}
-            {formatTimeAgo(video.createdAt)} · {formatViews(video.views)}
+            {formatTimeAgo(video.createdAt)} <span aria-hidden="true">·</span> <EyeIcon size={12} /> {formatViews(video.views)}
           </p>
           {video.snippet && <p className="mt-1.5 line-clamp-2 text-xs text-neutral-600">{video.snippet}</p>}
         </div>
         <div ref={menuRef} className="relative flex shrink-0 items-center gap-1">
           <button
             type="button"
-            onClick={() => {
-              void navigator.clipboard.writeText(`${window.location.origin}/${video.id}`)
-              setCopied(true)
-              setTimeout(() => setCopied(false), 1500)
+            aria-label={`Copy link to ${title}`}
+            onClick={async () => {
+              setCopied(false)
+              setCopyError(false)
+              try {
+                await navigator.clipboard.writeText(`${window.location.origin}/${video.id}`)
+                setCopied(true)
+                setTimeout(() => setCopied(false), 1800)
+              } catch { setCopyError(true) }
             }}
-            className="rounded-md border border-neutral-200 px-2 py-1 text-xs text-neutral-700 hover:bg-neutral-50"
+            title={copyError ? "Couldn’t copy. Open the video and copy its address." : "Copy share link"}
+            className={`library-copy-button ${copied ? "is-copied" : ""}`}
           >
-            {copied ? "Copied ✓" : "Copy link"}
+            {copied ? <CheckIcon size={14} /> : <CopyIcon size={14} />}<span>{copied ? "Copied" : copyError ? "Try again" : "Copy link"}</span>
           </button>
+          <span className="sr-only" role="status">{copied ? "Link copied" : copyError ? "Couldn't copy the link. Open the video and copy its address." : ""}</span>
           {mine && (
             <button
               type="button"
