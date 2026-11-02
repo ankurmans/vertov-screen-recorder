@@ -1,3 +1,4 @@
+import { CommandPalette } from "@/components/command-palette"
 import { Toasty } from "@cloudflare/kumo"
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
 import appCss from "../styles.css?url"
@@ -29,7 +30,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <Toasty>{children}</Toasty>
+        <Toasty>{children}<CommandPalette /></Toasty>
         <Scripts />
       </body>
     </html>

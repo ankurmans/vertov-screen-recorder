@@ -1,3 +1,4 @@
+import { CommandPaletteButton } from "@/components/command-palette"
 import { libraryUrl, validateLibrarySearch } from "@/lib/library-search"
 import type { LibrarySearch } from "@/lib/library-search"
 import { BrandMark } from "@/components/brand-mark"
@@ -102,7 +103,7 @@ function Library({ data }: { data: LoadedLibrary }) {
   const router = useRouter()
   const [videos, setVideos] = useState(data.videos)
   const [adding, setAdding] = useState(Boolean(search.import))
-  const [requesting, setRequesting] = useState(false)
+  const [requesting, setRequesting] = useState(Boolean(search.request))
   const [query, setQuery] = useState(search.q ?? "")
   const [moving, setMoving] = useState<LibraryVideo | null>(null)
   const [combining, setCombining] = useState(false)
@@ -228,6 +229,7 @@ function Library({ data }: { data: LoadedLibrary }) {
             className="w-full rounded-lg border border-neutral-200 bg-white py-1.5 pr-3 pl-9 text-sm focus:border-neutral-400 focus:outline-none"
           />
         </label>
+        <CommandPaletteButton />
         <div className="ml-auto flex shrink-0 items-center gap-2 sm:ml-0">
           <button
             type="button"

@@ -57,7 +57,7 @@ const columns = {
 };
 
 /** Videos the user can see in their workspace: their own, plus everything in its spaces. */
-export async function listLibrary(workspaceId: string, userId: string, view: LibraryView): Promise<Array<LibraryVideo>> {
+export async function listLibrary(workspaceId: string, userId: string, view: LibraryView, limit = 300): Promise<Array<LibraryVideo>> {
   const inWorkspace = eq(uploads.workspaceId, workspaceId);
   const live = and(isNull(uploads.deletedAt), isNull(uploads.archivedAt));
   const inFolder = (folderId: string | null) => (folderId ? eq(uploads.folderId, folderId) : isNull(uploads.folderId));
@@ -89,6 +89,7 @@ export async function listLibrary(workspaceId: string, userId: string, view: Lib
       where = and(
         inWorkspace,
         isNull(uploads.deletedAt),
+        needle ? undefined : isNull(uploads.archivedAt),
         or(eq(uploads.ownerId, userId), isNotNull(uploads.spaceId)),
         or(
           sql`lower(coalesce(${uploads.title}, '')) like ${like} escape '\\'`,
@@ -99,7 +100,7 @@ export async function listLibrary(workspaceId: string, userId: string, view: Lib
       break;
     }
   }
-  const rows = await db.select(columns).from(uploads).where(where).orderBy(desc(uploads.createdAt)).limit(300);
+  const rows = await db.select(columns).from(uploads).where(where).orderBy(desc(uploads.createdAt)).limit(Math.min(300, Math.max(1, limit)));
   const names = await ownerNames(rows.map((row) => row.ownerId));
   return rows.map(({ summary, transcriptText, ...row }) => ({
     ...row,

@@ -37,6 +37,7 @@ import { Route as ApiNotificationsRouteImport } from './routes/api/notifications
 import { Route as ApiKeysRouteImport } from './routes/api/keys'
 import { Route as ApiImportRouteImport } from './routes/api/import'
 import { Route as ApiFoldersRouteImport } from './routes/api/folders'
+import { Route as ApiCommandsRouteImport } from './routes/api/commands'
 import { Route as ApiCombineRouteImport } from './routes/api/combine'
 import { Route as ScimV2UsersRouteImport } from './routes/scim.v2.Users'
 import { Route as ScimV2ServiceProviderConfigRouteImport } from './routes/scim.v2.ServiceProviderConfig'
@@ -235,6 +236,11 @@ const ApiImportRoute = ApiImportRouteImport.update({
 const ApiFoldersRoute = ApiFoldersRouteImport.update({
   id: '/api/folders',
   path: '/api/folders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiCommandsRoute = ApiCommandsRouteImport.update({
+  id: '/api/commands',
+  path: '/api/commands',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiCombineRoute = ApiCombineRouteImport.update({
@@ -546,6 +552,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/signin': typeof SigninRoute
   '/api/combine': typeof ApiCombineRoute
+  '/api/commands': typeof ApiCommandsRoute
   '/api/folders': typeof ApiFoldersRouteWithChildren
   '/api/import': typeof ApiImportRoute
   '/api/keys': typeof ApiKeysRoute
@@ -635,6 +642,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/signin': typeof SigninRoute
   '/api/combine': typeof ApiCombineRoute
+  '/api/commands': typeof ApiCommandsRoute
   '/api/folders': typeof ApiFoldersRouteWithChildren
   '/api/import': typeof ApiImportRoute
   '/api/keys': typeof ApiKeysRoute
@@ -725,6 +733,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/signin': typeof SigninRoute
   '/api/combine': typeof ApiCombineRoute
+  '/api/commands': typeof ApiCommandsRoute
   '/api/folders': typeof ApiFoldersRouteWithChildren
   '/api/import': typeof ApiImportRoute
   '/api/keys': typeof ApiKeysRoute
@@ -816,6 +825,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signin'
     | '/api/combine'
+    | '/api/commands'
     | '/api/folders'
     | '/api/import'
     | '/api/keys'
@@ -905,6 +915,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signin'
     | '/api/combine'
+    | '/api/commands'
     | '/api/folders'
     | '/api/import'
     | '/api/keys'
@@ -994,6 +1005,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signin'
     | '/api/combine'
+    | '/api/commands'
     | '/api/folders'
     | '/api/import'
     | '/api/keys'
@@ -1084,6 +1096,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SigninRoute: typeof SigninRoute
   ApiCombineRoute: typeof ApiCombineRoute
+  ApiCommandsRoute: typeof ApiCommandsRoute
   ApiFoldersRoute: typeof ApiFoldersRouteWithChildren
   ApiImportRoute: typeof ApiImportRoute
   ApiKeysRoute: typeof ApiKeysRoute
@@ -1332,6 +1345,13 @@ declare module '@tanstack/react-router' {
       path: '/api/folders'
       fullPath: '/api/folders'
       preLoaderRoute: typeof ApiFoldersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/commands': {
+      id: '/api/commands'
+      path: '/api/commands'
+      fullPath: '/api/commands'
+      preLoaderRoute: typeof ApiCommandsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/combine': {
@@ -1943,6 +1963,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SigninRoute: SigninRoute,
   ApiCombineRoute: ApiCombineRoute,
+  ApiCommandsRoute: ApiCommandsRoute,
   ApiFoldersRoute: ApiFoldersRouteWithChildren,
   ApiImportRoute: ApiImportRoute,
   ApiKeysRoute: ApiKeysRoute,

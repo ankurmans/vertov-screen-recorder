@@ -1,5 +1,6 @@
 export interface LibrarySearch {
   import?: 1
+  request?: 1
   view?: "space" | "archive" | "later"
   space?: string
   folder?: string
@@ -7,6 +8,7 @@ export interface LibrarySearch {
 }
 
 export const validateLibrarySearch = (search: Record<string, unknown>): LibrarySearch => ({
+  request: search.request === 1 || search.request === "1" ? 1 : undefined,
   import: search.import === 1 || search.import === "1" ? 1 : undefined,
   view: search.view === "space" || search.view === "archive" || search.view === "later" ? search.view : undefined,
   space: typeof search.space === "string" ? search.space : undefined,
