@@ -729,11 +729,11 @@ function RecordPage() {
   return (
     <main className="min-h-dvh bg-neutral-950 text-white">
       <header className="flex h-14 items-center justify-between border-b border-white/10 px-4">
-        <a href="/" className="flex items-center gap-2 font-semibold tracking-tight">
+        <a href="/app" className="flex items-center gap-2 font-semibold tracking-tight">
           <BrandMark />
           {APP_NAME}
         </a>
-        <a href="/" className="text-sm text-neutral-400 hover:text-white">
+        <a href="/app" className="text-sm text-neutral-400 hover:text-white">
           My library
         </a>
       </header>

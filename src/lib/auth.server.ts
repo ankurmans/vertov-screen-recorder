@@ -221,7 +221,7 @@ export async function getAuthState(request: Request): Promise<AuthState> {
 
 /** Only same-site paths, so redirects can't be used to leave the site. */
 export function safeRedirectPath(raw: string | null): string {
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/";
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/app";
   return raw;
 }
 

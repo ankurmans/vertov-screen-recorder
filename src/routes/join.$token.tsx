@@ -36,7 +36,7 @@ function JoinPage() {
     setBusy(true)
     const response = await fetch(`/api/join/${token}`, { method: "POST" }).catch(() => null)
     if (response?.ok) {
-      window.location.href = "/"
+      window.location.href = "/app"
       return
     }
     const body = (await response?.json().catch(() => null)) as { error?: string } | null
@@ -72,7 +72,7 @@ function JoinPage() {
           <>
             <h1 className="mt-4 text-lg font-semibold text-neutral-900">This invite link has expired</h1>
             <p className="mt-1 text-sm text-neutral-600">Ask the person who sent it for a new one.</p>
-            <a href="/" className="mt-5 block text-sm font-medium text-neutral-900 underline">
+            <a href="/app" className="mt-5 block text-sm font-medium text-neutral-900 underline">
               Go to your library
             </a>
           </>

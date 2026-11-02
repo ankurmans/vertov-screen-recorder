@@ -17,7 +17,7 @@ export function ShareHeader({
 }) {
   return (
     <header className="flex h-14 items-center justify-between border-b border-neutral-200 bg-white px-4">
-      <a href="/" className="flex items-center gap-2">
+      <a href={user ? "/app" : "/"} className="flex items-center gap-2">
         {brand?.logo ? (
           <img src={brand.logo} alt={brand.name} className="h-7 max-w-40 object-contain" />
         ) : (
@@ -51,7 +51,7 @@ export function ShareHeader({
               Signed in as{" "}
               <span className="font-medium text-neutral-800">{user.name}</span>
             </div>
-            <DropdownMenu.Item onClick={() => (window.location.href = "/")}>
+            <DropdownMenu.Item onClick={() => (window.location.href = "/app")}>
               My library
             </DropdownMenu.Item>
             <DropdownMenu.Item onClick={onSignOut}>Sign out</DropdownMenu.Item>
