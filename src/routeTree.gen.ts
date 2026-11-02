@@ -16,6 +16,7 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as ConnectExtensionRouteImport } from './routes/connect-extension'
 import { Route as AppRouteImport } from './routes/app'
+import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IdRouteImport } from './routes/$id'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RequestIdRouteImport } from './routes/request.$id'
@@ -131,6 +132,11 @@ const ConnectExtensionRoute = ConnectExtensionRouteImport.update({
 const AppRoute = AppRouteImport.update({
   id: '/app',
   path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnalyticsRoute = AnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IdRoute = IdRouteImport.update({
@@ -544,6 +550,7 @@ const ApiAdminExportIdRoute = ApiAdminExportIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$id': typeof IdRoute
+  '/analytics': typeof AnalyticsRoute
   '/app': typeof AppRoute
   '/connect-extension': typeof ConnectExtensionRoute
   '/mcp': typeof McpRoute
@@ -634,6 +641,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$id': typeof IdRoute
+  '/analytics': typeof AnalyticsRoute
   '/app': typeof AppRoute
   '/connect-extension': typeof ConnectExtensionRoute
   '/mcp': typeof McpRoute
@@ -725,6 +733,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$id': typeof IdRoute
+  '/analytics': typeof AnalyticsRoute
   '/app': typeof AppRoute
   '/connect-extension': typeof ConnectExtensionRoute
   '/mcp': typeof McpRoute
@@ -817,6 +826,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/$id'
+    | '/analytics'
     | '/app'
     | '/connect-extension'
     | '/mcp'
@@ -907,6 +917,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/$id'
+    | '/analytics'
     | '/app'
     | '/connect-extension'
     | '/mcp'
@@ -997,6 +1008,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/$id'
+    | '/analytics'
     | '/app'
     | '/connect-extension'
     | '/mcp'
@@ -1088,6 +1100,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   IdRoute: typeof IdRoute
+  AnalyticsRoute: typeof AnalyticsRoute
   AppRoute: typeof AppRoute
   ConnectExtensionRoute: typeof ConnectExtensionRoute
   McpRoute: typeof McpRoute
@@ -1198,6 +1211,13 @@ declare module '@tanstack/react-router' {
       path: '/app'
       fullPath: '/app'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analytics': {
+      id: '/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof AnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/$id': {
@@ -1955,6 +1975,7 @@ const ScimV2UsersRouteWithChildren = ScimV2UsersRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   IdRoute: IdRoute,
+  AnalyticsRoute: AnalyticsRoute,
   AppRoute: AppRoute,
   ConnectExtensionRoute: ConnectExtensionRoute,
   McpRoute: McpRoute,

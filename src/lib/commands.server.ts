@@ -1,5 +1,6 @@
 import type { SessionUser } from "@/lib/auth.server"
 import type { WorkspaceContext } from "@/lib/workspace.server"
+import { canManage } from "@/lib/plans"
 import { listLibrary, listSpaces } from "@/lib/library.server"
 
 export async function commandResults(user: SessionUser, context: WorkspaceContext, query: string) {
@@ -8,6 +9,7 @@ export async function commandResults(user: SessionUser, context: WorkspaceContex
     listSpaces(context.workspace.id),
   ])
   return {
+    canManage: canManage(context.role),
     videos: videos.map((video) => ({
       id: video.id,
       title: video.title || "Untitled recording",

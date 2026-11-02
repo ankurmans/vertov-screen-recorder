@@ -25,8 +25,18 @@ export async function recordShareView(shareId: string): Promise<boolean> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ referrer: document.referrer || null }),
     });
-    return response.ok;
+    if (!response.ok) {
+      localStorage.removeItem(`screendrop_viewed_${shareId}`);
+      return false;
+    }
+    const body = await response.json() as { owner?: boolean };
+    if (body.owner) {
+      localStorage.removeItem(`screendrop_viewed_${shareId}`);
+      return false;
+    }
+    return true;
   } catch {
+    localStorage.removeItem(`screendrop_viewed_${shareId}`);
     return false;
   }
 }

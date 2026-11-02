@@ -8,6 +8,7 @@ import { createFileRoute, redirect, useNavigate, useRouter } from "@tanstack/rea
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
 import {
+  ChartBarIcon,
   ArchiveIcon,
   ClockIcon,
   CaretDownIcon,
@@ -292,6 +293,7 @@ function Library({ data }: { data: LoadedLibrary }) {
               <NavLink active={view.kind === "archive"} icon={<ArchiveIcon size={16} />} onClick={() => void navigate({ search: { view: "archive" } })}>
                 Archive
               </NavLink>
+              {canManage(role) && <a href="/analytics" className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-neutral-600 hover:bg-neutral-200/60"><ChartBarIcon size={16} /> Analytics</a>}
             </div>
             <div>
               <div className="flex items-center justify-between px-2.5 text-xs font-semibold tracking-wide text-neutral-500 uppercase">
@@ -326,6 +328,7 @@ function Library({ data }: { data: LoadedLibrary }) {
 
         <section className="min-w-0 flex-1">
           <MobileNav
+            manage={canManage(role)}
             spaces={spaces}
             active={view.kind === "archive" ? "archive" : view.kind === "later" ? "later" : (spaceId ?? "mine")}
             onPick={(target) =>
@@ -496,7 +499,7 @@ function NavLink({ active, icon, onClick, children }: { active: boolean; icon: R
   )
 }
 
-function MobileNav({ spaces, active, onPick }: { spaces: Array<Space>; active: string; onPick: (target: string) => void }) {
+function MobileNav({ spaces, active, onPick, manage }: { manage: boolean; spaces: Array<Space>; active: string; onPick: (target: string) => void }) {
   const items = [{ id: "mine", name: "My videos" }, { id: "later", name: "Watch later" }, ...spaces.map((space) => ({ id: space.id, name: space.name })), { id: "archive", name: "Archive" }]
   return (
     <div className="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 md:hidden">
@@ -510,6 +513,7 @@ function MobileNav({ spaces, active, onPick }: { spaces: Array<Space>; active: s
           {item.name}
         </button>
       ))}
+      {manage && <a href="/analytics" className="shrink-0 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-sm text-neutral-700">Analytics</a>}
     </div>
   )
 }
@@ -554,7 +558,7 @@ function WorkspaceSwitcher({ current, name, memberships }: { current: string; na
   }
   return (
     <div ref={ref} className="relative min-w-0 shrink">
-      <button type="button" onClick={() => setOpen((value) => !value)} className="flex max-w-full min-w-0 items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-neutral-100">
+      <button type="button" onClick={() => setOpen((value) => !value)} className="flex max-w-full min-w-0 items-center gap-2 rounded-lg py-1 pr-3 pl-1.5 hover:bg-neutral-100">
         <span className="truncate text-sm font-semibold tracking-tight text-neutral-900">{name}</span>
         <CaretDownIcon size={12} className="shrink-0 text-neutral-500" />
       </button>
@@ -860,6 +864,7 @@ function VideoCard({
               )}
               {!video.deletedAt && (
                 <>
+                  <a href={`/${video.id}?panel=insights`} className={item}>View analytics</a>
                   <button type="button" className={item} onClick={() => (setMenu(false), onMove())}>
                     Move…
                   </button>

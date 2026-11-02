@@ -71,6 +71,7 @@ const LOCKED_TITLES = {
 
 export const Route = createFileRoute("/$id")({
   validateSearch: (search: Record<string, unknown>) => ({
+    panel: search.panel === "insights" ? "insights" as const : undefined,
     t: Number.isFinite(Number(search.t)) && Number(search.t) > 0 ? Number(search.t) : undefined,
   }),
   loader: async ({ params }) => {
@@ -165,10 +166,10 @@ export const Route = createFileRoute("/$id")({
 
 function SharedMediaPage() {
   const share = Route.useLoaderData();
-  const { t } = Route.useSearch();
+  const { t, panel } = Route.useSearch();
   if (share.locked) return <LockedShare id={share.id} reason={share.locked} />;
   if (share.upload.mediaType === "video") {
-    return <VideoShare {...share} initialTime={t} />;
+    return <VideoShare {...share} initialTime={t} initialPanel={panel} />;
   }
   return <ShareViewer {...share} />;
 }

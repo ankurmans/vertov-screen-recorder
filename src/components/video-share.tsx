@@ -55,6 +55,7 @@ interface VideoShareProps {
   isOwner: boolean;
   exportReady: boolean;
   initialTime?: number;
+  initialPanel?: "insights";
   brand?: Brand | null;
 }
 
@@ -77,12 +78,13 @@ export function VideoShare({
   isOwner,
   exportReady,
   initialTime = 0,
+  initialPanel,
   brand,
 }: VideoShareProps) {
   const [mounted, setMounted] = useState(false);
   const [currentTime, setCurrentTime] = useState(initialTime);
   const [activeTab, setActiveTab] = useState(
-    transcript ? "transcript" : "comments",
+    initialPanel === "insights" && isOwner ? "insights" : transcript ? "transcript" : "comments",
   );
   const [views, setViews] = useState(upload.views);
   const [mainVideo, setMainVideo] = useState<HTMLVideoElement | null>(null);

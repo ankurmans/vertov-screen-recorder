@@ -1,3 +1,4 @@
+import { denyUnlessViewable } from "@/lib/access.server";
 import { createFileRoute } from "@tanstack/react-router";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
@@ -20,6 +21,8 @@ export const Route = createFileRoute("/api/progress/$id")({
       POST: async ({ params, request }) => {
         const upload = await getUploadById(params.id);
         if (!upload) return json({ error: "Not found" }, 404);
+        const denied = await denyUnlessViewable(upload, request);
+        if (denied) return denied;
         const parsed = bodySchema.safeParse(await request.json().catch(() => null));
         if (!parsed.success) return json({ error: "Invalid progress" }, 400);
         const user = await getSessionUser(request);

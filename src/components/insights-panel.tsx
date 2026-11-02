@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { formatTimeAgo } from "@/lib/format"
 
 interface Insights {
+  viewerCount: number
   views: number
   ctaClicks?: number
   ctaLabel?: string | null
@@ -26,7 +27,9 @@ export function InsightsPanel({ uploadId, className }: { uploadId: string; class
     const load = () =>
       fetch(`/api/insights/${uploadId}`)
         .then((response) => (response.ok ? response.json<Insights>() : Promise.reject(new Error())))
-        .then((body: Insights) => !cancelled && setInsights(body))
+        .then((body: Insights) => {
+          if (!cancelled) { setInsights(body); setFailed(false) }
+        })
         .catch(() => !cancelled && setFailed(true))
     void load()
     const timer = setInterval(() => void load(), 15000)
@@ -44,11 +47,14 @@ export function InsightsPanel({ uploadId, className }: { uploadId: string; class
       <div className="grid grid-cols-2 gap-px border-b border-neutral-200 bg-neutral-200">
         <Stat label="Views" value={String(insights.views)} />
         <Stat
-          label="Avg. watched"
+          label="Avg. progress"
           value={insights.averageCompletion == null ? "—" : `${Math.round(insights.averageCompletion * 100)}%`}
         />
         {insights.ctaLabel && <Stat label={`"${insights.ctaLabel}" clicks`} value={String(insights.ctaClicks ?? 0)} />}
       </div>
+      <p className="border-b border-neutral-200 px-4 py-3 text-xs leading-relaxed text-neutral-500">
+        Progress is the furthest point reached, including seeking. {insights.viewerCount.toLocaleString()} viewer–video records; latest 500 shown. Views count opens, not unique people. New owner visits are excluded; older totals may include them.
+      </p>
       <a
         href={`/api/insights/${uploadId}?format=csv`}
         className="border-b border-neutral-200 px-4 py-2 text-right text-xs font-medium text-neutral-600 hover:text-neutral-900"
@@ -70,7 +76,7 @@ export function InsightsPanel({ uploadId, className }: { uploadId: string; class
       <ul className="min-h-0 flex-1 divide-y divide-neutral-100 overflow-y-auto">
         {insights.viewers.length === 0 && (
           <li className="p-4 text-sm text-neutral-500">
-            No one has watched yet. Your own plays don't count. Share the link and check back.
+            No viewer progress recorded yet. Share the link and check back.
           </li>
         )}
         {insights.viewers.map((viewer, index) => (
@@ -90,7 +96,7 @@ export function InsightsPanel({ uploadId, className }: { uploadId: string; class
             </div>
             <div className="w-20">
               <div className="h-1.5 overflow-hidden rounded-full bg-neutral-100">
-                <div className="h-full rounded-full bg-indigo-600" style={{ width: `${Math.round(viewer.percent * 100)}%` }} />
+                <div className="h-full rounded-full bg-red-600" style={{ width: `${Math.round(viewer.percent * 100)}%` }} />
               </div>
               <p className="mt-0.5 text-right text-[11px] text-neutral-500 tabular-nums">
                 {Math.round(viewer.percent * 100)}%

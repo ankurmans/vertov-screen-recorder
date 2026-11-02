@@ -6,7 +6,7 @@ import { SlackSettings } from "@/components/slack-settings"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
 import { ArrowLeftIcon, CheckIcon, CopyIcon, LinkSimpleIcon, PuzzlePieceIcon } from "@phosphor-icons/react"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import type { Interval, PlanId, Role } from "@/lib/plans"
 import { getSessionUser } from "@/lib/auth.server"
 import { APP_NAME } from "@/lib/brand"
@@ -669,74 +669,10 @@ function BrandingCard() {
   )
 }
 
-interface WorkspaceInsights {
-  totalVideos: number
-  totalViews: number
-  averageCompletion: number | null
-  top: Array<{ id: string; title: string | null; views: number }>
-  days: Array<{ day: string; views: number }>
-}
-
 function WorkspaceInsightsCard() {
-  const [stats, setStats] = useState<WorkspaceInsights | null>(null)
-  useEffect(() => {
-    let cancelled = false
-    fetch("/api/workspace/insights")
-      .then((response) => (response.ok ? (response.json() as Promise<WorkspaceInsights>) : null))
-      .then((body) => !cancelled && setStats(body))
-      .catch(() => undefined)
-    return () => {
-      cancelled = true
-    }
-  }, [])
-  const peak = Math.max(1, ...(stats?.days.map((day) => day.views) ?? []))
-
   return (
-    <Card title="Insights" description="Views across every video in this workspace.">
-      {!stats ? (
-        <p className="text-sm text-neutral-500">Loading…</p>
-      ) : (
-        <div className="space-y-5">
-          <dl className="grid grid-cols-3 gap-3 text-center">
-            {[
-              ["Videos", stats.totalVideos.toLocaleString()],
-              ["Views", stats.totalViews.toLocaleString()],
-              ["Avg. watched", stats.averageCompletion == null ? "—" : `${Math.round(stats.averageCompletion * 100)}%`],
-            ].map(([label, value]) => (
-              <div key={label} className="rounded-xl bg-neutral-50 px-3 py-3">
-                <dd className="text-xl font-semibold text-neutral-900">{value}</dd>
-                <dt className="text-xs text-neutral-500">{label}</dt>
-              </div>
-            ))}
-          </dl>
-          <div>
-            <p className="text-xs font-medium text-neutral-500">Views per day, last 30 days</p>
-            <div className="mt-2 flex h-20 items-end gap-0.5" role="img" aria-label="Views per day for the last 30 days">
-              {stats.days.map((day) => (
-                <div key={day.day} title={`${day.day}: ${day.views}`} className="flex-1 rounded-sm bg-neutral-900/80" style={{ height: `${Math.max(day.views > 0 ? 6 : 2, (day.views / peak) * 100)}%`, opacity: day.views > 0 ? 1 : 0.15 }} />
-              ))}
-            </div>
-          </div>
-          {stats.top.length > 0 && (
-            <div>
-              <p className="text-xs font-medium text-neutral-500">Top videos</p>
-              <ol className="mt-2 divide-y divide-neutral-100 text-sm">
-                {stats.top.map((video) => (
-                  <li key={video.id} className="flex items-center justify-between gap-3 py-1.5">
-                    <a href={`/${video.id}`} className="truncate text-neutral-800 hover:underline">
-                      {video.title?.trim() || "Untitled video"}
-                    </a>
-                    <span className="shrink-0 text-neutral-500">{video.views.toLocaleString()}</span>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          )}
-          <a href="/api/workspace/insights?format=csv" className="inline-block rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-800 hover:bg-neutral-50">
-            Download CSV
-          </a>
-        </div>
-      )}
+    <Card title="Analytics" description="Views, viewer progress and CTA clicks across this workspace.">
+      <a href="/analytics" className="inline-flex rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-50">Open analytics →</a>
     </Card>
   )
 }

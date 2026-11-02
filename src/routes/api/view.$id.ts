@@ -17,9 +17,8 @@ const bodySchema = z.object({
 
 /**
  * View counter ping. The client sends this once per viewer per share
- * (localStorage-guarded), so the count reads as "people who opened it",
- * not raw page loads. Each ping also records an analytics event with
- * viewer geo (Cloudflare request metadata), referrer, and device.
+ * (localStorage-guarded) to reduce repeat browser opens, not count unique people.
+ * Each ping records viewer geo (Cloudflare request metadata), referrer, and device.
  */
 export const Route = createFileRoute("/api/view/$id")({
   server: {
@@ -27,16 +26,20 @@ export const Route = createFileRoute("/api/view/$id")({
       POST: async ({ params, request }) => {
         await ensureSchema();
         const upload = await db.query.uploads.findFirst({ where: eq(uploads.id, params.id) });
-        const denied = await denyUnlessViewable(upload ?? null, request);
+        if (!upload) return json({ error: "Upload not found" }, 404);
+        const denied = await denyUnlessViewable(upload, request);
         if (denied) return denied;
         const viewer = upload?.ownerId ? await getSessionUser(request) : null;
         // The recorder's own plays don't count as anyone watching, so they don't keep a video alive either.
-        const byOwner = Boolean(viewer && viewer.sub === upload?.ownerId);
+        const byOwner = Boolean(viewer && viewer.sub === upload.ownerId);
+        if (byOwner) return json({ ok: true, owner: true });
         const result = await db
           .update(uploads)
           .set({
             views: sql`${uploads.views} + 1`,
-            ...(byOwner ? {} : { lastViewedAt: new Date().toISOString(), retentionNoticeAt: null, retentionFinalAt: null }),
+            lastViewedAt: new Date().toISOString(),
+            retentionNoticeAt: null,
+            retentionFinalAt: null,
           })
           .where(eq(uploads.id, params.id));
         if (result.meta.changes === 0) {
