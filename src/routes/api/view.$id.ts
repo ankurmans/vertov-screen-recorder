@@ -6,6 +6,7 @@ import { uploads, viewEvents } from "@/db/schema";
 import { json, optionsResponse } from "@/lib/api.server";
 import { getSessionUser } from "@/lib/auth.server";
 import { ensureSchema } from "@/lib/uploads.server";
+import { emitWebhook } from "@/lib/webhooks";
 
 const bodySchema = z.object({
   // document.referrer of the visit; older clients send no body at all.
@@ -55,6 +56,15 @@ export const Route = createFileRoute("/api/view/$id")({
           referrer,
           device: deviceFromUserAgent(request.headers.get("user-agent")),
         });
+        if (!byOwner) {
+          emitWebhook(upload?.workspaceId, "video.viewed", {
+            id: params.id,
+            url: `${new URL(request.url).origin}/${params.id}`,
+            title: upload?.title ?? null,
+            country: cf?.country ?? null,
+            referrer,
+          });
+        }
 
         return json({ ok: true });
       },

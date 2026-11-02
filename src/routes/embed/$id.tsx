@@ -123,6 +123,7 @@ function EmbedPlayer({ upload, transcript, origin, brand }: { upload: PublicUplo
               <EndCard
                 ctaLabel={upload.ctaLabel}
                 ctaUrl={upload.ctaUrl}
+                uploadId={upload.id}
                 onReplay={() => {
                   setEnded(false);
                   if (main) {

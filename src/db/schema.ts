@@ -35,6 +35,7 @@ export const uploads = sqliteTable(
     // Optional JSON array of { title, start } chapter markers.
     chapters: text("chapters"),
     views: integer("views").notNull().default(0),
+    ctaClicks: integer("cta_clicks").notNull().default(0),
     // Off switch for comments + likes on this upload, chosen at upload
     // time. When false, both features are hidden on the share page and
     // rejected server-side.
@@ -391,4 +392,34 @@ export const auditLog = sqliteTable(
     createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
   },
   (table) => [index("idx_audit_workspace").on(table.workspaceId, table.createdAt)],
+);
+
+export const webhookEndpoints = sqliteTable(
+  "webhook_endpoints",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    createdBy: text("created_by").notNull(),
+    url: text("url").notNull(),
+    // Signing secret, "whsec_" + base64 key; shown once at creation.
+    secret: text("secret").notNull(),
+    // Comma-separated event names.
+    events: text("events").notNull(),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    disabledAt: text("disabled_at"),
+  },
+  (table) => [index("idx_webhook_endpoints_workspace").on(table.workspaceId)],
+);
+
+export const webhookDeliveries = sqliteTable(
+  "webhook_deliveries",
+  {
+    id: text("id").primaryKey(),
+    endpointId: text("endpoint_id").notNull(),
+    event: text("event").notNull(),
+    status: integer("status"),
+    error: text("error"),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => [index("idx_webhook_deliveries_endpoint").on(table.endpointId, table.createdAt)],
 );

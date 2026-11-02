@@ -1,0 +1,44 @@
+{
+  "timeZone": "America/Los_Angeles",
+  "exceptionLogging": "STACKDRIVER",
+  "runtimeVersion": "V8",
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/gmail.addons.execute",
+    "https://www.googleapis.com/auth/gmail.addons.current.action.compose",
+    "https://www.googleapis.com/auth/script.external_request",
+    "https://www.googleapis.com/auth/calendar.addons.execute",
+    "https://www.googleapis.com/auth/calendar.addons.current.event.write"
+  ],
+  "urlFetchWhitelist": ["https://vertov.app/"],
+  "addOns": {
+    "common": {
+      "name": "Vertov",
+      "logoUrl": "https://vertov.app/logo.png",
+      "layoutProperties": {
+        "primaryColor": "#D92B14",
+        "secondaryColor": "#0A0B0D"
+      },
+      "homepageTrigger": {
+        "runFunction": "onHomepage",
+        "enabled": true
+      },
+      "universalActions": [
+        { "label": "Open Vertov", "openLink": "https://vertov.app" },
+        { "label": "Privacy policy", "openLink": "https://vertov.app/privacy" }
+      ],
+      "useLocaleFromApp": true
+    },
+    "gmail": {
+      "composeTrigger": {
+        "selectActions": [
+          { "text": "Insert a Vertov video", "runFunction": "onComposeOpen" }
+        ],
+        "draftAccess": "NONE"
+      }
+    },
+    "calendar": {
+      "currentEventAccess": "WRITE",
+      "eventOpenTrigger": { "runFunction": "onCalendarEventOpen" }
+    }
+  }
+}

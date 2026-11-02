@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm"
 import { env } from "cloudflare:workers"
+import { emitWebhook } from "@/lib/webhooks"
 import type { Workspace } from "@/db/schema"
 import { db } from "@/db"
 import { uploads } from "@/db/schema"
@@ -108,6 +109,7 @@ export async function processImport(id: string, loomId: string): Promise<void> {
       })
       .where(eq(uploads.id, id))
     if (transcribe) await env.PROCESS_QUEUE.send({ id })
+    emitWebhook(upload.workspaceId, "video.ready", { id, url: `/${id}`, title: upload.title, duration: upload.duration })
   } catch (error) {
     console.error(JSON.stringify({ message: "Import failed", id, error: error instanceof Error ? error.message : String(error) }))
     await db.update(uploads).set({ status: "failed" }).where(eq(uploads.id, id))

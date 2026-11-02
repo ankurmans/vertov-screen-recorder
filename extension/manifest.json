@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "Vertov: screen recorder",
   "short_name": "Vertov",
-  "version": "0.1.0",
-  "description": "Record a tab, your screen or your camera and get a share link the moment you stop. Optional click capture turns recordings into briefs for AI agents.",
+  "version": "0.3.0",
+  "description": "Record a tab, your screen or your camera and get a share link the moment you stop. No video length limit on any plan.",
   "minimum_chrome_version": "116",
   "action": {
     "default_popup": "popup.html",
@@ -32,10 +32,12 @@
     "scripting",
     "tabs",
     "alarms",
-    "declarativeNetRequestWithHostAccess"
+    "declarativeNetRequestWithHostAccess",
+    "activeTab"
   ],
   "host_permissions": [
-    "<all_urls>"
+    "https://vertov.app/*",
+    "https://www.loom.com/*"
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
@@ -58,5 +60,22 @@
         "<all_urls>"
       ]
     }
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://mail.google.com/*"
+      ],
+      "js": [
+        "gmail.js"
+      ],
+      "css": [
+        "gmail.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "optional_host_permissions": [
+    "<all_urls>"
   ]
 }

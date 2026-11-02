@@ -45,6 +45,8 @@ export const Route = createFileRoute("/api/insights/$id")({
               : null;
           return json({
             views: upload.views,
+            ctaClicks: upload.ctaClicks,
+            ctaLabel: upload.ctaLabel,
             viewers: viewers.map((viewer) => ({
               name: viewer.viewerName,
               avatar: viewer.viewerAvatar,

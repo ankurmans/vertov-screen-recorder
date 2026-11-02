@@ -78,6 +78,7 @@ const loadLibrary = createServerFn({ method: "GET" })
       view,
       flaggedCount: flagged.length,
       hosted: isHosted(),
+      googleEnabled: Boolean(googleClientId()),
       usage: { usedHours: usage.usedHours, limitHours: Number.isFinite(usage.limitHours) ? usage.limitHours : null },
     } as const
   })
@@ -123,7 +124,7 @@ function HomePage() {
 type LoadedLibrary = Exclude<Awaited<ReturnType<typeof loadLibrary>>, { user: null }>
 
 function Library({ data }: { data: LoadedLibrary }) {
-  const { user, workspace, role, memberships, spaces, folders, view, usage, hosted, flaggedCount } = data
+  const { user, workspace, role, memberships, spaces, folders, view, usage, hosted, flaggedCount, googleEnabled } = data
   const search = Route.useSearch()
   const navigate = useNavigate({ from: "/" })
   const router = useRouter()
@@ -241,7 +242,7 @@ function Library({ data }: { data: LoadedLibrary }) {
 
   return (
     <main className="min-h-dvh bg-neutral-50">
-      <SaveAccountBanner />
+      <SaveAccountBanner google={googleEnabled} />
       <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-neutral-200 bg-white/85 px-4 backdrop-blur">
         <WorkspaceSwitcher current={workspace.id} name={workspace.name} memberships={memberships} />
         <label className="relative ml-auto hidden max-w-sm flex-1 sm:block">

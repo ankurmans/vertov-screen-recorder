@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react"
-import { authClient } from "@/lib/auth-client"
+import { authClient, signInWithGoogle } from "@/lib/auth-client"
 
 /**
  * Visitors who pressed "Start recording" are signed in as guests. This asks them to attach a passkey so the
  * videos stay theirs on other devices; it disappears once one exists.
  */
-export function SaveAccountBanner() {
+export function SaveAccountBanner({ google = false }: { google?: boolean }) {
   const { data } = authClient.useSession()
   const guest = Boolean((data?.user as { isAnonymous?: boolean } | undefined)?.isAnonymous)
   const [hasPasskey, setHasPasskey] = useState<boolean | null>(null)
@@ -28,6 +28,17 @@ export function SaveAccountBanner() {
     else setHasPasskey(true)
   }
 
+  async function withGoogle() {
+    setBusy(true)
+    setError(null)
+    try {
+      await signInWithGoogle("/")
+    } catch (err) {
+      setBusy(false)
+      setError(err instanceof Error ? err.message : "Google sign-in isn't available.")
+    }
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-950">
       <span className="min-w-0 flex-1">
@@ -42,6 +53,16 @@ export function SaveAccountBanner() {
       >
         Save my account
       </button>
+      {google && (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void withGoogle()}
+          className="rounded-lg border border-amber-900/30 bg-white px-3 py-1.5 font-semibold text-amber-950 hover:bg-amber-100 disabled:opacity-50"
+        >
+          Continue with Google
+        </button>
+      )}
     </div>
   )
 }

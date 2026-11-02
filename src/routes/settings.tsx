@@ -12,6 +12,7 @@ import { HEX_COLOR } from "@/lib/brand-theme"
 import { billingOptions } from "@/lib/polar.server"
 import { EXTRA_BLOCK_HOURS, EXTRA_BLOCK_PRICE, PAID_PLANS, PLANS, canManage, formatHours, yearlyPrice } from "@/lib/plans"
 import { listApiKeys } from "@/lib/api-keys.server"
+import { listWebhookEndpoints } from "@/lib/webhooks"
 import { listInvites, listMembers } from "@/lib/workspace-api.server"
 import { getWorkspaceContext, isHosted, toPublicWorkspace, usageOf } from "@/lib/workspace.server"
 
@@ -34,6 +35,7 @@ const loadSettings = createServerFn({ method: "GET" }).handler(async () => {
     hosted: isHosted(),
     billing: billingOptions(),
     apiKeys: await listApiKeys(user.sub, workspace.id),
+    webhooks: canManage(role) ? await listWebhookEndpoints(workspace.id) : [],
   }
 })
 
@@ -419,6 +421,7 @@ function AgentsTab() {
           </ul>
         )}
       </Card>
+      {canManage(data.role) && <WebhooksCard />}
       <Card title="Connect" description={created ? "These include your new key." : "Create a key above and these fill in with it."}>
         <div className="space-y-4">
           {snippets.map(([id, label, code]) => (
@@ -730,6 +733,102 @@ function WorkspaceInsightsCard() {
             Download CSV
           </a>
         </div>
+      )}
+    </Card>
+  )
+}
+
+const WEBHOOK_EVENT_LABELS: Array<[string, string]> = [
+  ["video.ready", "A video is ready"],
+  ["video.viewed", "Someone views a video"],
+  ["comment.created", "Someone comments"],
+]
+
+function WebhooksCard() {
+  const data = Route.useLoaderData()
+  const router = useRouter()
+  const [url, setUrl] = useState("")
+  const [events, setEvents] = useState<Array<string>>(WEBHOOK_EVENT_LABELS.map(([value]) => value))
+  const [secret, setSecret] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  async function create() {
+    setError(null)
+    const { ok, data: result } = await send("/api/webhooks", "POST", { url: url.trim(), events })
+    if (!ok) return setError(String(result.error ?? "Couldn't add that webhook"))
+    setSecret(String(result.secret))
+    setUrl("")
+    void router.invalidate()
+  }
+
+  return (
+    <Card
+      title="Webhooks"
+      description="Get a signed POST to your own address when something happens, to drive Zapier, n8n, Make or your own code. Payloads and signature checks are in the API docs."
+    >
+      <form
+        className="space-y-3"
+        onSubmit={(event) => {
+          event.preventDefault()
+          void create()
+        }}
+      >
+        <input
+          value={url}
+          onChange={(event) => setUrl(event.target.value)}
+          placeholder="https://example.com/hooks/vertov"
+          aria-label="Webhook address"
+          className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm"
+        />
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          {WEBHOOK_EVENT_LABELS.map(([value, label]) => (
+            <label key={value} className="flex items-center gap-1.5 text-sm text-neutral-700">
+              <input
+                type="checkbox"
+                checked={events.includes(value)}
+                onChange={(event) => setEvents(event.target.checked ? [...events, value] : events.filter((entry) => entry !== value))}
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+        <div className="flex items-center gap-3">
+          <button type="submit" disabled={events.length === 0} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+            Add webhook
+          </button>
+          <a href="/docs/api" className="text-sm text-neutral-600 underline">
+            API docs
+          </a>
+        </div>
+        {error && <p className="text-sm text-red-600">{error}</p>}
+      </form>
+      {secret && (
+        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+          <p className="font-medium">Copy the signing secret now. It won't be shown again.</p>
+          <code className="mt-2 block truncate rounded bg-white px-2 py-1 font-mono text-xs">{secret}</code>
+        </div>
+      )}
+      {data.webhooks.length > 0 && (
+        <ul className="mt-4 divide-y divide-neutral-100 rounded-lg border border-neutral-200">
+          {data.webhooks.map((hook) => (
+            <li key={hook.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+              <span className="min-w-0">
+                <span className="block truncate font-medium text-neutral-900">{hook.url}</span>
+                <span className="block text-xs text-neutral-500">{hook.events.split(",").join(", ")}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!confirm("Delete this webhook? It stops receiving events.")) return
+                  void send("/api/webhooks", "DELETE", { id: hook.id }).then(() => router.invalidate())
+                }}
+                className="rounded-md px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+              >
+                Delete
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
     </Card>
   )

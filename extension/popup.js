@@ -265,6 +265,9 @@ async function renderReady(connection) {
           event.currentTarget.disabled = true
           error = null
           stopPreview()
+          // Pen, spotlight, camera bubble and click capture are injected into whichever tab is active, so ask once for every site.
+          // Declining still records: the tab you start on is covered by activeTab.
+          await chrome.permissions.request({ origins: ["<all_urls>"] }).catch(() => false)
           const { bgImage } = options.background === "image" ? await chrome.storage.local.get("bgImage") : {}
           if (options.background === "image" && !bgImage) options = { ...options, background: "none" }
           const result = await ask("start", { options: { ...options, camera: cameraOn, bgImage }, tab })

@@ -158,12 +158,18 @@ export function ReactionLayer({ items }: { items: Array<FloatingReaction> }) {
   )
 }
 
+export function countCtaClick(uploadId: string | undefined) {
+  if (uploadId) navigator.sendBeacon?.(`/api/cta/${uploadId}`)
+}
+
 /** Shown when the video (or its trimmed end) finishes: replay, and the owner's call to action. */
 export function EndCard({
   ctaLabel,
   ctaUrl,
+  uploadId,
   onReplay,
 }: {
+  uploadId?: string
   ctaLabel: string | null
   ctaUrl: string | null
   onReplay: () => void
@@ -173,6 +179,7 @@ export function EndCard({
       {ctaLabel && ctaUrl && (
         <a
           href={ctaUrl}
+          onClick={() => countCtaClick(uploadId)}
           target="_blank"
           rel="noopener noreferrer"
           className="rounded-full bg-white px-6 py-3 text-base font-semibold text-neutral-900 shadow-lg transition-transform hover:scale-105"

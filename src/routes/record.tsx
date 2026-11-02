@@ -20,12 +20,26 @@ const loadRecorder = createServerFn({ method: "GET" }).handler(async () => {
   return { signedIn: Boolean(user) }
 })
 
+const EMBED_ORIGINS = ["https://donezoinbox.com", "https://www.donezoinbox.com"]
+
+/** Tells the app that opened this window which video was just recorded, then closes. False when nobody is listening. */
+function handBack(id: string): boolean {
+  if (!window.opener) return false
+  const origin = location.origin
+  const message = { type: "vertov:recorded", id, url: `${origin}/${id}`, title: `${APP_NAME} recording`, gif: `${origin}/api/gif/${id}`, poster: `${origin}/api/poster/${id}` }
+  for (const target of EMBED_ORIGINS) window.opener.postMessage(message, target)
+  window.close()
+  return true
+}
+
 export const Route = createFileRoute("/record")({
   // ?space=<id> records straight into a shared space.
   validateSearch: (search: Record<string, unknown>) => ({
     space: typeof search.space === "string" ? search.space : undefined,
     // Set when someone is recording for a "Request a video" link.
     request: typeof search.request === "string" ? search.request : undefined,
+    // Set when another app (like Donezo Inbox) opened this window to get a finished recording back.
+    embed: search.embed === "1" || search.embed === 1 ? true : undefined,
   }),
   loader: async () => {
     const { signedIn } = await loadRecorder()
@@ -99,7 +113,7 @@ function readLevel(analyser: AnalyserNode, buffer: Uint8Array<ArrayBuffer>): num
 }
 
 function RecordPage() {
-  const { space: spaceId, request: requestId } = Route.useSearch()
+  const { space: spaceId, request: requestId, embed } = Route.useSearch()
   const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS)
   const [phase, setPhase] = useState<Phase>("setup")
   const [cameras, setCameras] = useState<Array<MediaDeviceInfo>>([])
@@ -578,6 +592,7 @@ function RecordPage() {
         return
       }
       await removeBackup(current.id)
+      if (embed && handBack(current.id)) return
       window.location.href = `/${current.id}?new=1`
     } catch (err) {
       setError(`${err instanceof Error ? err.message : "Upload failed."} Your recording is safe in this browser, so you can upload it again.`)

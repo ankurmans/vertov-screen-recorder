@@ -26,7 +26,7 @@ import { OverlayLayer } from "@/components/overlay-layer";
 import { ShareHeader } from "@/components/share-header";
 import { brandStyle } from "@/lib/brand-theme";
 import type { Brand } from "@/lib/brand-theme";
-import { CameraTrack, EndCard, ReactionLayer } from "@/components/stage-layer";
+import { CameraTrack, countCtaClick, EndCard, ReactionLayer } from "@/components/stage-layer";
 import { AiPanel } from "@/components/ai-panel";
 import { StudioPanel } from "@/components/studio-panel";
 import { TranscriptEditor } from "@/components/transcript-editor";
@@ -520,7 +520,7 @@ export function VideoShare({
       )}
       {transcript && studio.captionStyle !== "off" && <CaptionLayer transcript={transcript} time={currentTime} video={mainVideo} style={studio.captionStyle} />}
       <ReactionLayer items={floating} />
-      {ended && <EndCard ctaLabel={studio.ctaLabel} ctaUrl={studio.ctaUrl} onReplay={replay} />}
+      {ended && <EndCard ctaLabel={studio.ctaLabel} ctaUrl={studio.ctaUrl} uploadId={upload.id} onReplay={replay} />}
     </VideoPlayer>
   );
 
@@ -569,6 +569,7 @@ export function VideoShare({
               aiPending={aiPending}
               ctaLabel={studio.ctaLabel}
               ctaUrl={studio.ctaUrl}
+              uploadId={upload.id}
               currentTime={currentTime}
               studioOpen={studioOpen}
               onToggleStudio={() => setStudioOpen((open) => !open)}
@@ -669,6 +670,7 @@ function VideoInfo({
   aiPending,
   ctaLabel,
   ctaUrl,
+  uploadId,
   currentTime,
   studioOpen,
   onToggleStudio,
@@ -687,6 +689,7 @@ function VideoInfo({
   aiPending: boolean;
   ctaLabel: string | null;
   ctaUrl: string | null;
+  uploadId: string;
   currentTime: number;
   studioOpen: boolean;
   onToggleStudio: () => void;
@@ -770,7 +773,7 @@ function VideoInfo({
           {showLike && <LikeButton uploadId={upload.id} auth={auth} initialCount={likeCount} />}
           {auth.user && !isOwner && <WatchLaterButton uploadId={upload.id} />}
           {ctaLabel && ctaUrl && (
-            <LinkButton href={ctaUrl} target="_blank" rel="noopener noreferrer" variant="primary" icon={<ArrowSquareOutIcon weight="bold" />}>
+            <LinkButton href={ctaUrl} onClick={() => countCtaClick(uploadId)} target="_blank" rel="noopener noreferrer" variant="primary" icon={<ArrowSquareOutIcon weight="bold" />}>
               {ctaLabel}
             </LinkButton>
           )}

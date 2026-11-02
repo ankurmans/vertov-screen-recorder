@@ -1,0 +1,22 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "vertov",
+  "title": "Vertov",
+  "description": "Find your Vertov recordings, copy share links and start a new recording.",
+  "icon": "command-icon.png",
+  "author": "vertov",
+  "license": "MIT",
+  "platforms": ["macOS"],
+  "categories": ["Productivity", "Media"],
+  "preferences": [
+    { "name": "apiKey", "type": "password", "required": true, "title": "API key", "description": "Starts with rk_. Create one in Vertov settings.", "placeholder": "rk_..." },
+    { "name": "baseUrl", "type": "textfield", "required": false, "title": "Server", "description": "Leave empty for vertov.app. Set for a self-hosted server.", "default": "https://vertov.app" }
+  ],
+  "commands": [
+    { "name": "search-recordings", "title": "Search Recordings", "description": "Search your Vertov recordings.", "mode": "view" },
+    { "name": "start-recording", "title": "Start Recording", "description": "Open the Vertov recorder.", "mode": "no-view" }
+  ],
+  "dependencies": { "@raycast/api": "^1.80.0" },
+  "devDependencies": { "@types/node": "^20.0.0", "@types/react": "^18.3.0", "typescript": "^5.4.0" },
+  "scripts": { "build": "ray build -e dist", "dev": "ray develop", "lint": "ray lint" }
+}

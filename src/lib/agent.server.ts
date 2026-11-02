@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm"
 import { env } from "cloudflare:workers"
+import { emitWebhook } from "@/lib/webhooks"
 import type { Upload, Workspace } from "@/db/schema"
 import type { SessionUser } from "@/lib/auth.server"
 import type { Role } from "@/lib/plans"
@@ -61,6 +62,7 @@ export async function createVideoFromBody(
   if (transcribe) await env.PROCESS_QUEUE.send({ id })
   const upload = await getUploadById(id)
   if (!upload) throw new Error("upload vanished")
+  emitWebhook(workspace.id, "video.ready", { id, url: `/${id}`, title: meta.title, duration: meta.duration })
   return upload
 }
 

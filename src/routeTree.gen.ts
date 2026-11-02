@@ -20,7 +20,9 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as RequestIdRouteImport } from './routes/request.$id'
 import { Route as JoinTokenRouteImport } from './routes/join.$token'
 import { Route as EmbedIdRouteImport } from './routes/embed/$id'
+import { Route as DocsApiRouteImport } from './routes/docs.api'
 import { Route as ApiWorkspaceRouteImport } from './routes/api/workspace'
+import { Route as ApiWebhooksRouteImport } from './routes/api/webhooks'
 import { Route as ApiVersionRouteImport } from './routes/api/version'
 import { Route as ApiUploadRouteImport } from './routes/api/upload'
 import { Route as ApiSpacesRouteImport } from './routes/api/spaces'
@@ -70,6 +72,7 @@ import { Route as ApiGifIdRouteImport } from './routes/api/gif.$id'
 import { Route as ApiFoldersIdRouteImport } from './routes/api/folders.$id'
 import { Route as ApiExportIdRouteImport } from './routes/api/export.$id'
 import { Route as ApiEmailGateIdRouteImport } from './routes/api/email-gate.$id'
+import { Route as ApiCtaIdRouteImport } from './routes/api/cta.$id'
 import { Route as ApiCommentsIdRouteImport } from './routes/api/comments.$id'
 import { Route as ApiCaptionsIdRouteImport } from './routes/api/captions.$id'
 import { Route as ApiCameraIdRouteImport } from './routes/api/camera.$id'
@@ -147,9 +150,19 @@ const EmbedIdRoute = EmbedIdRouteImport.update({
   path: '/embed/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DocsApiRoute = DocsApiRouteImport.update({
+  id: '/docs/api',
+  path: '/docs/api',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiWorkspaceRoute = ApiWorkspaceRouteImport.update({
   id: '/api/workspace',
   path: '/api/workspace',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWebhooksRoute = ApiWebhooksRouteImport.update({
+  id: '/api/webhooks',
+  path: '/api/webhooks',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiVersionRoute = ApiVersionRouteImport.update({
@@ -398,6 +411,11 @@ const ApiEmailGateIdRoute = ApiEmailGateIdRouteImport.update({
   path: '/api/email-gate/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCtaIdRoute = ApiCtaIdRouteImport.update({
+  id: '/api/cta/$id',
+  path: '/api/cta/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCommentsIdRoute = ApiCommentsIdRouteImport.update({
   id: '/api/comments/$id',
   path: '/api/comments/$id',
@@ -527,7 +545,9 @@ export interface FileRoutesByFullPath {
   '/api/spaces': typeof ApiSpacesRouteWithChildren
   '/api/upload': typeof ApiUploadRouteWithChildren
   '/api/version': typeof ApiVersionRoute
+  '/api/webhooks': typeof ApiWebhooksRoute
   '/api/workspace': typeof ApiWorkspaceRouteWithChildren
+  '/docs/api': typeof DocsApiRoute
   '/embed/$id': typeof EmbedIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/request/$id': typeof RequestIdRoute
@@ -538,6 +558,7 @@ export interface FileRoutesByFullPath {
   '/api/camera/$id': typeof ApiCameraIdRoute
   '/api/captions/$id': typeof ApiCaptionsIdRoute
   '/api/comments/$id': typeof ApiCommentsIdRoute
+  '/api/cta/$id': typeof ApiCtaIdRoute
   '/api/email-gate/$id': typeof ApiEmailGateIdRoute
   '/api/export/$id': typeof ApiExportIdRoute
   '/api/folders/$id': typeof ApiFoldersIdRoute
@@ -611,7 +632,9 @@ export interface FileRoutesByTo {
   '/api/spaces': typeof ApiSpacesRouteWithChildren
   '/api/upload': typeof ApiUploadRouteWithChildren
   '/api/version': typeof ApiVersionRoute
+  '/api/webhooks': typeof ApiWebhooksRoute
   '/api/workspace': typeof ApiWorkspaceRouteWithChildren
+  '/docs/api': typeof DocsApiRoute
   '/embed/$id': typeof EmbedIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/request/$id': typeof RequestIdRoute
@@ -622,6 +645,7 @@ export interface FileRoutesByTo {
   '/api/camera/$id': typeof ApiCameraIdRoute
   '/api/captions/$id': typeof ApiCaptionsIdRoute
   '/api/comments/$id': typeof ApiCommentsIdRoute
+  '/api/cta/$id': typeof ApiCtaIdRoute
   '/api/email-gate/$id': typeof ApiEmailGateIdRoute
   '/api/export/$id': typeof ApiExportIdRoute
   '/api/folders/$id': typeof ApiFoldersIdRoute
@@ -696,7 +720,9 @@ export interface FileRoutesById {
   '/api/spaces': typeof ApiSpacesRouteWithChildren
   '/api/upload': typeof ApiUploadRouteWithChildren
   '/api/version': typeof ApiVersionRoute
+  '/api/webhooks': typeof ApiWebhooksRoute
   '/api/workspace': typeof ApiWorkspaceRouteWithChildren
+  '/docs/api': typeof DocsApiRoute
   '/embed/$id': typeof EmbedIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/request/$id': typeof RequestIdRoute
@@ -707,6 +733,7 @@ export interface FileRoutesById {
   '/api/camera/$id': typeof ApiCameraIdRoute
   '/api/captions/$id': typeof ApiCaptionsIdRoute
   '/api/comments/$id': typeof ApiCommentsIdRoute
+  '/api/cta/$id': typeof ApiCtaIdRoute
   '/api/email-gate/$id': typeof ApiEmailGateIdRoute
   '/api/export/$id': typeof ApiExportIdRoute
   '/api/folders/$id': typeof ApiFoldersIdRoute
@@ -782,7 +809,9 @@ export interface FileRouteTypes {
     | '/api/spaces'
     | '/api/upload'
     | '/api/version'
+    | '/api/webhooks'
     | '/api/workspace'
+    | '/docs/api'
     | '/embed/$id'
     | '/join/$token'
     | '/request/$id'
@@ -793,6 +822,7 @@ export interface FileRouteTypes {
     | '/api/camera/$id'
     | '/api/captions/$id'
     | '/api/comments/$id'
+    | '/api/cta/$id'
     | '/api/email-gate/$id'
     | '/api/export/$id'
     | '/api/folders/$id'
@@ -866,7 +896,9 @@ export interface FileRouteTypes {
     | '/api/spaces'
     | '/api/upload'
     | '/api/version'
+    | '/api/webhooks'
     | '/api/workspace'
+    | '/docs/api'
     | '/embed/$id'
     | '/join/$token'
     | '/request/$id'
@@ -877,6 +909,7 @@ export interface FileRouteTypes {
     | '/api/camera/$id'
     | '/api/captions/$id'
     | '/api/comments/$id'
+    | '/api/cta/$id'
     | '/api/email-gate/$id'
     | '/api/export/$id'
     | '/api/folders/$id'
@@ -950,7 +983,9 @@ export interface FileRouteTypes {
     | '/api/spaces'
     | '/api/upload'
     | '/api/version'
+    | '/api/webhooks'
     | '/api/workspace'
+    | '/docs/api'
     | '/embed/$id'
     | '/join/$token'
     | '/request/$id'
@@ -961,6 +996,7 @@ export interface FileRouteTypes {
     | '/api/camera/$id'
     | '/api/captions/$id'
     | '/api/comments/$id'
+    | '/api/cta/$id'
     | '/api/email-gate/$id'
     | '/api/export/$id'
     | '/api/folders/$id'
@@ -1035,7 +1071,9 @@ export interface RootRouteChildren {
   ApiSpacesRoute: typeof ApiSpacesRouteWithChildren
   ApiUploadRoute: typeof ApiUploadRouteWithChildren
   ApiVersionRoute: typeof ApiVersionRoute
+  ApiWebhooksRoute: typeof ApiWebhooksRoute
   ApiWorkspaceRoute: typeof ApiWorkspaceRouteWithChildren
+  DocsApiRoute: typeof DocsApiRoute
   EmbedIdRoute: typeof EmbedIdRoute
   JoinTokenRoute: typeof JoinTokenRoute
   RequestIdRoute: typeof RequestIdRoute
@@ -1046,6 +1084,7 @@ export interface RootRouteChildren {
   ApiCameraIdRoute: typeof ApiCameraIdRoute
   ApiCaptionsIdRoute: typeof ApiCaptionsIdRoute
   ApiCommentsIdRoute: typeof ApiCommentsIdRoute
+  ApiCtaIdRoute: typeof ApiCtaIdRoute
   ApiEmailGateIdRoute: typeof ApiEmailGateIdRoute
   ApiExportIdRoute: typeof ApiExportIdRoute
   ApiGifIdRoute: typeof ApiGifIdRoute
@@ -1150,11 +1189,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EmbedIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/docs/api': {
+      id: '/docs/api'
+      path: '/docs/api'
+      fullPath: '/docs/api'
+      preLoaderRoute: typeof DocsApiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/workspace': {
       id: '/api/workspace'
       path: '/api/workspace'
       fullPath: '/api/workspace'
       preLoaderRoute: typeof ApiWorkspaceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/webhooks': {
+      id: '/api/webhooks'
+      path: '/api/webhooks'
+      fullPath: '/api/webhooks'
+      preLoaderRoute: typeof ApiWebhooksRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/version': {
@@ -1498,6 +1551,13 @@ declare module '@tanstack/react-router' {
       path: '/api/email-gate/$id'
       fullPath: '/api/email-gate/$id'
       preLoaderRoute: typeof ApiEmailGateIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/cta/$id': {
+      id: '/api/cta/$id'
+      path: '/api/cta/$id'
+      fullPath: '/api/cta/$id'
+      preLoaderRoute: typeof ApiCtaIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/comments/$id': {
@@ -1854,7 +1914,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSpacesRoute: ApiSpacesRouteWithChildren,
   ApiUploadRoute: ApiUploadRouteWithChildren,
   ApiVersionRoute: ApiVersionRoute,
+  ApiWebhooksRoute: ApiWebhooksRoute,
   ApiWorkspaceRoute: ApiWorkspaceRouteWithChildren,
+  DocsApiRoute: DocsApiRoute,
   EmbedIdRoute: EmbedIdRoute,
   JoinTokenRoute: JoinTokenRoute,
   RequestIdRoute: RequestIdRoute,
@@ -1865,6 +1927,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCameraIdRoute: ApiCameraIdRoute,
   ApiCaptionsIdRoute: ApiCaptionsIdRoute,
   ApiCommentsIdRoute: ApiCommentsIdRoute,
+  ApiCtaIdRoute: ApiCtaIdRoute,
   ApiEmailGateIdRoute: ApiEmailGateIdRoute,
   ApiExportIdRoute: ApiExportIdRoute,
   ApiGifIdRoute: ApiGifIdRoute,

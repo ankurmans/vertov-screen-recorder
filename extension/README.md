@@ -22,6 +22,7 @@ cd extension && zip -r ../vertov-extension.zip . -x "README.md" -x ".*"
 - `offscreen.js`: the recorder (MediaRecorder, mixed audio, 5 MiB multipart parts, camera as its own track, audio sidecar, poster frames).
 - `capture.js`: click and page capture, injected only while a recording with "capture clicks" is on. It sends the visible label and a selector, never what you type.
 - `overlay.js` and `bubble.html`/`bubble.js`: the on-page camera bubble, pen (strokes fade after 4s) and cursor highlight, injected into the active tab during tab recordings.
+- `gmail.js` and `gmail.css`: content script on mail.google.com. Adds a Vertov button beside Send in each compose window; the finished recording's poster image and link are inserted into that message (background.js `deliver`). Falls back to opening the share page if the compose is gone. Gmail's markup is undocumented, so selectors are loose and fail silently.
 - `popup.js`, `connect.js`, `permissions.js`: UI. The connect handshake lives in the site's `/connect-extension` route.
 
 ## Known limits

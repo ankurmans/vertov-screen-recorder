@@ -26,7 +26,7 @@ async function ensureOffscreen() {
 
 const toOffscreen = (type, extra = {}) => chrome.runtime.sendMessage({ target: "offscreen", type, ...extra })
 
-async function startRecording(options, tab) {
+async function startRecording(options, tab, gmail = null) {
   if (await getState()) throw new Error("Already recording.")
   const connection = await getConnection()
   if (!connection.token) throw new Error(`Connect the extension to ${NAME} first.`)
@@ -50,7 +50,7 @@ async function startRecording(options, tab) {
   }
   if (!result?.ok) throw new Error(result?.error || "Recording didn't start.")
   const overlay = { camera: bubbleInPage, cameraId: options.cameraId || "", background: options.background || "none", size: "m", x: null, y: null, spot: false }
-  await setState({ id: result.id, url: result.url, startedAt: Date.now(), elapsed: 0, paused: false, capture: Boolean(options.captureClicks), tabId: tab?.id ?? null, overlay: options.mode === "tab" ? overlay : null })
+  await setState({ id: result.id, url: result.url, startedAt: Date.now(), elapsed: 0, paused: false, capture: Boolean(options.captureClicks), tabId: tab?.id ?? null, gmail, overlay: options.mode === "tab" ? overlay : null })
   await chrome.action.setIcon({ path: { 16: "icons/rec16.png", 32: "icons/rec32.png" } })
   await chrome.action.setBadgeBackgroundColor({ color: "#dc2626" })
   await chrome.action.setBadgeText({ text: "0:00" })
@@ -67,6 +67,32 @@ async function finishUi() {
   await chrome.action.setBadgeText({ text: "" })
 }
 
+/**
+ * Where a finished recording goes. Started from a Gmail compose: put the thumbnail and link into that
+ * message. If the compose is gone (or this isn't a Gmail recording), open the share page; the link is
+ * already on the clipboard.
+ */
+async function deliver(state, result) {
+  if (state?.gmail?.tabId != null) {
+    try {
+      const { server } = await getConnection()
+      const id = result.id
+      // Gmail caches an image the first time it fetches it, so only embed one that already loads for a stranger.
+      const poster = await fetch(`${server}/api/poster/${id}`, { method: "HEAD", credentials: "omit", cache: "no-store" }).then((r) => r.ok).catch(() => false)
+      const reply = await chrome.tabs.sendMessage(state.gmail.tabId, {
+        type: "gmail-insert",
+        composeId: state.gmail.composeId,
+        url: result.url,
+        poster: poster ? `${server}/api/poster/${id}` : null,
+      })
+      if (reply?.ok) return
+    } catch {
+      // The tab or compose is gone: fall through to the share page.
+    }
+  }
+  await chrome.tabs.create({ url: `${result.url}?new=1` })
+}
+
 async function stopRecording() {
   const state = await getState()
   if (!state) throw new Error("Not recording.")
@@ -77,7 +103,7 @@ async function stopRecording() {
     await chrome.tabs.create({ url: state.url })
     throw new Error(result?.error || "The upload didn't finish.")
   }
-  await chrome.tabs.create({ url: `${result.url}?new=1` })
+  await deliver(state, result)
   return result
 }
 
@@ -219,8 +245,9 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
         await setState({ ...state, elapsed: message.elapsed, paused: message.paused })
         await chrome.action.setBadgeText({ text: message.paused ? "❚❚" : clock(message.elapsed) })
       } else if (message.type === "finished") {
+        const state = await getState()
         await finishUi()
-        await chrome.tabs.create({ url: `${message.url}?new=1` })
+        await deliver(state, message)
       } else if (message.type === "failed") {
         const state = await getState()
         await finishUi()
@@ -246,6 +273,20 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
   const actions = {
     status: async () => ({ recording: await getState() }),
     start: async () => startRecording(message.options, message.tab),
+    "gmail-start": async () => {
+      if (!sender.tab?.id) throw new Error("Open Gmail in a tab first.")
+      const state = await getState()
+      // A second click on the button stops the recording it started.
+      if (state?.gmail) return { stopped: true, ...(await stopRecording()) }
+      if (state) throw new Error("Already recording.")
+      const { lastOptions } = await chrome.storage.local.get("lastOptions")
+      const options = { mic: true, camera: false, captureClicks: false, ...lastOptions }
+      const tab = sender.tab
+      if (options.mode === "tab" && !/^https?:/.test(tab.url ?? "")) options.mode = "screen"
+      await startRecording({ ...options, mode: options.mode || "tab" }, tab, { tabId: tab.id, composeId: message.composeId })
+      return { started: true }
+    },
+    "gmail-status": async () => ({ active: Boolean((await getState())?.gmail) }),
     stop: () => stopRecording(),
     pause: async () => {
       const result = await toOffscreen(message.paused ? "pause" : "resume")

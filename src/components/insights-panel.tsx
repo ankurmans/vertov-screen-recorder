@@ -3,6 +3,8 @@ import { formatTimeAgo } from "@/lib/format"
 
 interface Insights {
   views: number
+  ctaClicks?: number
+  ctaLabel?: string | null
   averageCompletion: number | null
   emails?: Array<{ email: string; at: string }>
   viewers: Array<{
@@ -45,6 +47,7 @@ export function InsightsPanel({ uploadId, className }: { uploadId: string; class
           label="Avg. watched"
           value={insights.averageCompletion == null ? "—" : `${Math.round(insights.averageCompletion * 100)}%`}
         />
+        {insights.ctaLabel && <Stat label={`"${insights.ctaLabel}" clicks`} value={String(insights.ctaClicks ?? 0)} />}
       </div>
       <a
         href={`/api/insights/${uploadId}?format=csv`}

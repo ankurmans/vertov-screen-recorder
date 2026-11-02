@@ -12,7 +12,9 @@ export const Route = createFileRoute("/api/gif/$id")({
         const upload = await getUploadById(params.id)
         const denied = await denyUnlessViewable(upload, request)
         if (denied) return denied
-        return serveAsset(upload?.gifKey ?? null, "image/gif", "public, max-age=300")
+        // The GIF is made when the owner first opens the finished video; until then the still poster stands in so a fresh email never shows a broken image.
+        if (upload?.gifKey) return serveAsset(upload.gifKey, "image/gif", "public, max-age=300")
+        return serveAsset(upload?.posterKey ?? null, "image/jpeg", "public, max-age=60")
       },
       OPTIONS: () => optionsResponse(),
     },

@@ -1,0 +1,5 @@
+.vertov-gmail-btn{display:inline-flex;align-items:center;gap:6px;height:36px;margin:0 8px;padding:0 14px;border:1px solid #d4d4d8;border-radius:18px;background:#fff;color:#18181b;font:500 13px/1 "Google Sans",Roboto,Arial,sans-serif;cursor:pointer;vertical-align:middle}
+.vertov-gmail-btn:hover{background:#f4f4f5}
+.vertov-gmail-btn img{width:16px;height:16px;border-radius:4px}
+.vertov-gmail-btn[data-recording="true"]{border-color:#dc2626;color:#dc2626}
+.vertov-gmail-toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:2147483647;max-width:420px;padding:10px 16px;border-radius:8px;background:#18181b;color:#fff;font:14px/1.4 Roboto,Arial,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.3)}

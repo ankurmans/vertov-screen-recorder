@@ -118,6 +118,7 @@ export async function ensureSchema(): Promise<Array<string>> {
     ["chapters", "TEXT"],
     ["views", "INTEGER NOT NULL DEFAULT 0"],
     ["social_enabled", "INTEGER NOT NULL DEFAULT 1"],
+    ["cta_clicks", "INTEGER NOT NULL DEFAULT 0"],
   ];
   for (const [name, definition] of v2Columns) {
     if (!columnNames.has(name)) {
