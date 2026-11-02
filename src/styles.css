@@ -328,6 +328,9 @@ select:not([multiple])[size="1"] {
   background: #e9ece3;
   color: #a82919;
 }
+.create-space-dialog::backdrop {
+  background: rgb(0 0 0 / 0.35);
+}
 .library-controls {
   display: flex;
   align-items: center;

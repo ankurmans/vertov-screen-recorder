@@ -31,6 +31,7 @@ import type { Folder, Space } from "@/db/schema"
 import type { LibraryVideo, LibraryView } from "@/lib/library.server"
 import { ImportDialog } from "@/components/import-dialog"
 import { RequestDialog } from "@/components/request-dialog"
+import { CreateSpaceDialog } from "@/components/create-space-dialog"
 import { getSessionUser, googleClientId } from "@/lib/auth.server"
 import { authClient } from "@/lib/auth-client"
 import { APP_NAME } from "@/lib/brand"
@@ -114,6 +115,7 @@ function Library({ data }: { data: LoadedLibrary }) {
   const shownViews = videos.reduce((total, video) => total + video.views, 0)
   const [adding, setAdding] = useState(Boolean(search.import))
   const [requesting, setRequesting] = useState(Boolean(search.request))
+  const [creatingSpace, setCreatingSpace] = useState(false)
   const [query, setQuery] = useState(search.q ?? "")
   const [moving, setMoving] = useState<LibraryVideo | null>(null)
   const [combining, setCombining] = useState(false)
@@ -214,15 +216,6 @@ function Library({ data }: { data: LoadedLibrary }) {
     refresh()
   }
 
-  async function newSpace() {
-    const name = prompt("Name the space (everyone in the workspace will see it)")?.trim()
-    if (!name) return
-    const response = await fetch("/api/spaces", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name }) })
-    if (!response.ok) return
-    const created: { id: string } = await response.json()
-    void navigate({ search: { view: "space", space: created.id } })
-  }
-
   return (
     <main className="library-shell min-h-dvh">
       <SaveAccountBanner google={googleEnabled} />
@@ -267,6 +260,10 @@ function Library({ data }: { data: LoadedLibrary }) {
 
       {requesting && <RequestDialog onClose={() => setRequesting(false)} />}
       {adding && <ImportDialog onClose={() => setAdding(false)} onImported={refresh} />}
+      {creatingSpace && <CreateSpaceDialog workspaceName={workspace.name} onClose={() => setCreatingSpace(false)} onCreated={(id) => {
+        setCreatingSpace(false)
+        void navigate({ search: { view: "space", space: id } })
+      }} />}
       {moving && (
         <MoveDialog
           video={moving}
@@ -299,7 +296,7 @@ function Library({ data }: { data: LoadedLibrary }) {
               <div className="flex items-center justify-between px-2.5 text-xs font-semibold tracking-wide text-neutral-500 uppercase">
                 Spaces
                 {canManage(role) && (
-                  <button type="button" aria-label="New space" onClick={() => void newSpace()} className="rounded p-0.5 hover:bg-neutral-200">
+                  <button type="button" aria-label="New space" onClick={() => setCreatingSpace(true)} className="rounded p-0.5 hover:bg-neutral-200">
                     <PlusIcon size={14} />
                   </button>
                 )}
