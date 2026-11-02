@@ -134,6 +134,7 @@ function RecordPage() {
   const [failedId, setFailedId] = useState<string | null>(null)
   const session = useRef<Session | null>(null)
   const finishing = useRef(false)
+  const safeToLeave = useRef(false)
   const skipCountdown = useRef<(() => void) | null>(null)
   const pipRef = useRef<Window | null>(null)
   const screenRef = useRef<MediaStream | null>(null)
@@ -254,7 +255,9 @@ function RecordPage() {
 
   useEffect(() => {
     if (phase !== "recording" && phase !== "countdown" && phase !== "finishing") return
-    const warn = (event: BeforeUnloadEvent) => event.preventDefault()
+    const warn = (event: BeforeUnloadEvent) => {
+      if (!safeToLeave.current) event.preventDefault()
+    }
     window.addEventListener("beforeunload", warn)
     return () => window.removeEventListener("beforeunload", warn)
   }, [phase])
@@ -330,6 +333,7 @@ function RecordPage() {
   }
 
   async function start() {
+    safeToLeave.current = false
     setError(null)
     setPaused(false)
     if (mode === "screen" && !pipRef.current) await openFloating()
@@ -589,10 +593,12 @@ function RecordPage() {
       if (requestId) {
         await submitToRequest(current.id)
         await removeBackup(current.id)
+        safeToLeave.current = true
         window.location.href = `/request/${requestId}?done=1`
         return
       }
       await removeBackup(current.id)
+      safeToLeave.current = true
       if (embed && handBack(current.id)) return
       window.location.href = `/${current.id}?new=1`
     } catch (err) {

@@ -109,15 +109,14 @@ export class PartUploader {
   }
 }
 
-/** Best container the browser can record: H.264 MP4 plays everywhere, WebM is the fallback. */
+/** Prefer WebM: Chrome's hardware MP4 encoder can produce screen captures its own player can't decode. */
 export function pickVideoMimeType(): string {
   const candidates = [
-    "video/mp4;codecs=avc1.64001F,mp4a.40.2",
+    "video/webm;codecs=vp8,opus",
+    "video/webm;codecs=vp9,opus",
+    "video/webm",
     "video/mp4;codecs=avc1,mp4a",
     "video/mp4",
-    "video/webm;codecs=vp9,opus",
-    "video/webm;codecs=vp8,opus",
-    "video/webm",
   ]
   return candidates.find((type) => MediaRecorder.isTypeSupported(type)) ?? "video/webm"
 }
