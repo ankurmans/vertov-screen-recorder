@@ -566,7 +566,6 @@ function WorkspaceSwitcher({ current, name, memberships }: { current: string; na
   return (
     <div ref={ref} className="relative min-w-0 shrink">
       <button type="button" onClick={() => setOpen((value) => !value)} className="flex max-w-full min-w-0 items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-neutral-100">
-        <Logo />
         <span className="truncate text-sm font-semibold tracking-tight text-neutral-900">{name}</span>
         <CaretDownIcon size={12} className="shrink-0 text-neutral-500" />
       </button>
@@ -920,12 +919,4 @@ function downloadAll(videos: Array<LibraryVideo>) {
       link.click()
     }, index * 800)
   })
-}
-
-function Logo() {
-  return (
-    <span className="relative inline-flex size-6 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-pink-500">
-      <span className="size-2.5 rounded-full bg-white" />
-    </span>
-  )
 }
