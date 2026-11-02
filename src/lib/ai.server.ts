@@ -149,7 +149,10 @@ export async function complete(system: string, user: string, maxTokens = 800): P
   for (const name of order) {
     try {
       const text = name === "anthropic" ? await anthropicComplete(system, user, maxTokens) : name === "groq" ? await groqComplete(system, user, maxTokens) : await workersComplete(system, user, maxTokens)
-      if (text.trim()) return text
+      if (text.trim()) {
+        console.log(JSON.stringify({ message: "AI completion succeeded", provider: name }))
+        return text
+      }
       lastError = new Error(`${name} returned nothing`)
     } catch (error) {
       lastError = error
@@ -167,7 +170,6 @@ async function anthropicComplete(system: string, user: string, maxTokens: number
     body: JSON.stringify({
       model: secret("ANTHROPIC_MODEL") ?? ANTHROPIC_MODEL,
       max_tokens: maxTokens,
-      temperature: 0.2,
       system,
       messages: [{ role: "user", content: user }],
     }),

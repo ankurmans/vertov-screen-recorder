@@ -1,7 +1,7 @@
+import { BrandMark } from "@/components/brand-mark"
 import { createFileRoute, redirect } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
-import { PuzzlePieceIcon } from "@phosphor-icons/react"
 import { useState } from "react"
 import { getSessionUser } from "@/lib/auth.server"
 import { APP_NAME } from "@/lib/brand"
@@ -69,7 +69,7 @@ function ConnectPage() {
     <main className="flex min-h-dvh items-center justify-center bg-neutral-100 px-4">
       <div className="w-full max-w-sm rounded-2xl border border-neutral-200 bg-white p-7 shadow-sm">
         <div className="flex size-11 items-center justify-center rounded-xl bg-neutral-900 text-white">
-          <PuzzlePieceIcon size={22} />
+          <BrandMark size={44} />
         </div>
         {ext ? (
           <>

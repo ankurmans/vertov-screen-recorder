@@ -1,10 +1,11 @@
+import { BrandMark } from "@/components/brand-mark"
 import { DropdownMenu } from "@cloudflare/kumo";
 import type { AuthUser } from "@/lib/use-auth";
 import { APP_NAME } from "@/lib/brand";
 import type { Brand } from "@/lib/brand-theme";
 
 /** Sticky top bar shared by the video and screenshot share pages: the
- *  Screendrop logo/home link, plus a sign-out menu when signed in. */
+ *  Vertov logo/home link, plus a sign-out menu when signed in. */
 export function ShareHeader({
   user,
   onSignOut,
@@ -21,7 +22,7 @@ export function ShareHeader({
           <img src={brand.logo} alt={brand.name} className="h-7 max-w-40 object-contain" />
         ) : (
           <>
-            <img src="/favicon.svg" alt="" className="size-6" />
+            <BrandMark />
             <span className="font-semibold text-neutral-900">{APP_NAME}</span>
           </>
         )}

@@ -1,3 +1,4 @@
+import { BrandMark } from "@/components/brand-mark"
 import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
@@ -244,6 +245,7 @@ function Library({ data }: { data: LoadedLibrary }) {
     <main className="min-h-dvh bg-neutral-50">
       <SaveAccountBanner google={googleEnabled} />
       <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-neutral-200 bg-white/85 px-4 backdrop-blur">
+        <a href="/" aria-label="Vertov home"><BrandMark size={28} /></a>
         <WorkspaceSwitcher current={workspace.id} name={workspace.name} memberships={memberships} />
         <label className="relative ml-auto hidden max-w-sm flex-1 sm:block">
           <MagnifyingGlassIcon size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-neutral-400" />
