@@ -1,6 +1,6 @@
 # Chrome extension
 
-Records a tab, the screen or the camera from the toolbar and uploads while you record, so the share link is ready the moment you stop. Optional click capture adds what you clicked and which pages you opened to the video's "Copy for an AI agent" brief. Also redirects old Loom links to their copies and copies private Looms using your own Loom sign-in.
+Records a tab, the screen or the camera from the toolbar and uploads while you record, so the share link is ready the moment you stop. Optional click capture adds what you clicked and which pages you opened to the video's "Copy for an AI agent" brief. In v0.4.0, direct tab recordings also save click positions: open Customize → Zoom & focus to generate smooth zooms, edit their focus, or add manual points. Zooms appear in playback, embeds and MP4 exports. Screen/window picker recordings and older recordings support manual points. A camera bubble baked into a tab recording zooms with the screen; a separate camera track stays fixed. Also redirects old Loom links to their copies and copies private Looms using your own Loom sign-in.
 
 Name and hosted server are the two constants in `brand.js`, plus `name` in `manifest.json`.
 

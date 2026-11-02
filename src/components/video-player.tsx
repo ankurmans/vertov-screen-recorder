@@ -5,6 +5,8 @@ import { Video, VideoSkin, videoFeatures } from "@videojs/react/video"
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { CSSProperties, ReactNode } from "react"
 import type { Box } from "@/lib/stage"
+import { zoomAt } from "@/lib/zooms"
+import type { ZoomPoint } from "@/lib/zooms"
 
 interface VideoPlayerProps {
   src: string
@@ -23,6 +25,8 @@ interface VideoPlayerProps {
   stageAspect?: number
   stageBackground?: string
   screenBox?: Box | null
+  zooms?: ZoomPoint[]
+  onPickZoomFocus?: (x: number, y: number) => void
   /** Layers drawn over the video inside the player, so they go fullscreen with it. */
   children?: ReactNode
 }
@@ -51,6 +55,8 @@ export function VideoPlayer({
   stageAspect,
   stageBackground,
   screenBox,
+  zooms,
+  onPickZoomFocus,
   children,
 }: VideoPlayerProps) {
   const [languages, setLanguages] = useState<string[]>([])
@@ -64,12 +70,74 @@ export function VideoPlayer({
   const videoRef = useRef<HTMLVideoElement>(null)
   const [startingTime] = useState(initialTime)
   const [aspectRatio, setAspectRatio] = useState<string>()
+  const [captionText, setCaptionText] = useState("")
   const hasAppliedInitialTimeRef = useRef(false)
+  const hasZooms = Boolean(zooms?.length)
+  const pickingFocus = Boolean(onPickZoomFocus)
+
+  // Native cues would scale and leave the crop with the video; keep the selected track on a fixed layer.
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || !hasZooms) { setCaptionText(""); return }
+    const watched = new Set<TextTrack>()
+    function update() {
+      if (!video) return
+      const texts: string[] = []
+      for (const track of Array.from(video.textTracks)) {
+        if (!watched.has(track)) { track.addEventListener("cuechange", update); watched.add(track) }
+        if (track.mode !== "showing" || !["captions", "subtitles"].includes(track.kind)) continue
+        for (const cue of Array.from(track.activeCues ?? [])) {
+          if (cue instanceof VTTCue) texts.push(cue.getCueAsHTML().textContent ?? "")
+        }
+      }
+      setCaptionText(texts.join("\n"))
+    }
+    video.textTracks.addEventListener("change", update)
+    video.textTracks.addEventListener("addtrack", update)
+    video.textTracks.addEventListener("removetrack", update)
+    update()
+    return () => {
+      video.textTracks.removeEventListener("change", update)
+      video.textTracks.removeEventListener("addtrack", update)
+      video.textTracks.removeEventListener("removetrack", update)
+      for (const track of watched) track.removeEventListener("cuechange", update)
+    }
+  }, [hasZooms, languages, src])
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    if (!zooms?.length && !pickingFocus) { video.style.transform = ""; return }
+    let frame = 0
+    function draw() {
+      if (!video) return
+      const zoom = pickingFocus ? { scale: 1, x: 0, y: 0 } : zoomAt(zooms ?? [], video.currentTime)
+      video.style.transform = `translate(${zoom.x * 100}%, ${zoom.y * 100}%) scale(${zoom.scale})`
+    }
+    function animate() {
+      draw()
+      if (video && !video.paused && !video.ended) frame = requestAnimationFrame(animate)
+    }
+    function start() { cancelAnimationFrame(frame); animate() }
+    video.addEventListener("play", start)
+    video.addEventListener("timeupdate", draw)
+    video.addEventListener("seeking", draw)
+    video.addEventListener("loadedmetadata", draw)
+    if (pickingFocus) video.pause()
+    start()
+    return () => {
+      cancelAnimationFrame(frame)
+      video.removeEventListener("play", start)
+      video.removeEventListener("timeupdate", draw)
+      video.removeEventListener("seeking", draw)
+      video.removeEventListener("loadedmetadata", draw)
+    }
+  }, [zooms, pickingFocus])
 
   const mergedStyle = useMemo(() => {
     const background = stageBackground ? { background: stageBackground } : {}
     if (layout !== "responsive") return { ...style, ...background }
-    const ratio = stageAspect ? String(stageAspect) : aspectRatio
+    const ratio = stageAspect ? String(stageAspect) : aspectRatio ?? "16 / 9"
     return { ...style, ...background, ...(ratio ? { aspectRatio: ratio } : {}) }
   }, [aspectRatio, layout, stageAspect, stageBackground, style])
 
@@ -81,9 +149,9 @@ export function VideoPlayer({
       screenBox.top !== 0 ||
       screenBox.width !== 100 ||
       screenBox.height !== 100)
-  const videoStyle: CSSProperties | undefined =
+  const frameStyle: CSSProperties =
     screenBox === null
-      ? { opacity: 0 }
+      ? { position: "absolute", inset: 0, opacity: 0, pointerEvents: "none" }
       : framed
         ? {
             position: "absolute",
@@ -91,12 +159,11 @@ export function VideoPlayer({
             top: `${screenBox.top}%`,
             width: `${screenBox.width}%`,
             height: `${screenBox.height}%`,
-            objectFit: "contain",
             borderRadius: 12,
             boxShadow: "0 24px 60px -12px rgb(0 0 0 / 0.45)",
             background: "#000",
           }
-        : undefined
+        : { position: "absolute", inset: 0 }
 
   // The theater-mode layout swap remounts the player; picking the start
   // time up from the previous instance keeps playback continuous.
@@ -139,13 +206,15 @@ export function VideoPlayer({
           .join(" ")}
         style={mergedStyle}
       >
+        <div style={{ ...frameStyle, overflow: "hidden" }}>
         <Video
           ref={videoRef}
           src={src}
+          className={hasZooms ? "video-zoom-captions" : undefined}
           playsInline
           preload="metadata"
           crossOrigin="anonymous"
-          style={videoStyle}
+          style={{ width: "100%", height: "100%", objectFit: "contain", transformOrigin: "0 0" }}
           onEnded={(event) => onEnded?.(event.currentTarget)}
           onTimeUpdate={(event) => {
             const element = event.currentTarget
@@ -173,6 +242,12 @@ export function VideoPlayer({
             />
           )}
         </Video>
+        {hasZooms && captionText && <div className="pointer-events-none absolute inset-x-4 bottom-12 z-10 text-center"><span className="whitespace-pre-line rounded bg-black/80 px-2 py-1 text-sm text-white sm:text-base">{captionText}</span></div>}
+        {onPickZoomFocus && <button type="button" aria-label="Pick zoom focus on the screen" className="absolute inset-0 z-20 cursor-crosshair border-2 border-dashed border-white/70 bg-black/10" onClick={(event) => {
+          const rect = event.currentTarget.getBoundingClientRect()
+          onPickZoomFocus(Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)), Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height)))
+        }}><span className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-md bg-black/80 px-3 py-1 text-xs text-white">Click a focus point</span></button>}
+        </div>
         {children}
       </VideoSkin>
     </Player.Provider>

@@ -92,6 +92,10 @@ export function VideoShare({
   const [floating, setFloating] = useState<Array<FloatingReaction>>([]);
   const [reactions, setReactions] = useState<Array<StoredReaction>>([]);
   const [studioOpen, setStudioOpen] = useState(false);
+  const [zoomFocusPicker, setZoomFocusPicker] = useState<((x: number, y: number) => void) | null>(null);
+  const pickZoomFocus = useCallback((picker: ((x: number, y: number) => void) | null) => {
+    setZoomFocusPicker(() => picker);
+  }, []);
   const [studio, setStudio] = useState<StudioState>(() => ({
     style: parseStyle(upload.style),
     trimStart: upload.trimStart,
@@ -269,6 +273,7 @@ export function VideoShare({
     (time: number, element: HTMLVideoElement) => {
       activeVideoRef.current = element;
       setMainVideo((current) => (current === element ? current : element));
+      if (time < (trimEnd ?? element.duration) - 0.05) setEnded(false);
       // Trimmed playback: start at the trim-in point, stop at the trim-out point.
       if (trimStart > 0 && time < trimStart - 0.05 && !element.paused) {
         element.currentTime = trimStart;
@@ -488,6 +493,8 @@ export function VideoShare({
       stageAspect={geometry.stageAspect}
       stageBackground={background.css}
       screenBox={geometry.screen}
+      zooms={studio.style.zooms}
+      onPickZoomFocus={zoomFocusPicker ? (x, y) => { zoomFocusPicker(x, y); setZoomFocusPicker(null); } : undefined}
       className="block h-full w-full"
     >
       {cameraSource && geometry.camera && (
@@ -592,6 +599,8 @@ export function VideoShare({
                 mediaSource={mediaSource}
                 hasTranscript={hasTranscript}
                 onNotify={notify}
+                onSeek={(time) => { if (activeVideoRef.current) { activeVideoRef.current.currentTime = time; activeVideoRef.current.pause(); } setCurrentTime(time); }}
+                onPickZoomFocus={pickZoomFocus}
               />
             )}
           </div>

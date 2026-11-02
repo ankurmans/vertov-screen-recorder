@@ -3,6 +3,9 @@
  * tracks, so the owner can change all of this after recording.
  */
 
+import { parseZooms } from "@/lib/zooms"
+import type { ZoomPoint } from "@/lib/zooms"
+
 export type StageLayout = "bubble" | "side" | "screen" | "camera"
 export type BubbleCorner = "tl" | "tr" | "bl" | "br"
 export type BubbleSize = "s" | "m" | "l"
@@ -13,8 +16,9 @@ export interface StageStyle {
   corner: BubbleCorner
   size: BubbleSize
   shape: BubbleShape
-  /** Key into BACKGROUNDS; "none" plays the screen edge to edge. */
   denoise?: boolean
+  zooms?: ZoomPoint[]
+  /** Key into BACKGROUNDS; "none" plays the screen edge to edge. */
   background: string
 }
 
@@ -58,7 +62,9 @@ export function parseStyle(raw: unknown): StageStyle {
     }
   }
   const input = (typeof value === "object" && value !== null ? value : {}) as Record<string, unknown>
+  const zooms = parseZooms(input.zooms)
   return {
+    ...(zooms.length ? { zooms } : {}),
     denoise: input.denoise === true,
     layout: pick(input.layout, LAYOUTS, DEFAULT_STYLE.layout),
     corner: pick(input.corner, CORNERS, DEFAULT_STYLE.corner),

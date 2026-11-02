@@ -51,6 +51,7 @@ export async function exportJob(upload: Upload) {
   });
   return {
     denoise: style.denoise === true,
+    zoom_points: style.zooms ?? [],
     ass,
     // Served from R2 by the Exporter's outbound handler.
     screen_url: `http://media.internal/${upload.r2Key}`,

@@ -42,6 +42,7 @@ import { Route as ApiCommandsRouteImport } from './routes/api/commands'
 import { Route as ApiCombineRouteImport } from './routes/api/combine'
 import { Route as ScimV2UsersRouteImport } from './routes/scim.v2.Users'
 import { Route as ScimV2ServiceProviderConfigRouteImport } from './routes/scim.v2.ServiceProviderConfig'
+import { Route as ApiZoomsIdRouteImport } from './routes/api/zooms.$id'
 import { Route as ApiWorkspaceTransferRouteImport } from './routes/api/workspace.transfer'
 import { Route as ApiWorkspaceSwitchRouteImport } from './routes/api/workspace.switch'
 import { Route as ApiWorkspaceSlackRouteImport } from './routes/api/workspace.slack'
@@ -265,6 +266,11 @@ const ScimV2ServiceProviderConfigRoute =
     path: '/scim/v2/ServiceProviderConfig',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiZoomsIdRoute = ApiZoomsIdRouteImport.update({
+  id: '/api/zooms/$id',
+  path: '/api/zooms/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiWorkspaceTransferRoute = ApiWorkspaceTransferRouteImport.update({
   id: '/transfer',
   path: '/transfer',
@@ -621,6 +627,7 @@ export interface FileRoutesByFullPath {
   '/api/workspace/slack': typeof ApiWorkspaceSlackRouteWithChildren
   '/api/workspace/switch': typeof ApiWorkspaceSwitchRoute
   '/api/workspace/transfer': typeof ApiWorkspaceTransferRoute
+  '/api/zooms/$id': typeof ApiZoomsIdRoute
   '/scim/v2/ServiceProviderConfig': typeof ScimV2ServiceProviderConfigRoute
   '/scim/v2/Users': typeof ScimV2UsersRouteWithChildren
   '/api/admin/export/$id': typeof ApiAdminExportIdRoute
@@ -712,6 +719,7 @@ export interface FileRoutesByTo {
   '/api/workspace/slack': typeof ApiWorkspaceSlackRouteWithChildren
   '/api/workspace/switch': typeof ApiWorkspaceSwitchRoute
   '/api/workspace/transfer': typeof ApiWorkspaceTransferRoute
+  '/api/zooms/$id': typeof ApiZoomsIdRoute
   '/scim/v2/ServiceProviderConfig': typeof ScimV2ServiceProviderConfigRoute
   '/scim/v2/Users': typeof ScimV2UsersRouteWithChildren
   '/api/admin/export/$id': typeof ApiAdminExportIdRoute
@@ -804,6 +812,7 @@ export interface FileRoutesById {
   '/api/workspace/slack': typeof ApiWorkspaceSlackRouteWithChildren
   '/api/workspace/switch': typeof ApiWorkspaceSwitchRoute
   '/api/workspace/transfer': typeof ApiWorkspaceTransferRoute
+  '/api/zooms/$id': typeof ApiZoomsIdRoute
   '/scim/v2/ServiceProviderConfig': typeof ScimV2ServiceProviderConfigRoute
   '/scim/v2/Users': typeof ScimV2UsersRouteWithChildren
   '/api/admin/export/$id': typeof ApiAdminExportIdRoute
@@ -897,6 +906,7 @@ export interface FileRouteTypes {
     | '/api/workspace/slack'
     | '/api/workspace/switch'
     | '/api/workspace/transfer'
+    | '/api/zooms/$id'
     | '/scim/v2/ServiceProviderConfig'
     | '/scim/v2/Users'
     | '/api/admin/export/$id'
@@ -988,6 +998,7 @@ export interface FileRouteTypes {
     | '/api/workspace/slack'
     | '/api/workspace/switch'
     | '/api/workspace/transfer'
+    | '/api/zooms/$id'
     | '/scim/v2/ServiceProviderConfig'
     | '/scim/v2/Users'
     | '/api/admin/export/$id'
@@ -1079,6 +1090,7 @@ export interface FileRouteTypes {
     | '/api/workspace/slack'
     | '/api/workspace/switch'
     | '/api/workspace/transfer'
+    | '/api/zooms/$id'
     | '/scim/v2/ServiceProviderConfig'
     | '/scim/v2/Users'
     | '/api/admin/export/$id'
@@ -1157,6 +1169,7 @@ export interface RootRouteChildren {
   ApiV1VideosRoute: typeof ApiV1VideosRouteWithChildren
   ApiViewIdRoute: typeof ApiViewIdRoute
   ApiWatchLaterIdRoute: typeof ApiWatchLaterIdRoute
+  ApiZoomsIdRoute: typeof ApiZoomsIdRoute
   ScimV2ServiceProviderConfigRoute: typeof ScimV2ServiceProviderConfigRoute
   ScimV2UsersRoute: typeof ScimV2UsersRouteWithChildren
   ApiAdminExportIdRoute: typeof ApiAdminExportIdRoute
@@ -1393,6 +1406,13 @@ declare module '@tanstack/react-router' {
       path: '/scim/v2/ServiceProviderConfig'
       fullPath: '/scim/v2/ServiceProviderConfig'
       preLoaderRoute: typeof ScimV2ServiceProviderConfigRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/zooms/$id': {
+      id: '/api/zooms/$id'
+      path: '/api/zooms/$id'
+      fullPath: '/api/zooms/$id'
+      preLoaderRoute: typeof ApiZoomsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/workspace/transfer': {
@@ -2032,6 +2052,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiV1VideosRoute: ApiV1VideosRouteWithChildren,
   ApiViewIdRoute: ApiViewIdRoute,
   ApiWatchLaterIdRoute: ApiWatchLaterIdRoute,
+  ApiZoomsIdRoute: ApiZoomsIdRoute,
   ScimV2ServiceProviderConfigRoute: ScimV2ServiceProviderConfigRoute,
   ScimV2UsersRoute: ScimV2UsersRouteWithChildren,
   ApiAdminExportIdRoute: ApiAdminExportIdRoute,

@@ -1,4 +1,6 @@
 import { CaptionTranslations } from "@/components/caption-translations"
+import { ZoomEditor } from "@/components/zoom-editor"
+import type { ZoomFocusPicker } from "@/components/zoom-editor"
 import { useEffect, useRef, useState } from "react"
 import type { BubbleShape, BubbleSize, StageLayout, StageStyle } from "@/lib/stage"
 import type { CaptionStyle } from "@/lib/caption-styles"
@@ -50,6 +52,8 @@ export function StudioPanel({
   mediaSource,
   hasTranscript,
   onNotify,
+  onSeek,
+  onPickZoomFocus,
 }: {
   uploadId: string
   state: StudioState
@@ -63,12 +67,15 @@ export function StudioPanel({
   mediaSource: string
   hasTranscript: boolean
   onNotify: (message: string, variant?: "error") => void
+  onSeek: (time: number) => void
+  onPickZoomFocus: (picker: ZoomFocusPicker) => void
 }) {
   const [saving, setSaving] = useState<"idle" | "saving" | "saved">("idle")
   const [ctaLabel, setCtaLabel] = useState(state.ctaLabel ?? "")
   const [ctaUrl, setCtaUrl] = useState(state.ctaUrl ?? "")
   const [password, setPassword] = useState("")
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const styleWrites = useRef<Promise<unknown>>(Promise.resolve())
 
   useEffect(() => () => clearTimeout(timer.current), [])
 
@@ -96,7 +103,7 @@ export function StudioPanel({
   function setStyle(patch: Partial<StageStyle>) {
     const style = { ...state.style, ...patch }
     onChange({ ...state, style })
-    void save({ style })
+    styleWrites.current = styleWrites.current.then(() => save({ style }))
   }
 
   async function setTrim(patch: { trimStart?: number | null; trimEnd?: number | null }) {
@@ -147,6 +154,7 @@ export function StudioPanel({
 
       <label className="mt-4 flex gap-2 text-sm"><input type="checkbox" checked={Boolean(state.style.denoise)} onChange={(event) => setStyle({ denoise: event.target.checked })} /> Reduce background noise in MP4 exports</label>
       <CaptionTranslations uploadId={uploadId} />
+      <ZoomEditor uploadId={uploadId} points={state.style.zooms ?? []} currentTime={currentTime} duration={duration} onChange={(zooms) => setStyle({ zooms })} onSeek={onSeek} onPickFocus={onPickZoomFocus} screenVisible={!hasCamera || state.style.layout !== "camera"} />
       <div className="mt-4 grid gap-5 md:grid-cols-2">
         <Field label="Layout">
           <div className="flex flex-wrap gap-1.5">

@@ -44,6 +44,10 @@ select:not([multiple])[size="1"] {
   object-fit: contain;
 }
 
+.video-zoom-captions::cue {
+  visibility: hidden;
+}
+
 .video-player--fill,
 .video-player--fill video {
   height: 100%;

@@ -82,6 +82,7 @@ function EmbedPlayer({ upload, transcript, origin, brand }: { upload: PublicUplo
     (now: number, element: HTMLVideoElement) => {
       setMain((current) => (current === element ? current : element));
       setTime(now);
+      if (now < (trimEnd ?? element.duration) - 0.05) setEnded(false);
       if (trimStart > 0 && now < trimStart - 0.05 && !element.paused) element.currentTime = trimStart;
       if (trimEnd != null && now >= trimEnd) {
         element.pause();
@@ -96,6 +97,7 @@ function EmbedPlayer({ upload, transcript, origin, brand }: { upload: PublicUplo
       <div className="relative max-h-full w-full" style={{ maxWidth: `calc(100dvh * ${geometry.stageAspect})` }}>
         {mounted && (
           <VideoPlayer
+            zooms={style.zooms}
             src={`${origin}/api/media/${upload.id}`}
             poster={upload.posterKey ? `${origin}/api/poster/${upload.id}` : undefined}
             initialTime={trimStart}

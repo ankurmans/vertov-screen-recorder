@@ -250,7 +250,7 @@ async function renderReady(connection) {
     cameraOn && backgroundRow,
     cameraOn && imageRow,
     options.mode !== "camera" &&
-      toggle("Capture clicks for AI agents", options.captureClicks, (value) => {
+      toggle("Capture clicks for AI & zooms", options.captureClicks, (value) => {
         options.captureClicks = value
         void save()
       }),
@@ -283,7 +283,7 @@ async function renderReady(connection) {
       "Start recording",
     ),
     error && h("p", { class: "error" }, error),
-    h("p", { class: "hint" }, options.captureClicks ? "Clicks and pages go into the video's AI brief. Nothing you type is recorded." : options.mode === "tab" ? (cameraOn ? "Your camera shows as a bubble on the page. Hover it for Draw, Spot and Stop." : "Hover the page's top-left while recording for Draw and Spot. Alt+Shift+R stops.") : "Alt+Shift+R records this tab without opening this."),
+    h("p", { class: "hint" }, options.captureClicks ? "Clicks and pages go into the AI brief. Tab recordings can auto zoom in Customize. Nothing you type is recorded." : options.mode === "tab" ? (cameraOn ? "Your camera shows as a bubble on the page. Hover it for Draw, Spot and Stop." : "Hover the page's top-left while recording for Draw and Spot. Alt+Shift+R stops.") : "Alt+Shift+R records this tab without opening this."),
     loomSection(tab),
     h(
       "div",

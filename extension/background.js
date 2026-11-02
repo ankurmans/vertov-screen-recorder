@@ -1,5 +1,6 @@
 import { NAME } from "./brand.js"
 import { api, errorFrom, getConnection } from "./lib/settings.js"
+import { capturedEvent } from "./lib/capture-event.js"
 
 /**
  * Service worker: starts and stops recordings (the recording itself runs in offscreen.html),
@@ -43,14 +44,16 @@ async function startRecording(options, tab, gmail = null) {
   if (bubbleInPage) options = { ...options, camera: false }
   const withConnection = (extra) => ({ options: { ...options, ...extra, connection: { server: connection.server, token: connection.token } } })
   let result = await toOffscreen("start", withConnection(capture))
+  let zoomCaptureTab = options.mode === "tab" ? tab.id : null
   // If Chrome refuses the direct tab stream, its picker still lets you choose this tab.
   if (!result?.ok && options.mode === "tab" && String(result?.error).startsWith("Tab capture")) {
     console.warn("Tab capture failed, falling back to the picker:", result.error)
     result = await toOffscreen("start", withConnection({ mode: "screen" }))
+    zoomCaptureTab = null
   }
   if (!result?.ok) throw new Error(result?.error || "Recording didn't start.")
   const overlay = { camera: bubbleInPage, cameraId: options.cameraId || "", background: options.background || "none", size: "m", x: null, y: null, spot: false }
-  await setState({ id: result.id, url: result.url, startedAt: Date.now(), elapsed: 0, paused: false, capture: Boolean(options.captureClicks), tabId: tab?.id ?? null, gmail, overlay: options.mode === "tab" ? overlay : null })
+  await setState({ id: result.id, url: result.url, startedAt: Date.now(), elapsed: 0, paused: false, capture: Boolean(options.captureClicks), zoomCaptureTab, tabId: tab?.id ?? null, gmail, overlay: options.mode === "tab" ? overlay : null })
   await chrome.action.setIcon({ path: { 16: "icons/rec16.png", 32: "icons/rec32.png" } })
   await chrome.action.setBadgeBackgroundColor({ color: "#dc2626" })
   await chrome.action.setBadgeText({ text: "0:00" })
@@ -266,7 +269,8 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
   }
   if (message.type === "screen-event") {
     void getState().then((state) => {
-      if (state?.capture) return toOffscreen("event", { event: { ...message.event, url: message.event.url ?? sender.tab?.url } })
+      if (!state?.capture) return
+      return toOffscreen("event", { event: capturedEvent(message.event, sender, state) })
     }).catch(() => {})
     return
   }

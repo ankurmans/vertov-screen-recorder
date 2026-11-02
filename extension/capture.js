@@ -46,7 +46,9 @@
   function onClick(event) {
     const target = event.target instanceof Element ? event.target.closest(INTERACTIVE) || event.target : null
     if (!target || isSecret(target)) return
-    send({ type: "click", text: labelOf(target).slice(0, 120), selector: selectorOf(target) })
+    send({ type: "click", text: labelOf(target).slice(0, 120), selector: selectorOf(target),
+      x: event.clientX / innerWidth, y: event.clientY / innerHeight,
+      viewportWidth: innerWidth, viewportHeight: innerHeight })
   }
 
   let lastField = null

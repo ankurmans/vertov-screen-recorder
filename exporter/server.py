@@ -4,6 +4,7 @@ Renders a recording's composed layout to one MP4: background, the screen
 the geometry in pixels; this only downloads inputs and runs ffmpeg.
 """
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -65,6 +66,44 @@ def run_mask(path, w, h, expression):
     )
 
 
+def zoom_filter(points, offset, width, height, fps):
+    """Use source time before cuts; the player uses the same eased, edge-clamped crop."""
+    valid = []
+    for point in (points if isinstance(points, list) else [])[:100]:
+        if not isinstance(point, dict):
+            continue
+        values = [point.get(key) for key in ("start", "duration", "x", "y", "scale")]
+        if not all(isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v) for v in values):
+            continue
+        start, duration, x, y, scale = values
+        if start < 0 or duration < 1 or scale <= 1:
+            continue
+        valid.append((start, min(duration, 12), min(1, max(0, x)), min(1, max(0, y)), min(2.5, max(1.25, scale))))
+    normalized = []
+    for point in sorted(valid):
+        if not normalized or point[0] >= normalized[-1][0] + normalized[-1][1]:
+            normalized.append(point)
+    if not normalized:
+        return None
+    scales, xs, ys = ["1"], ["0.5"], ["0.5"]
+    for start, duration, x, y, scale in normalized:
+        start -= offset
+        end = start + duration
+        ease = min(0.45, duration / 3)
+        ramp_in = f"clip((it-({start:.6f}))/{ease:.6f},0,1)"
+        ramp_out = f"clip((({end:.6f})-it)/{ease:.6f},0,1)"
+        smooth_in = f"({ramp_in}*{ramp_in}*(3-2*{ramp_in}))"
+        smooth_out = f"({ramp_out}*{ramp_out}*(3-2*{ramp_out}))"
+        scales.append(f"{scale - 1:.6f}*{smooth_in}*{smooth_out}")
+        active = f"between(it,{start:.6f},{end:.6f})"
+        xs.append(f"({x - 0.5:.6f})*{active}")
+        ys.append(f"({y - 0.5:.6f})*{active}")
+    z = "+".join(scales)
+    x = f"max(0,min(iw-iw/zoom,iw*({'+'.join(xs)})-iw/zoom/2))"
+    y = f"max(0,min(ih-ih/zoom,ih*({'+'.join(ys)})-ih/zoom/2))"
+    return f"zoompan=z='{z}':x='{x}':y='{y}':d=1:s={width}x{height}:fps={fps}"
+
+
 def render(job, workdir):
     width, height = even(job["width"]), even(job["height"])
     fps = 30
@@ -105,14 +144,19 @@ def render(job, workdir):
             f"[0:v]setpts=PTS-STARTPTS,fps={fps},scale={sw}:{sh}:force_original_aspect_ratio=decrease,"
             f"pad={sw}:{sh}:(ow-iw)/2:(oh-ih)/2:color=black[s0]"
         )
+        zoom = zoom_filter(job.get("zoom_points"), job.get("trim_start") or 0, sw, sh, fps)
+        screen_source = "s0"
+        if zoom:
+            filters.append(f"[s0]{zoom}[s_zoom]")
+            screen_source = "s_zoom"
         if screen.get("radius", 0) > 0:
             mask = os.path.join(workdir, "screen_mask.png")
             rounded_mask(mask, sw, sh, screen["radius"])
             inputs += ["-loop", "1", "-i", mask]
-            filters.append(f"[s0]format=yuva420p[s0a];[{next_index}:v]format=gray[sm];[s0a][sm]alphamerge[s1]")
+            filters.append(f"[{screen_source}]format=yuva420p[s0a];[{next_index}:v]format=gray[sm];[s0a][sm]alphamerge[s1]")
             next_index += 1
         else:
-            filters.append("[s0]null[s1]")
+            filters.append(f"[{screen_source}]null[s1]")
         filters.append(f"[{last}][s1]overlay={int(screen['x'])}:{int(screen['y'])}:shortest=1[v_s]")
         last = "v_s"
 
@@ -280,4 +324,5 @@ class Handler(BaseHTTPRequestHandler):
             shutil.rmtree(workdir, ignore_errors=True)
 
 
-ThreadingHTTPServer(("0.0.0.0", int(os.environ.get("PORT", "8080"))), Handler).serve_forever()
+if __name__ == "__main__":
+    ThreadingHTTPServer(("0.0.0.0", int(os.environ.get("PORT", "8080"))), Handler).serve_forever()
