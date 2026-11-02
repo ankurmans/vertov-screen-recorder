@@ -293,7 +293,7 @@ function Library({ data }: { data: LoadedLibrary }) {
               <NavLink active={view.kind === "archive"} icon={<ArchiveIcon size={16} />} onClick={() => void navigate({ search: { view: "archive" } })}>
                 Archive
               </NavLink>
-              {canManage(role) && <a href="/analytics" className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-neutral-600 hover:bg-neutral-200/60"><ChartBarIcon size={16} /> Analytics</a>}
+              {canManage(role) && <a href="/analytics" className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-neutral-600 hover:bg-neutral-200/60"><ChartBarIcon size={16} /> Analytics</a>}
             </div>
             <div>
               <div className="flex items-center justify-between px-2.5 text-xs font-semibold tracking-wide text-neutral-500 uppercase">
@@ -490,7 +490,7 @@ function NavLink({ active, icon, onClick, children }: { active: boolean; icon: R
       onClick={onClick}
       aria-current={active ? "page" : undefined}
       className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm ${
-        active ? "bg-neutral-200/70 font-medium text-neutral-900" : "text-neutral-600 hover:bg-neutral-100"
+        active ? "bg-neutral-200/70 font-medium text-neutral-900" : "text-neutral-600 hover:bg-neutral-200/60"
       }`}
     >
       <span className="shrink-0 text-neutral-500">{icon}</span>
