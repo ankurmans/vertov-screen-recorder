@@ -1,3 +1,4 @@
+import { parseAiDocs } from "@/lib/ai-docs.server"
 import { eq } from "drizzle-orm"
 import { env } from "cloudflare:workers"
 import { emitWebhook } from "@/lib/webhooks"
@@ -167,7 +168,7 @@ export async function videoForAgent(upload: Upload, origin: string, withTranscri
     visibility: upload.visibility,
     createdAt: upload.createdAt,
     ...(withTranscript
-      ? { transcript: transcript ? transcript.cues.map((cue) => `[${clock(cue.start)}] ${cue.text}`).join("\n") : null }
+      ? { aiDocs: parseAiDocs(upload.aiDocs), transcript: transcript ? transcript.cues.map((cue) => `[${clock(cue.start)}] ${cue.text}`).join("\n") : null }
       : {}),
   }
 }

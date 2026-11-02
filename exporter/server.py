@@ -178,6 +178,11 @@ def render(job, workdir):
         filters.append(f"[{last}]ass={ass_path}[v_ass]")
         last = "v_ass"
 
+    if job.get("denoise") and has_audio(screen_path):
+        source = "a_cut" if audio_map == ["-map", "[a_cut]"] else "0:a"
+        filters.append(f"[{source}]highpass=f=80,afftdn=nf=-25[a_clean]")
+        audio_map = ["-map", "[a_clean]"]
+
     output = os.path.join(workdir, "export.mp4")
     command = [
         "ffmpeg", "-v", "error", "-y", *inputs,

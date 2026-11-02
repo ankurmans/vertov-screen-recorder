@@ -1,3 +1,4 @@
+import { sendVideoNotification } from "@/lib/notifications.server"
 import { Container } from "@cloudflare/containers"
 import { allow, clientIp, sweepGuests } from "@/lib/rate-limit.server"
 import handler from "@tanstack/react-start/server-entry"
@@ -10,6 +11,7 @@ import { processStitch } from "@/lib/stitch.server"
 import { runRetention } from "@/lib/retention.server"
 
 export type ProcessMessage =
+  | { id: string; kind: "notification" }
   | { id: string; kind?: "process" }
   | { id: string; kind: "export"; origin: string }
   | { id: string; kind: "import"; loomId: string }
@@ -54,7 +56,8 @@ export default {
   async queue(batch: MessageBatch<ProcessMessage>) {
     for (const message of batch.messages) {
       const body = message.body
-      if (body.kind === "export") await processExport(body.id)
+      if (body.kind === "notification") await sendVideoNotification(body.id)
+      else if (body.kind === "export") await processExport(body.id)
       else if (body.kind === "import") await processImport(body.id, body.loomId)
       else if (body.kind === "fetch") await processFetch(body.id, body.url)
       else if (body.kind === "stitch") await processStitch(body.id, body.sources)

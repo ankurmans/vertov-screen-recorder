@@ -423,3 +423,16 @@ export const webhookDeliveries = sqliteTable(
   },
   (table) => [index("idx_webhook_deliveries_endpoint").on(table.endpointId, table.createdAt)],
 );
+
+export const notificationPreferences = sqliteTable("notification_preferences", {
+  userId: text("user_id").primaryKey(),
+  comments: integer("comments", { mode: "boolean" }).notNull().default(true),
+  firstView: integer("first_view", { mode: "boolean" }).notNull().default(true),
+})
+export const videoNotifications = sqliteTable("video_notifications", {
+  videoId: text("video_id").primaryKey(),
+  firstViewSeen: integer("first_view_seen").notNull().default(0),
+  pendingViews: integer("pending_views").notNull().default(0),
+  pendingComments: integer("pending_comments").notNull().default(0),
+  scheduled: integer("scheduled").notNull().default(0),
+})

@@ -50,6 +50,7 @@ export async function exportJob(upload: Upload) {
     source: { trimStart: upload.trimStart, trimEnd: upload.trimEnd, cuts: upload.cuts },
   });
   return {
+    denoise: style.denoise === true,
     ass,
     // Served from R2 by the Exporter's outbound handler.
     screen_url: `http://media.internal/${upload.r2Key}`,

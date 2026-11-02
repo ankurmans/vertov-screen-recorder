@@ -1,3 +1,5 @@
+import { denyUnlessViewable } from "@/lib/access.server";
+import { recordNotification } from "@/lib/notifications.server";
 import { createFileRoute } from "@tanstack/react-router";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -25,6 +27,8 @@ export const Route = createFileRoute("/api/view/$id")({
       POST: async ({ params, request }) => {
         await ensureSchema();
         const upload = await db.query.uploads.findFirst({ where: eq(uploads.id, params.id) });
+        const denied = await denyUnlessViewable(upload ?? null, request);
+        if (denied) return denied;
         const viewer = upload?.ownerId ? await getSessionUser(request) : null;
         // The recorder's own plays don't count as anyone watching, so they don't keep a video alive either.
         const byOwner = Boolean(viewer && viewer.sub === upload?.ownerId);
@@ -57,6 +61,7 @@ export const Route = createFileRoute("/api/view/$id")({
           device: deviceFromUserAgent(request.headers.get("user-agent")),
         });
         if (!byOwner) {
+          if (upload) await recordNotification(upload, "view", viewer?.sub);
           emitWebhook(upload?.workspaceId, "video.viewed", {
             id: params.id,
             url: `${new URL(request.url).origin}/${params.id}`,

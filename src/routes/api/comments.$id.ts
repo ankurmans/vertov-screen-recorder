@@ -1,3 +1,4 @@
+import { recordNotification } from "@/lib/notifications.server";
 import { createFileRoute } from "@tanstack/react-router";
 import { and, asc, count, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -118,6 +119,7 @@ export const Route = createFileRoute("/api/comments/$id")({
         const stored = await db.query.comments.findFirst({
           where: eq(comments.id, comment.id),
         });
+        await recordNotification(upload, "comment", user?.sub);
         emitWebhook(upload.workspaceId, "comment.created", {
           id: comment.id,
           videoId: upload.id,

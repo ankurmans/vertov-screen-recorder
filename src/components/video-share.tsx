@@ -153,7 +153,7 @@ export function VideoShare({
     ? `${origin}/api/poster/${upload.id}?v=${encodeURIComponent(upload.posterKey)}`
     : undefined;
   const subtitlesUrl =
-    upload.transcriptKey && studio.captionStyle === "off"
+    upload.transcriptKey
       ? `${origin}/api/captions/${upload.id}`
       : undefined;
   const thumbnailsUrl = upload.storyboardKey

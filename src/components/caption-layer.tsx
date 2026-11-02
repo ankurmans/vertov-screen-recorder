@@ -19,6 +19,14 @@ export function CaptionLayer({
   video?: HTMLVideoElement | null
   style: Exclude<CaptionStyle, "off">
 }) {
+  const [nativeCaption, setNativeCaption] = useState(false)
+  useEffect(() => {
+    if (!video) return
+    const update = () => setNativeCaption(Array.from(video.textTracks).some((track) => (track.kind === "subtitles" || track.kind === "captions") && track.mode === "showing"))
+    video.textTracks.addEventListener("change", update)
+    update()
+    return () => video.textTracks.removeEventListener("change", update)
+  }, [video])
   const [on, setOn] = useState(true)
   const [liveTime, setLiveTime] = useState(coarseTime)
   useEffect(() => {
@@ -81,7 +89,7 @@ export function CaptionLayer({
       >
         CC
       </button>
-      {on && cue && (
+      {on && !nativeCaption && cue && (
         <div style={{ ...base, ...look }}>
           {style === "karaoke" && words.length > 0
             ? words.map((word, index) => {

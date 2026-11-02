@@ -14,6 +14,7 @@ export interface StageStyle {
   size: BubbleSize
   shape: BubbleShape
   /** Key into BACKGROUNDS; "none" plays the screen edge to edge. */
+  denoise?: boolean
   background: string
 }
 
@@ -58,6 +59,7 @@ export function parseStyle(raw: unknown): StageStyle {
   }
   const input = (typeof value === "object" && value !== null ? value : {}) as Record<string, unknown>
   return {
+    denoise: input.denoise === true,
     layout: pick(input.layout, LAYOUTS, DEFAULT_STYLE.layout),
     corner: pick(input.corner, CORNERS, DEFAULT_STYLE.corner),
     size: pick(input.size, SIZES, DEFAULT_STYLE.size),

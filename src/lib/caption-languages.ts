@@ -1,0 +1,1 @@
+export const CAPTION_LANGUAGES: Record<string, string> = { en: "English", es: "Spanish", fr: "French", de: "German", it: "Italian", pt: "Portuguese", nl: "Dutch", pl: "Polish", sr: "Serbian", hi: "Hindi", ja: "Japanese", ko: "Korean", zh: "Chinese", ar: "Arabic", uk: "Ukrainian" }

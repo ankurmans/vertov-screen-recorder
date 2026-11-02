@@ -99,7 +99,7 @@ function EmbedPlayer({ upload, transcript, origin, brand }: { upload: PublicUplo
             src={`${origin}/api/media/${upload.id}`}
             poster={upload.posterKey ? `${origin}/api/poster/${upload.id}` : undefined}
             initialTime={trimStart}
-            subtitlesUrl={upload.transcriptKey && captionStyle === "off" ? `${origin}/api/captions/${upload.id}` : undefined}
+            subtitlesUrl={upload.transcriptKey ? `${origin}/api/captions/${upload.id}` : undefined}
             onActivate={(element) => setMain((current) => (current === element ? current : element))}
             onTimeUpdate={onTime}
             onEnded={() => setEnded(true)}

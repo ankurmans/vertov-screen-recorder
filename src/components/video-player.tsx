@@ -1,3 +1,4 @@
+import { CAPTION_LANGUAGES } from "@/lib/caption-languages"
 import "@videojs/react/video/skin.css"
 import { createPlayer } from "@videojs/react"
 import { Video, VideoSkin, videoFeatures } from "@videojs/react/video"
@@ -52,6 +53,14 @@ export function VideoPlayer({
   screenBox,
   children,
 }: VideoPlayerProps) {
+  const [languages, setLanguages] = useState<string[]>([])
+  useEffect(() => {
+    setLanguages([])
+    if (!subtitlesUrl) return
+    let cancelled = false
+    void fetch(`${subtitlesUrl}?languages=1`).then((r) => r.json() as Promise<{ languages?: string[] }>).then((body) => { if (!cancelled) setLanguages(body.languages ?? []) }).catch(() => {})
+    return () => { cancelled = true }
+  }, [subtitlesUrl])
   const videoRef = useRef<HTMLVideoElement>(null)
   const [startingTime] = useState(initialTime)
   const [aspectRatio, setAspectRatio] = useState<string>()
@@ -149,11 +158,12 @@ export function VideoPlayer({
           {subtitlesUrl && (
             <track
               kind="captions"
-              label="English"
+              label="Original"
               srcLang="en"
               src={subtitlesUrl}
             />
           )}
+          {languages.map((language) => <track key={language} kind="subtitles" label={CAPTION_LANGUAGES[language]} srcLang={language} src={`${subtitlesUrl}?lang=${language}`} />)}
           {thumbnailsUrl && (
             <track
               kind="metadata"

@@ -32,6 +32,7 @@ import { Route as ApiRegisterRouteImport } from './routes/api/register'
 import { Route as ApiRecordingsRouteImport } from './routes/api/recordings'
 import { Route as ApiPingRouteImport } from './routes/api/ping'
 import { Route as ApiOembedRouteImport } from './routes/api/oembed'
+import { Route as ApiNotificationsRouteImport } from './routes/api/notifications'
 import { Route as ApiKeysRouteImport } from './routes/api/keys'
 import { Route as ApiImportRouteImport } from './routes/api/import'
 import { Route as ApiFoldersRouteImport } from './routes/api/folders'
@@ -208,6 +209,11 @@ const ApiPingRoute = ApiPingRouteImport.update({
 const ApiOembedRoute = ApiOembedRouteImport.update({
   id: '/api/oembed',
   path: '/api/oembed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiNotificationsRoute = ApiNotificationsRouteImport.update({
+  id: '/api/notifications',
+  path: '/api/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiKeysRoute = ApiKeysRouteImport.update({
@@ -536,6 +542,7 @@ export interface FileRoutesByFullPath {
   '/api/folders': typeof ApiFoldersRouteWithChildren
   '/api/import': typeof ApiImportRoute
   '/api/keys': typeof ApiKeysRoute
+  '/api/notifications': typeof ApiNotificationsRoute
   '/api/oembed': typeof ApiOembedRoute
   '/api/ping': typeof ApiPingRoute
   '/api/recordings': typeof ApiRecordingsRouteWithChildren
@@ -623,6 +630,7 @@ export interface FileRoutesByTo {
   '/api/folders': typeof ApiFoldersRouteWithChildren
   '/api/import': typeof ApiImportRoute
   '/api/keys': typeof ApiKeysRoute
+  '/api/notifications': typeof ApiNotificationsRoute
   '/api/oembed': typeof ApiOembedRoute
   '/api/ping': typeof ApiPingRoute
   '/api/recordings': typeof ApiRecordingsRouteWithChildren
@@ -711,6 +719,7 @@ export interface FileRoutesById {
   '/api/folders': typeof ApiFoldersRouteWithChildren
   '/api/import': typeof ApiImportRoute
   '/api/keys': typeof ApiKeysRoute
+  '/api/notifications': typeof ApiNotificationsRoute
   '/api/oembed': typeof ApiOembedRoute
   '/api/ping': typeof ApiPingRoute
   '/api/recordings': typeof ApiRecordingsRouteWithChildren
@@ -800,6 +809,7 @@ export interface FileRouteTypes {
     | '/api/folders'
     | '/api/import'
     | '/api/keys'
+    | '/api/notifications'
     | '/api/oembed'
     | '/api/ping'
     | '/api/recordings'
@@ -887,6 +897,7 @@ export interface FileRouteTypes {
     | '/api/folders'
     | '/api/import'
     | '/api/keys'
+    | '/api/notifications'
     | '/api/oembed'
     | '/api/ping'
     | '/api/recordings'
@@ -974,6 +985,7 @@ export interface FileRouteTypes {
     | '/api/folders'
     | '/api/import'
     | '/api/keys'
+    | '/api/notifications'
     | '/api/oembed'
     | '/api/ping'
     | '/api/recordings'
@@ -1062,6 +1074,7 @@ export interface RootRouteChildren {
   ApiFoldersRoute: typeof ApiFoldersRouteWithChildren
   ApiImportRoute: typeof ApiImportRoute
   ApiKeysRoute: typeof ApiKeysRoute
+  ApiNotificationsRoute: typeof ApiNotificationsRoute
   ApiOembedRoute: typeof ApiOembedRoute
   ApiPingRoute: typeof ApiPingRoute
   ApiRecordingsRoute: typeof ApiRecordingsRouteWithChildren
@@ -1271,6 +1284,13 @@ declare module '@tanstack/react-router' {
       path: '/api/oembed'
       fullPath: '/api/oembed'
       preLoaderRoute: typeof ApiOembedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/notifications': {
+      id: '/api/notifications'
+      path: '/api/notifications'
+      fullPath: '/api/notifications'
+      preLoaderRoute: typeof ApiNotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/keys': {
@@ -1905,6 +1925,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiFoldersRoute: ApiFoldersRouteWithChildren,
   ApiImportRoute: ApiImportRoute,
   ApiKeysRoute: ApiKeysRoute,
+  ApiNotificationsRoute: ApiNotificationsRoute,
   ApiOembedRoute: ApiOembedRoute,
   ApiPingRoute: ApiPingRoute,
   ApiRecordingsRoute: ApiRecordingsRouteWithChildren,

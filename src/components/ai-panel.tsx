@@ -1,7 +1,7 @@
 import { CopyIcon, SparkleIcon } from "@phosphor-icons/react"
 import { useEffect, useState } from "react"
 
-type Kind = "summary-doc" | "sop" | "bug-report" | "meeting-notes" | "action-items" | "message"
+type Kind = "summary-doc" | "sop" | "bug-report" | "meeting-notes" | "action-items" | "message" | "changelog" | "handoff"
 type Docs = Partial<Record<Kind, { text: string; at: string }>>
 
 const KINDS: Array<{ kind: Kind; label: string }> = [
@@ -10,6 +10,8 @@ const KINDS: Array<{ kind: Kind; label: string }> = [
   { kind: "bug-report", label: "Bug report" },
   { kind: "meeting-notes", label: "Meeting notes" },
   { kind: "action-items", label: "Action items" },
+  { kind: "changelog", label: "Changelog" },
+  { kind: "handoff", label: "Handoff" },
   { kind: "message", label: "Message to send" },
 ]
 

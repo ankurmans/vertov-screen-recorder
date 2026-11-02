@@ -1,3 +1,4 @@
+import { NotificationSettings } from "@/components/notification-settings"
 import { createFileRoute, redirect, useNavigate, useRouter } from "@tanstack/react-router"
 import { SecuritySettings } from "@/components/security-settings"
 import { SlackSettings } from "@/components/slack-settings"
@@ -73,6 +74,7 @@ function SettingsPage() {
         <span className="truncate text-sm font-semibold text-neutral-900">{data.workspace.name}</span>
       </header>
       <div className="mx-auto max-w-3xl px-4 py-8">
+        <NotificationSettings />
         <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">Settings</h1>
         <div role="tablist" className="mt-5 flex gap-1 border-b border-neutral-200">
           {tabs.map(([value, label]) => (

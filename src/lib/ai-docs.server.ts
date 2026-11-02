@@ -6,7 +6,7 @@ import { complete } from "@/lib/ai.server"
 import { getTranscript } from "@/lib/uploads.server"
 import { aiEnabled } from "@/lib/workspace.server"
 
-export const AI_DOC_KINDS = ["summary-doc", "sop", "bug-report", "meeting-notes", "action-items", "message"] as const
+export const AI_DOC_KINDS = ["summary-doc", "sop", "bug-report", "meeting-notes", "action-items", "message", "changelog", "handoff"] as const
 export type AiDocKind = (typeof AI_DOC_KINDS)[number]
 export type AiDocs = Partial<Record<AiDocKind, { text: string; at: string }>>
 
@@ -25,6 +25,8 @@ const BRIEFS: Record<AiDocKind, string> = {
     "Write meeting notes from this recording: a title, a short summary, Key points as bullets, Decisions as bullets, and Action items as bullets with the owner in brackets when named.",
   "action-items":
     "List the action items from this recording as a Markdown checklist (- [ ] item), each starting with a verb, with the owner in brackets when one was named and the time they were said as (m:ss). If there are none, say so in one line.",
+  changelog: "Write a changelog with Added, Changed, Fixed and Known issues sections. Include only changes stated in the transcript; omit empty sections. Do not invent versions or dates.",
+  handoff: "Write a handoff with Context, Completed work, Remaining work, Owners, and Open questions. Use Not stated for missing details. Preserve exact filenames, commands and links mentioned.",
   message:
     "Write a short message the speaker could send with the link to this recording. First line: 'Subject: ' followed by a specific subject under 70 characters. Then a blank line and a 2-4 sentence friendly body saying what the video covers and what you want the reader to do. Do not include the link.",
 }

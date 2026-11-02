@@ -1,8 +1,9 @@
 import { env } from "cloudflare:workers"
 
 /**
- * One place that knows which AI runs: Groq when GROQ_API_KEY is set (the hosted service), otherwise
- * Workers AI through the AI binding, which a self-hosted install already has with no key at all.
+ * One place that knows which AI runs. Text tries Claude (ANTHROPIC_API_KEY), then Groq (GROQ_API_KEY), then Workers AI through
+ * the AI binding, which a self-hosted install already has with no key at all; a provider that fails hands over to the next.
+ * Speech to text uses Groq when keyed and falls back to Workers AI (Claude has no audio input).
  */
 
 const GATEWAY = { gateway: { id: "default" } }
@@ -52,7 +53,13 @@ export interface TranscribeOptions {
 
 export async function transcribe(audio: Uint8Array, contentType: string, options: TranscribeOptions = {}): Promise<Transcription> {
   const key = groqKey()
-  if (key && audio.byteLength <= GROQ_MAX_BYTES) return groqTranscribe(key, audio, contentType, options)
+  if (key && audio.byteLength <= GROQ_MAX_BYTES) {
+    try {
+      return await groqTranscribe(key, audio, contentType, options)
+    } catch (error) {
+      console.warn("Groq transcription failed, using Workers AI", error instanceof Error ? error.message : error)
+    }
+  }
   return workersTranscribe(audio, options)
 }
 
@@ -112,29 +119,86 @@ async function workersTranscribe(audio: Uint8Array, options: TranscribeOptions):
   }
 }
 
-/** A JSON-only completion; returns the raw text for the caller to parse. */
+const ANTHROPIC = "https://api.anthropic.com/v1/messages"
+const ANTHROPIC_MODEL = "claude-sonnet-5-5"
+// A provider that just failed (no credit left, bad key, outage) is skipped for a few minutes instead of slowing every call.
+const COOLDOWN_MS = 5 * 60 * 1000
+const coolingUntil = new Map<string, number>()
+
+const secret = (name: string) => {
+  const value = Reflect.get(env, name)
+  return typeof value === "string" && value.trim() ? value.trim() : null
+}
+
+type TextProvider = "anthropic" | "groq" | "workers"
+
+/** Text providers in the order to try them: AI_CHAIN (comma separated) or Claude, Groq, then Workers AI. Unconfigured ones drop out. */
+function textChain(): Array<TextProvider> {
+  const wanted = (secret("AI_CHAIN") ?? "anthropic,groq,workers").split(",").map((name) => name.trim())
+  const chain = wanted.filter((name): name is TextProvider => name === "anthropic" || name === "groq" || name === "workers")
+  return chain.filter((name) => (name === "anthropic" ? Boolean(secret("ANTHROPIC_API_KEY")) : name === "groq" ? Boolean(groqKey()) : true))
+}
+
+/** A JSON-only completion; returns the raw text for the caller to parse. Falls through the provider chain on any failure. */
 export async function complete(system: string, user: string, maxTokens = 800): Promise<string> {
-  const key = groqKey()
-  if (key) {
-    const response = await fetch(`${GROQ}/chat/completions`, {
-      method: "POST",
-      headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-      body: JSON.stringify({
-        model: GROQ_TEXT,
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: user },
-        ],
-        max_completion_tokens: maxTokens,
-        temperature: 0.2,
-        reasoning_effort: "none",
-        response_format: { type: "json_object" },
-      }),
-    })
-    if (!response.ok) throw new Error(`Groq completion failed (${response.status}): ${(await response.text()).slice(0, 300)}`)
-    const body: { choices?: Array<{ message?: { content?: string } }> } = await response.json()
-    return body.choices?.[0]?.message?.content ?? ""
+  const chain = textChain()
+  const ready = chain.filter((name) => (coolingUntil.get(name) ?? 0) < Date.now())
+  // If everything is cooling down, try them all anyway rather than fail outright.
+  const order = ready.length ? ready : chain
+  let lastError: unknown = new Error("No AI provider is configured")
+  for (const name of order) {
+    try {
+      const text = name === "anthropic" ? await anthropicComplete(system, user, maxTokens) : name === "groq" ? await groqComplete(system, user, maxTokens) : await workersComplete(system, user, maxTokens)
+      if (text.trim()) return text
+      lastError = new Error(`${name} returned nothing`)
+    } catch (error) {
+      lastError = error
+      coolingUntil.set(name, Date.now() + COOLDOWN_MS)
+      console.warn(`AI provider ${name} failed, trying the next`, error instanceof Error ? error.message : error)
+    }
   }
+  throw lastError
+}
+
+async function anthropicComplete(system: string, user: string, maxTokens: number): Promise<string> {
+  const response = await fetch(ANTHROPIC, {
+    method: "POST",
+    headers: { "x-api-key": secret("ANTHROPIC_API_KEY") ?? "", "anthropic-version": "2023-06-01", "content-type": "application/json" },
+    body: JSON.stringify({
+      model: secret("ANTHROPIC_MODEL") ?? ANTHROPIC_MODEL,
+      max_tokens: maxTokens,
+      temperature: 0.2,
+      system,
+      messages: [{ role: "user", content: user }],
+    }),
+  })
+  if (!response.ok) throw new Error(`Claude completion failed (${response.status}): ${(await response.text()).slice(0, 300)}`)
+  const body: { content?: Array<{ type?: string; text?: string }> } = await response.json()
+  return (body.content ?? []).filter((part) => part.type === "text").map((part) => part.text ?? "").join("")
+}
+
+async function groqComplete(system: string, user: string, maxTokens: number): Promise<string> {
+  const response = await fetch(`${GROQ}/chat/completions`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${groqKey()}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      model: GROQ_TEXT,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      max_completion_tokens: maxTokens,
+      temperature: 0.2,
+      reasoning_effort: "none",
+      response_format: { type: "json_object" },
+    }),
+  })
+  if (!response.ok) throw new Error(`Groq completion failed (${response.status}): ${(await response.text()).slice(0, 300)}`)
+  const body: { choices?: Array<{ message?: { content?: string } }> } = await response.json()
+  return body.choices?.[0]?.message?.content ?? ""
+}
+
+async function workersComplete(system: string, user: string, maxTokens: number): Promise<string> {
   const result = (await env.AI.run(
     WORKERS_TEXT,
     {

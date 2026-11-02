@@ -76,12 +76,12 @@ const TOOLS: Array<Tool> = [
   },
   {
     name: "get_ai_doc",
-    description: "A document already written from a video's transcript (kinds: summary-doc, sop, bug-report, meeting-notes, action-items, message). Only the video's owner or a workspace manager can read it.",
+    description: "A document already written from a video's transcript (kinds: summary-doc, sop, bug-report, meeting-notes, changelog, handoff, action-items, message). Only the video's owner or a workspace manager can read it.",
     inputSchema: { type: "object", properties: { video: { type: "string" }, kind: { type: "string" } }, required: ["video", "kind"] },
   },
   {
     name: "generate_ai_doc",
-    description: "Write a document from a video's transcript: summary-doc, sop, bug-report, meeting-notes, action-items, or message (a short note to send with the link). Needs a plan with AI.",
+    description: "Write a document from a video's transcript: summary-doc, sop, bug-report, meeting-notes, changelog, handoff, action-items, or message (a short note to send with the link). Needs a plan with AI.",
     inputSchema: { type: "object", properties: { video: { type: "string" }, kind: { type: "string" } }, required: ["video", "kind"] },
   },
   {
@@ -172,7 +172,7 @@ async function callTool(name: string, args: Record<string, unknown>, user: Sessi
       const id = videoId(args.video)
       const upload = id ? await ownedUpload(id, user) : null
       if (!upload || upload.workspaceId !== workspace.id) return fail("Video not found, or you can't manage it.")
-      if (!isAiDocKind(args.kind)) return fail("kind must be summary-doc, sop, bug-report, meeting-notes, action-items or message.")
+      if (!isAiDocKind(args.kind)) return fail("kind must be summary-doc, sop, bug-report, meeting-notes, changelog, handoff, action-items or message.")
       if (name === "get_ai_doc") {
         const doc = parseAiDocs(upload.aiDocs)[args.kind]
         return doc ? text(doc.text) : fail("Nothing written yet. Call generate_ai_doc first.")

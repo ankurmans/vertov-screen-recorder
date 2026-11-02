@@ -1,3 +1,4 @@
+import { CaptionTranslations } from "@/components/caption-translations"
 import { useEffect, useRef, useState } from "react"
 import type { BubbleShape, BubbleSize, StageLayout, StageStyle } from "@/lib/stage"
 import type { CaptionStyle } from "@/lib/caption-styles"
@@ -144,6 +145,8 @@ export function StudioPanel({
         </span>
       </div>
 
+      <label className="mt-4 flex gap-2 text-sm"><input type="checkbox" checked={Boolean(state.style.denoise)} onChange={(event) => setStyle({ denoise: event.target.checked })} /> Reduce background noise in MP4 exports</label>
+      <CaptionTranslations uploadId={uploadId} />
       <div className="mt-4 grid gap-5 md:grid-cols-2">
         <Field label="Layout">
           <div className="flex flex-wrap gap-1.5">
