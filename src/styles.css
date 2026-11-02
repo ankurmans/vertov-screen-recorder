@@ -57,6 +57,10 @@ select:not([multiple])[size="1"] {
   border-radius: 0 !important;
 }
 
+.video-player.media-default-skin .media-overlay {
+  background-image: linear-gradient(to top, rgb(0 0 0 / 0.45), transparent 6rem);
+}
+
 /* ─── Transcript frame-preview popover ───
    Springy-but-snappy open/close: fade + cross-blur + slight scale,
    sliding out from the anchor side. Open uses the slower clock, the

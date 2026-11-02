@@ -399,8 +399,8 @@ export function VideoShare({
   const tab = tabs.some((item) => item.value === activeTab) ? activeTab : (tabs[0]?.value ?? "");
   const sidebarTabs =
     tabs.length > 1 ? (
-      <div className="shrink-0 px-2 pb-2">
-        <Tabs tabs={tabs} value={tab} onValueChange={setActiveTab} className="max-w-max" />
+      <div className="shrink-0 overflow-x-auto border-b border-neutral-200 px-3 py-3">
+        <Tabs tabs={tabs} value={tab} onValueChange={setActiveTab} className="min-w-max" />
       </div>
     ) : null;
 
@@ -537,81 +537,68 @@ export function VideoShare({
     <div className="flex min-h-screen flex-col bg-neutral-50" style={brandStyle(brand)}>
       <ShareHeader user={auth.user} onSignOut={() => void signOut()} brand={brand} />
 
-      <div className="flex-1 overflow-auto px-0 py-0 lg:px-6 lg:py-6">
-        <div className={`flex flex-col ${hasSidebar ? "" : "mx-auto w-full max-w-5xl"}`}>
-          <div className="flex flex-col lg:flex-row lg:gap-6">
-            <div className="min-w-0 lg:flex-1">
-              <div
-                className="mx-auto w-full overflow-hidden rounded-none ring-1 ring-neutral-200 lg:rounded-2xl"
-                style={{ maxWidth: `calc((100vh - 56px - 260px) * ${geometry.stageAspect})` }}
-              >
-                {player}
-              </div>
-              {!isRecording && studio.socialEnabled && (
-                <ReactionBar onReact={(emoji) => void react(emoji)} reactions={reactions} duration={trimEnd ?? duration} onSeek={handleSeek} />
+      <div className="flex-1 px-4 py-4 lg:px-8 lg:py-6">
+        <div className={`mx-auto grid w-full grid-cols-1 items-start gap-6 ${hasSidebar ? "max-w-[1600px] lg:grid-cols-[minmax(0,1fr)_384px]" : "max-w-6xl"}`}>
+          <div className="min-w-0">
+            <div
+              className="mx-auto w-full overflow-hidden rounded-xl ring-1 ring-neutral-200"
+              style={geometry.stageAspect < 1 ? { maxWidth: `calc(max(320px, 100dvh - 260px) * ${geometry.stageAspect})` } : undefined}
+            >
+              {player}
+            </div>
+            {!isRecording && studio.socialEnabled && (
+              <ReactionBar onReact={(emoji) => void react(emoji)} reactions={reactions} duration={trimEnd ?? duration} onSeek={handleSeek} />
+            )}
+            <div className="mt-4 w-full">
+              <VideoInfo
+                upload={upload}
+                origin={origin}
+                author={author}
+                views={views}
+                likeCount={likeCount}
+                auth={auth}
+                showLike={showComments}
+                mediaSource={mediaSource}
+                isOwner={isOwner}
+                exportReady={exportReady}
+                aiPending={aiPending}
+                ctaLabel={studio.ctaLabel}
+                ctaUrl={studio.ctaUrl}
+                uploadId={upload.id}
+                currentTime={currentTime}
+                studioOpen={studioOpen}
+                onToggleStudio={() => setStudioOpen((open) => !open)}
+                onNotify={notify}
+              />
+
+              {currentChapter && <CurrentChapterIndicator chapter={currentChapter} />}
+
+              {isOwner && studioOpen && !isRecording && (
+                <StudioPanel
+                  uploadId={upload.id}
+                  state={studio}
+                  onChange={setStudio}
+                  hasCamera={Boolean(cameraSource)}
+                  currentTime={currentTime}
+                  duration={duration}
+                  getFrame={getFrame}
+                  mediaSource={mediaSource}
+                  hasTranscript={hasTranscript}
+                  onNotify={notify}
+                  onSeek={(time) => { if (activeVideoRef.current) { activeVideoRef.current.currentTime = time; activeVideoRef.current.pause(); } setCurrentTime(time); }}
+                  onPickZoomFocus={pickZoomFocus}
+                />
               )}
             </div>
-
-            {hasSidebar && (
-              <div
-                className="hidden shrink-0 flex-col lg:flex"
-                style={{ width: "400px", maxHeight: "calc(100vh - 56px - 200px)" }}
-              >
-                {sidebarTabs}
-                <div className="min-h-0 flex-1">{sidebarContent}</div>
-              </div>
-            )}
-          </div>
-
-          <div className={`mt-3 w-full px-4 lg:px-0 ${hasSidebar ? "lg:max-w-[calc(100%-400px-1.5rem)]" : ""}`}>
-            <VideoInfo
-              upload={upload}
-              origin={origin}
-              author={author}
-              views={views}
-              likeCount={likeCount}
-              auth={auth}
-              showLike={showComments}
-              mediaSource={mediaSource}
-              isOwner={isOwner}
-              exportReady={exportReady}
-              aiPending={aiPending}
-              ctaLabel={studio.ctaLabel}
-              ctaUrl={studio.ctaUrl}
-              uploadId={upload.id}
-              currentTime={currentTime}
-              studioOpen={studioOpen}
-              onToggleStudio={() => setStudioOpen((open) => !open)}
-              onNotify={notify}
-            />
-
-            {currentChapter && <CurrentChapterIndicator chapter={currentChapter} />}
-
-            {isOwner && studioOpen && !isRecording && (
-              <StudioPanel
-                uploadId={upload.id}
-                state={studio}
-                onChange={setStudio}
-                hasCamera={Boolean(cameraSource)}
-                currentTime={currentTime}
-                duration={duration}
-                getFrame={getFrame}
-                mediaSource={mediaSource}
-                hasTranscript={hasTranscript}
-                onNotify={notify}
-                onSeek={(time) => { if (activeVideoRef.current) { activeVideoRef.current.currentTime = time; activeVideoRef.current.pause(); } setCurrentTime(time); }}
-                onPickZoomFocus={pickZoomFocus}
-              />
-            )}
           </div>
 
           {hasSidebar && (
-            <div className="mt-4 px-4 lg:hidden">
+            <aside aria-label="Video details" className="flex h-[480px] min-h-0 min-w-0 flex-col rounded-xl border border-neutral-200 bg-white lg:sticky lg:top-6 lg:h-[720px]" style={{ maxHeight: "calc(100dvh - 104px)" }}>
               {sidebarTabs}
-              <div className="flex flex-col" style={{ maxHeight: "400px" }}>
+              <div className="min-h-0 flex-1 py-3">
                 {sidebarContent}
               </div>
-            </div>
+            </aside>
           )}
         </div>
       </div>
@@ -632,7 +619,7 @@ function ReactionBar({
   onSeek: (time: number) => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-3 px-4 pt-3 lg:px-0">
+    <div className="flex flex-wrap items-center gap-3 pt-3">
       <div className="flex items-center gap-0.5 rounded-full border border-neutral-200 bg-white p-1 shadow-sm">
         {REACTION_EMOJIS.map((emoji) => (
           <button

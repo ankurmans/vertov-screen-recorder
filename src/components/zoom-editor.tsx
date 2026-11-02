@@ -83,7 +83,7 @@ export function ZoomEditor({ uploadId, points, currentTime, duration, onChange, 
         if (draft.start + draft.duration > duration + 0.01) return setError("This zoom extends past the end of the recording.")
         if (apply([...points.filter((point) => point.id !== draft.id), draft])) select(draft)
       }}>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(130px,1fr))] gap-3">
           {([
             ["start", "Start (seconds)", 0, Math.max(0, duration - 1), "any"],
             ["duration", "Duration (seconds)", 1, 12, "any"],

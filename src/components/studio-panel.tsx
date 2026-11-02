@@ -144,7 +144,7 @@ export function StudioPanel({
   const at = Math.round(currentTime * 10) / 10
 
   return (
-    <section className="pop-in mt-4 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+    <section className="pop-in mt-4 rounded-xl border border-neutral-200 bg-white p-4">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-neutral-900">Customize</h2>
         <span className="text-xs text-neutral-400">
