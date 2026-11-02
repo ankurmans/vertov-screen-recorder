@@ -10,6 +10,11 @@
   }
 }
 
+button:enabled:not([aria-disabled="true"]),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+
 select:not([multiple]):not([size]),
 select:not([multiple])[size="1"] {
   appearance: none;
