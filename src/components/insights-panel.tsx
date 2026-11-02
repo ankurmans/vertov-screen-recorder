@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { formatTimeAgo } from "@/lib/format"
+import { VertovIcon } from "@/components/vertov-icon"
 
 interface Insights {
   viewerCount: number
@@ -84,7 +85,7 @@ export function InsightsPanel({ uploadId, className }: { uploadId: string; class
             {viewer.avatar ? (
               <img src={viewer.avatar} alt="" className="size-8 rounded-full" />
             ) : (
-              <span className="flex size-8 items-center justify-center rounded-full bg-neutral-100 text-sm">👤</span>
+              <span className="flex size-8 items-center justify-center rounded-full bg-neutral-100 text-neutral-500"><VertovIcon name="user" size={18} /></span>
             )}
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-neutral-900">

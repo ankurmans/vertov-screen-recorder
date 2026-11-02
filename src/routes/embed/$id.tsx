@@ -8,6 +8,7 @@ import { CaptionLayer } from "@/components/caption-layer";
 import { OverlayLayer } from "@/components/overlay-layer";
 import { CameraTrack, EndCard } from "@/components/stage-layer";
 import { VideoPlayer } from "@/components/video-player-lazy";
+import { VertovIcon } from "@/components/vertov-icon";
 import { APP_NAME } from "@/lib/brand";
 import { getBrand } from "@/lib/brand.server";
 import { brandStyle } from "@/lib/brand-theme";
@@ -144,7 +145,7 @@ function EmbedPlayer({ upload, transcript, origin, brand }: { upload: PublicUplo
           className="absolute top-2 left-2 z-30 max-w-[70%] truncate rounded-full bg-black/60 px-3 py-1 text-xs font-medium text-white backdrop-blur hover:bg-black/80"
         >
           {brand?.logo && <img src={brand.logo} alt="" className="mr-1.5 inline-block h-4 max-w-16 object-contain align-text-bottom" />}
-          {upload.title ?? "Watch"} · {brand?.logo ? brand.name : APP_NAME} ↗
+          {upload.title ?? "Watch"} · {brand?.logo ? brand.name : APP_NAME} <VertovIcon name="external" size={12} className="ml-1" />
         </a>
       </div>
     </main>

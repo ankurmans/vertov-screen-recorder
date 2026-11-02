@@ -1,4 +1,5 @@
 import { BrandMark } from "@/components/brand-mark"
+import { VertovIcon } from "@/components/vertov-icon"
 import { createFileRoute, redirect } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
@@ -719,13 +720,13 @@ function RecordPage() {
       <span className="min-w-11 font-mono text-sm text-white tabular-nums">{formatDuration(elapsed)}</span>
       <LevelBars level={paused ? 0 : level} />
       <IconButton title={paused ? "Resume (Space)" : "Pause (Space)"} onClick={togglePause}>
-        {paused ? "▶" : "❚❚"}
+        <VertovIcon name={paused ? "play" : "pause"} size={18} />
       </IconButton>
       <IconButton title="Restart" onClick={() => void discard(true)}>
-        ↺
+        <VertovIcon name="restart" size={18} />
       </IconButton>
       <IconButton title="Delete" onClick={() => void discard()}>
-        🗑
+        <VertovIcon name="trash" size={18} />
       </IconButton>
     </div>
   )
@@ -781,11 +782,11 @@ function RecordPage() {
                   key={option}
                   type="button"
                   onClick={() => update({ mode: option })}
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                  className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                     mode === option ? "bg-white text-neutral-900" : "bg-white/10 hover:bg-white/20"
                   }`}
                 >
-                  {option === "screen" ? "🖥  Screen + camera" : "🙂  Camera only"}
+                  <VertovIcon name={option === "screen" ? "screen" : "camera"} size={18} /> {option === "screen" ? "Screen + camera" : "Camera only"}
                 </button>
               ))}
             </div>
@@ -821,7 +822,7 @@ function RecordPage() {
             {mode === "screen" && (
               <details className="rounded-xl bg-white/5 px-4 py-3 text-sm open:pb-4">
                 <summary className="cursor-pointer text-neutral-300 select-none">
-                  📝 Speaker notes {notes.trim() ? "· ready" : "(optional)"}
+                  <VertovIcon name="notes" className="mr-1.5" /> Speaker notes {notes.trim() ? "· ready" : "(optional)"}
                 </summary>
                 <textarea
                   value={notes}

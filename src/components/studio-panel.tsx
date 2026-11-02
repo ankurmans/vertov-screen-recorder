@@ -1,6 +1,7 @@
 import { CaptionTranslations } from "@/components/caption-translations"
 import { ZoomEditor } from "@/components/zoom-editor"
 import type { ZoomFocusPicker } from "@/components/zoom-editor"
+import { VertovIcon } from "@/components/vertov-icon"
 import { useEffect, useRef, useState } from "react"
 import type { BubbleShape, BubbleSize, StageLayout, StageStyle } from "@/lib/stage"
 import type { CaptionStyle } from "@/lib/caption-styles"
@@ -147,13 +148,13 @@ export function StudioPanel({
     <section className="pop-in mt-4 rounded-xl border border-neutral-200 bg-white p-4">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-neutral-900">Customize</h2>
-        <span className="text-xs text-neutral-400">
-          {saving === "saving" ? "Saving…" : saving === "saved" ? "Saved ✓" : "Changes save automatically"}
+        <span className="inline-flex items-center gap-1 text-xs text-neutral-400">
+          {saving === "saved" && <VertovIcon name="check" size={14} />}
+          {saving === "saving" ? "Saving…" : saving === "saved" ? "Saved" : "Changes save automatically"}
         </span>
       </div>
 
       <label className="mt-4 flex gap-2 text-sm"><input type="checkbox" checked={Boolean(state.style.denoise)} onChange={(event) => setStyle({ denoise: event.target.checked })} /> Reduce background noise in MP4 exports</label>
-      <CaptionTranslations uploadId={uploadId} />
       <ZoomEditor uploadId={uploadId} points={state.style.zooms ?? []} currentTime={currentTime} duration={duration} onChange={(zooms) => setStyle({ zooms })} onSeek={onSeek} onPickFocus={onPickZoomFocus} screenVisible={!hasCamera || state.style.layout !== "camera"} />
       <div className="mt-4 grid gap-5 md:grid-cols-2">
         <Field label="Layout">
@@ -186,7 +187,7 @@ export function StudioPanel({
                 ))}
               {(["circle", "rounded"] as Array<BubbleShape>).map((shape) => (
                 <Chip key={shape} active={state.style.shape === shape} onClick={() => setStyle({ shape })}>
-                  {shape === "circle" ? "● Circle" : "▢ Rounded"}
+                    <VertovIcon name={shape} size={14} /> {shape === "circle" ? "Circle" : "Rounded"}
                 </Chip>
               ))}
             </div>
@@ -256,7 +257,7 @@ export function StudioPanel({
           <div className="space-y-2.5">
             {state.hasPassword ? (
               <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                <span className="rounded-lg bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700">🔒 Password on</span>
+                <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 font-medium text-emerald-700"><VertovIcon name="lock" size={14} /> Password on</span>
                 <Chip
                   onClick={() =>
                     void save({ password: null }).then((ok) => ok && onChange({ ...state, hasPassword: false }))
@@ -327,7 +328,7 @@ export function StudioPanel({
                 void save({ downloadsEnabled })
               }}
             >
-              {state.downloadsEnabled ? "⬇ Viewers can download" : "⬇ Downloads off"}
+              <VertovIcon name="download" size={14} /> {state.downloadsEnabled ? "Viewers can download" : "Downloads off"}
             </Chip>
             <Chip
               active={state.requireEmail}
@@ -337,13 +338,13 @@ export function StudioPanel({
                 void save({ requireEmail })
               }}
             >
-              {state.requireEmail ? "✉ Viewers give their email" : "✉ Ask viewers for email"}
+              <VertovIcon name="mail" size={14} /> {state.requireEmail ? "Viewers give their email" : "Ask viewers for email"}
             </Chip>
           </div>
         </Field>
 
-        {hasTranscript && (
-          <Field label="Captions">
+        <Field label="Subtitles & captions">
+          {hasTranscript ? <>
             <div className="flex flex-wrap gap-1.5">
               {CAPTION_STYLES.map((option) => (
                 <Chip
@@ -354,18 +355,20 @@ export function StudioPanel({
                     void save({ captionStyle: option.value })
                   }}
                 >
+                  <VertovIcon name="subtitles" size={14} />
                   {option.label}
                 </Chip>
               ))}
             </div>
             <p className="mt-1.5 text-xs text-neutral-500">{CAPTION_STYLES.find((option) => option.value === state.captionStyle)?.hint}</p>
-          </Field>
-        )}
+            <CaptionTranslations uploadId={uploadId} />
+          </> : <p className="text-xs text-neutral-500">Auto subtitles become available after speech is transcribed. Silent recordings don’t have a subtitle track.</p>}
+        </Field>
 
         <Field label="More">
           <div className="flex flex-wrap gap-1.5">
-            <Chip onClick={() => void useFrameAsThumbnail()}>🖼 Use this frame as thumbnail</Chip>
-            <Chip onClick={() => void makeGif()}>{makingGif ? "Making GIF…" : "🎞 Animated thumbnail for email"}</Chip>
+            <Chip onClick={() => void useFrameAsThumbnail()}><VertovIcon name="image" size={14} /> Use this frame as thumbnail</Chip>
+            <Chip onClick={() => void makeGif()}><VertovIcon name="film" size={14} /> {makingGif ? "Making GIF…" : "Animated thumbnail for email"}</Chip>
             <Chip
               active={state.socialEnabled}
               onClick={() => {
@@ -374,7 +377,7 @@ export function StudioPanel({
                 void save({ socialEnabled })
               }}
             >
-              {state.socialEnabled ? "💬 Comments on" : "💬 Comments off"}
+              <VertovIcon name="comment" size={14} /> {state.socialEnabled ? "Comments on" : "Comments off"}
             </Chip>
           </div>
         </Field>
@@ -407,7 +410,7 @@ function Chip({
       onClick={onClick}
       className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors ${
         active
-          ? "border-indigo-600 bg-indigo-50 text-indigo-700"
+          ? "border-[var(--brand-accent,#de2b14)] bg-neutral-50 text-[var(--brand-accent,#de2b14)]"
           : "border-neutral-200 text-neutral-700 hover:bg-neutral-50"
       }`}
     >

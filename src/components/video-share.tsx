@@ -39,6 +39,8 @@ import { VideoPlayer } from "@/components/video-player-lazy";
 import { getChapterAtTime } from "@/lib/chapters";
 import { formatDuration, formatTimeAgo, formatViews } from "@/lib/format";
 import { REACTION_EMOJIS, anonymousViewerId } from "@/lib/reactions";
+import { ReactionIcon, reactionLabel } from "@/components/reaction-icon";
+import { VertovIcon } from "@/components/vertov-icon";
 import { BACKGROUNDS, parseStyle, stageGeometry } from "@/lib/stage";
 import { isCaptionStyle } from "@/lib/caption-styles";
 import { parseStoryboardMeta } from "@/lib/storyboard";
@@ -127,7 +129,7 @@ export function VideoShare({
     const url = new URL(window.location.href);
     if (!url.searchParams.has("new")) return;
     if (isOwner) {
-      toastManager.add({ title: "🎉 Your link is on the clipboard. Paste it anywhere." });
+      toastManager.add({ title: "Your link is on the clipboard. Paste it anywhere." });
     }
     url.searchParams.delete("new");
     window.history.replaceState(null, "", url.pathname + url.search);
@@ -620,16 +622,17 @@ function ReactionBar({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-3 pt-3">
-      <div className="flex items-center gap-0.5 rounded-full border border-neutral-200 bg-white p-1 shadow-sm">
+      <div className="flex items-center gap-0.5 rounded-full border border-neutral-200 bg-white p-1">
         {REACTION_EMOJIS.map((emoji) => (
           <button
             key={emoji}
             type="button"
             onClick={() => onReact(emoji)}
-            className="flex size-8 items-center justify-center rounded-full text-lg transition-transform hover:scale-125 hover:bg-neutral-100 active:scale-95"
-            aria-label={`React ${emoji}`}
+            className="flex size-8 items-center justify-center rounded-full text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-[var(--brand-accent,#de2b14)] active:scale-95"
+            aria-label={`React: ${reactionLabel(emoji)}`}
+            title={reactionLabel(emoji)}
           >
-            {emoji}
+            <ReactionIcon code={emoji} />
           </button>
         ))}
       </div>
@@ -641,11 +644,12 @@ function ReactionBar({
               key={reaction.id}
               type="button"
               onClick={() => onSeek(reaction.timestamp)}
-              className="absolute top-0 -translate-x-1/2 text-sm transition-transform hover:scale-150"
+              className="absolute top-0 flex size-6 -translate-x-1/2 items-center justify-center rounded-full border border-neutral-200 bg-white text-[var(--brand-accent,#de2b14)] transition-transform hover:scale-110"
               style={{ left: `${Math.min(100, (reaction.timestamp / duration) * 100)}%` }}
-              title={`${reaction.viewerName ?? "Someone"} at ${formatDuration(reaction.timestamp)}`}
+              title={`${reactionLabel(reaction.emoji)} · ${reaction.viewerName ?? "Someone"} at ${formatDuration(reaction.timestamp)}`}
+              aria-label={`${reactionLabel(reaction.emoji)} by ${reaction.viewerName ?? "Someone"} at ${formatDuration(reaction.timestamp)}`}
             >
-              {reaction.emoji}
+              <ReactionIcon code={reaction.emoji} size={14} />
             </button>
           ))}
         </div>
@@ -819,7 +823,7 @@ function VideoInfo({
                   <MenuItem
                     onClick={() =>
                       void copyRich(
-                        `<a href="${pageUrl}"><img src="${origin}/api/${upload.gifKey ? "gif" : "poster"}/${upload.id}" alt="${title.replace(/"/g, "&quot;")}" width="480" style="border-radius:12px;max-width:100%"></a><br><a href="${pageUrl}">▶ Watch “${title.replace(/</g, "&lt;")}”</a>`,
+                        `<a href="${pageUrl}"><img src="${origin}/api/${upload.gifKey ? "gif" : "poster"}/${upload.id}" alt="${title.replace(/"/g, "&quot;")}" width="480" style="border-radius:12px;max-width:100%"></a><br><a href="${pageUrl}">Watch “${title.replace(/</g, "&lt;")}”</a>`,
                         pageUrl,
                       ).then(
                         () => onNotify("Paste it into an email"),
@@ -847,7 +851,7 @@ function VideoInfo({
           )}
           {isOwner && (
             <Button variant={studioOpen ? "primary" : "secondary"} onClick={onToggleStudio}>
-              {studioOpen ? "Done" : "✨ Customize"}
+              {!studioOpen && <VertovIcon name="customize" />} {studioOpen ? "Done" : "Customize"}
             </Button>
           )}
         </div>

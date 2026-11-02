@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import type { Box, BubbleCorner, BubbleShape } from "@/lib/stage"
+import { VertovIcon } from "@/components/vertov-icon"
+import { ReactionIcon } from "@/components/reaction-icon"
 
 /**
  * The camera track, kept in lockstep with the screen video. The screen
@@ -136,7 +138,7 @@ export interface FloatingReaction {
   name?: string | null
 }
 
-/** Emoji drifting up over the video when someone reacts or playback passes a reaction. */
+/** A reaction drifting up when someone reacts or playback passes its timestamp. */
 export function ReactionLayer({ items }: { items: Array<FloatingReaction> }) {
   return (
     <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden">
@@ -146,7 +148,7 @@ export function ReactionLayer({ items }: { items: Array<FloatingReaction> }) {
           className="reaction-float absolute bottom-16 flex flex-col items-center"
           style={{ right: `${8 + ((index * 37) % 18)}%` }}
         >
-          <span className="text-4xl drop-shadow-lg">{item.emoji}</span>
+          <span className="flex size-12 items-center justify-center rounded-full border border-neutral-200 bg-white text-[var(--brand-accent,#de2b14)]"><ReactionIcon code={item.emoji} size={28} /></span>
           {item.name && (
             <span className="mt-0.5 rounded-full bg-black/60 px-1.5 text-[10px] font-medium text-white">
               {item.name}
@@ -190,9 +192,9 @@ export function EndCard({
       <button
         type="button"
         onClick={onReplay}
-        className="rounded-full bg-white/15 px-4 py-2 text-sm font-medium text-white hover:bg-white/25"
+        className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-medium text-white hover:bg-white/25"
       >
-        ↺ Watch again
+        <VertovIcon name="restart" /> Watch again
       </button>
     </div>
   )
