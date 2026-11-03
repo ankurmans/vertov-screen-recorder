@@ -1,11 +1,21 @@
 import { CommandPalette } from "@/components/command-palette"
+import { ConsentBanner } from "@/components/consent-banner"
 import { Toasty } from "@cloudflare/kumo"
 import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
+import { createServerFn } from "@tanstack/react-start"
+import { analyticsConfig } from "@/lib/analytics-config.server"
+import { analyticsScript } from "@/lib/posthog"
 import appCss from "../styles.css?url"
 import { APP_NAME } from "@/lib/brand"
 
+const loadAnalytics = createServerFn({ method: "GET" }).handler(() => analyticsConfig())
+
 export const Route = createRootRoute({
-  head: () => ({
+  loader: async () => ({ analytics: await loadAnalytics() }),
+  // The config never changes while the app is open.
+  staleTime: Infinity,
+  head: ({ loaderData }) => ({
+    scripts: loaderData?.analytics ? [{ children: analyticsScript(loaderData.analytics) }] : [],
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
@@ -30,9 +40,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <Toasty>{children}<CommandPalette /></Toasty>
+        <Toasty>{children}<CommandPalette /><AnalyticsConsent /></Toasty>
         <Scripts />
       </body>
     </html>
   )
+}
+
+function AnalyticsConsent() {
+  const data = Route.useLoaderData() as { analytics: unknown } | undefined
+  return data?.analytics ? <ConsentBanner /> : null
 }

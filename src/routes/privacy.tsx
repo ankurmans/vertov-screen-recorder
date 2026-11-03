@@ -38,7 +38,11 @@ const SECTIONS: Array<{ title: string; body: Array<string> }> = [
   {
     title: "This website",
     body: [
-      "We count, per day, how many times the home page was opened and how many sign-up buttons were clicked. The counts hold no identifier, no IP address and nothing about you, and they set no cookie.",
+      "We count, per day, how many times the home page was opened and how many sign-up buttons were clicked. Those counts hold no identifier, no IP address and nothing about you, and they set no cookie.",
+      "We also use PostHog (servers in the United States) to understand how the site and app are used: which pages are opened and which features are used.",
+      "Until you choose, and if you choose \"No thanks\", this happens without cookies or anything stored in your browser. PostHog counts visitors with a code that changes every day and can't be traced back to you.",
+      "If you choose \"Allow\", PostHog sets cookies so it can recognise your browser between visits, link your visits to your account when you are signed in, and may record how pages are used (screen recordings of the page with form inputs hidden). You can change your mind at any time by clearing this site's cookies and site data, which brings the question back.",
+      "Embedded videos on other websites load no analytics.",
       "If you open the chat on the home page, your question is matched against the page's own text in your browser. It is not sent anywhere.",
     ],
   },

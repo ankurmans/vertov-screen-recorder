@@ -5,6 +5,7 @@ import { libraryUrl, validateLibrarySearch } from "@/lib/library-search"
 import type { LibrarySearch } from "@/lib/library-search"
 import { BrandMark } from "@/components/brand-mark"
 import { VertovIcon } from "@/components/vertov-icon"
+import { ANALYTICS_LOADED, identifyUser } from "@/lib/posthog"
 import { createFileRoute, redirect, useNavigate, useRouter } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
@@ -124,6 +125,13 @@ function Library({ data }: { data: LoadedLibrary }) {
   const [picked, setPicked] = useState<Array<string>>([])
   const [combineBusy, setCombineBusy] = useState(false)
   useEffect(() => setVideos(data.videos), [data.videos])
+  useEffect(() => {
+    // Only does anything once the visitor has allowed analytics cookies.
+    const identify = () => identifyUser(user.sub)
+    identify()
+    addEventListener(ANALYTICS_LOADED, identify)
+    return () => removeEventListener(ANALYTICS_LOADED, identify)
+  }, [user.sub])
   useEffect(() => setQuery(search.q ?? ""), [search.q])
 
   // Imports finish in the background; check back until they land.
