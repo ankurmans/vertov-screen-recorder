@@ -5,10 +5,12 @@ import type { Upload } from "@/db/schema"
 
 export async function notificationPreferences(userId: string) {
   const row = await env.DB.prepare("SELECT comments, first_view FROM notification_preferences WHERE user_id = ?").bind(userId).first<{ comments: number; first_view: number }>()
-  return { comments: row?.comments !== 0, firstView: row?.first_view !== 0 }
+  const tips = await env.DB.prepare("SELECT opted_out FROM lifecycle_preferences WHERE user_id=?").bind(userId).first<{opted_out:number}>()
+  return { comments: row?.comments !== 0, firstView: row?.first_view !== 0, tips: tips?.opted_out !== 1 }
 }
 
-export async function saveNotificationPreferences(userId: string, comments: boolean, firstView: boolean) {
+export async function saveNotificationPreferences(userId: string, comments: boolean, firstView: boolean, tips?: boolean) {
+  if (tips !== undefined) await env.DB.prepare("INSERT INTO lifecycle_preferences(user_id,token,opted_out) VALUES (?,?,?) ON CONFLICT(user_id) DO UPDATE SET opted_out=excluded.opted_out").bind(userId,crypto.randomUUID()+crypto.randomUUID(),Number(!tips)).run()
   await env.DB.prepare("INSERT INTO notification_preferences(user_id, comments, first_view) VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET comments=excluded.comments, first_view=excluded.first_view").bind(userId, Number(comments), Number(firstView)).run()
 }
 

@@ -8,6 +8,7 @@ const sqlite = new DatabaseSync(":memory:")
 sqlite.exec(fs.readFileSync("drizzle/0019_notifications.sql", "utf8"))
 sqlite.exec(`CREATE TABLE user(id TEXT, email TEXT); CREATE TABLE uploads(id TEXT, owner_id TEXT, title TEXT);
 INSERT INTO user VALUES ('owner', 'fixture@example.com'); INSERT INTO uploads VALUES ('video', 'owner', '<script>Fixture</script>');`)
+sqlite.exec(fs.readFileSync("drizzle/0020_lifecycle_email.sql", "utf8"))
 const prepare = (sql) => ({
   bind(...values) {
     return {

@@ -1,10 +1,11 @@
+import { emailFrame } from "./email-layout";
 import { APP_NAME } from "@/lib/brand";
 // Outgoing email through AWS SES (the v2 API, signed with SigV4 using Web Crypto, so no SDK is needed in a Worker).
 // Everything that sends mail (invites, sign-in links, mention fallbacks) talks to env.EMAIL, so this just provides one.
 // Nothing sends until SES_ACCESS_KEY_ID and SES_SECRET_ACCESS_KEY are set; a Cloudflare send_email binding still wins.
 
 export interface Mailer {
-  send: (message: { to: string; from: string; subject: string; html: string; text: string }) => Promise<unknown>;
+  send: (message: { to: string; from: string; subject: string; html: string; text: string; replyTo?: string; configurationSet?: string; headers?: Array<{ Name: string; Value: string }> }) => Promise<unknown>;
 }
 
 export interface MailEnv {
@@ -54,12 +55,14 @@ export async function signSesRequest(opts: { accessKeyId: string; secretAccessKe
 }
 
 const ses = (accessKeyId: string, secretAccessKey: string, region: string, endpoint?: string): Mailer => ({
-  async send({ to, from, subject, html, text }) {
+  async send({ to, from, subject, html, text, replyTo, configurationSet, headers: extraHeaders }) {
     const path = "/v2/email/outbound-emails";
     const body = JSON.stringify({
       FromEmailAddress: from,
       Destination: { ToAddresses: [to] },
-      Content: { Simple: { Subject: { Data: subject, Charset: "UTF-8" }, Body: { Text: { Data: text, Charset: "UTF-8" }, Html: { Data: html, Charset: "UTF-8" } } } },
+      ...(replyTo ? { ReplyToAddresses: [replyTo] } : {}),
+      ...(configurationSet ? { ConfigurationSetName: configurationSet } : {}),
+      Content: { Simple: { Subject: { Data: subject, Charset: "UTF-8" }, ...(extraHeaders ? { Headers: extraHeaders } : {}), Body: { Text: { Data: text, Charset: "UTF-8" }, Html: { Data: html.includes('data-vertov-email="true"') ? html : emailFrame(html, subject), Charset: "UTF-8" } } } },
     });
     const { host, headers } = await signSesRequest({ accessKeyId, secretAccessKey, region, path, body });
     const res = await fetch(`${endpoint ?? `https://${host}`}${path}`, { method: "POST", headers, body });

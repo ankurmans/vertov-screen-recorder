@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 128 128">
+  <title>Point white glove cursor</title>
+  <g fill="#ffffff" stroke="#111111" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M51 100C46 105 48 112 56 117C67 124 88 124 99 117C106 112 104 106 99 102Z"/>
+  <path d="M49 101C40 94 31 80 24 78C14 76 7 73 7 67C7 62 12 57 19 57C27 57 36 63 45 69C49 60 47 43 46 31C44 19 47 11 54 7C60 4 67 7 67 15L66 44C77 42 87 46 92 55C104 56 112 64 115 76C119 89 113 101 102 108C90 116 63 114 49 101Z"/>
+  <path d="M66 44C65 58 67 69 73 77C69 62 71 54 66 44ZM92 55C94 65 96 72 102 79C99 67 100 62 92 55Z" fill="#111111" stroke="none"/>
+  <path d="M67 88C68 95 67 100 67 103M82 82C81 91 80 98 78 104M96 89C94 96 92 101 90 104" fill="none" stroke-width="4.4"/>
+  </g>
+</svg>

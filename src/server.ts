@@ -1,3 +1,4 @@
+import { lifecycleTick, lifecycleUnsubscribe } from "@/lib/lifecycle.server"
 import { sendVideoNotification } from "@/lib/notifications.server"
 import { Container } from "@cloudflare/containers"
 import { allow, clientIp, sweepGuests } from "@/lib/rate-limit.server"
@@ -43,8 +44,9 @@ Exporter.outboundByHost = {
 }
 
 export default {
-  fetch: async (request) => {
+  fetch: async (request, env) => {
     const url = new URL(request.url)
+    if (url.pathname === "/email/stop") return lifecycleUnsubscribe(request, env.DB)
     if (request.method === "POST" && url.pathname === "/api/auth/sign-in/anonymous") {
       // Guest accounts are free to make, so cap how many one address can open per hour.
       if (!(await allow(`guest:${clientIp(request)}`, 10, 3600))) {
@@ -65,7 +67,11 @@ export default {
       message.ack()
     }
   },
-  async scheduled() {
+  async scheduled(controller, env) {
+    if (controller.cron !== "17 9 * * *") {
+      console.log(JSON.stringify({ message: "Lifecycle run", ...(await lifecycleTick(env)) }))
+      return
+    }
     console.log(JSON.stringify({ message: "Retention run", ...(await runRetention()) }))
     console.log(JSON.stringify({ message: "Guest sweep", ...(await sweepGuests()) }))
   },

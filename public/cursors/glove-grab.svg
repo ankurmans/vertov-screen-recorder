@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 128 128">
+  <title>Grabbing white glove cursor</title>
+  <g fill="#ffffff" stroke="#111111" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M44 100C39 106 43 114 51 118C63 124 87 123 96 116C102 111 100 104 95 100Z"/>
+  <path d="M43 103C32 96 27 87 25 76L23 63C22 56 26 51 32 51C37 51 41 55 44 60L42 51C41 44 44 39 50 39C56 39 60 43 61 49L62 43C63 37 67 34 73 35C79 36 81 40 81 47C85 41 90 40 95 43C100 45 102 50 101 56C108 51 115 56 114 64L110 82C108 94 103 101 94 106C79 114 55 112 43 103Z"/>
+  <path d="M33 66C43 61 56 64 61 70C66 76 62 83 55 82L43 79M61 49L63 59M81 47L81 59M101 56L98 66M61 92L62 101M77 90L76 101M92 88L88 100" fill="none" stroke-width="4.4"/>
+  </g>
+</svg>

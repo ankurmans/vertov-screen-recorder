@@ -468,6 +468,18 @@ export const videoNotifications = sqliteTable("video_notifications", {
   scheduled: integer("scheduled").notNull().default(0),
 })
 
+export const lifecyclePreferences = sqliteTable("lifecycle_preferences", {
+  userId: text("user_id").primaryKey(),
+  optedOut: integer("opted_out").notNull().default(0),
+  token: text("token").notNull().unique(),
+  lastChecked: integer("last_checked").notNull().default(0),
+});
+export const lifecycleSends = sqliteTable("lifecycle_sends", {
+  userId: text("user_id").notNull(), lesson: text("lesson").notNull(),
+  claimedAt: integer("claimed_at").notNull(), status: text("status").notNull().default("claimed"),
+  messageId: text("message_id"),
+}, table => [primaryKey({ columns: [table.userId, table.lesson] }), index("lifecycle_recent").on(table.userId, table.claimedAt), index("lifecycle_status").on(table.status)]);
+
 export const tutorialJobs = sqliteTable(
   "tutorial_jobs",
   {

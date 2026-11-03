@@ -40,7 +40,7 @@
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Exporter"] }],
   // Daily free-plan cleanup (src/lib/retention.server.ts); a no-op unless HOSTED or RETENTION_DAYS is set.
-  "triggers": { "crons": ["17 9 * * *"] },
+  "triggers": { "crons": ["17 9 * * *", "*/10 * * * *"] },
   "queues": {
     "producers": [{ "binding": "PROCESS_QUEUE", "queue": "vertov-process" }],
     "consumers": [

@@ -1,0 +1,5 @@
+/* Intrinsic SVG size: 48 × 48. Hotspots are in that coordinate space. */
+.cursor-glove-point { cursor: url("./glove-point.svg") 21 3, pointer; }
+.cursor-glove-point-tilted { cursor: url("./glove-point-tilted.svg") 14 7, pointer; }
+.cursor-glove-open { cursor: url("./glove-open.svg") 24 24, grab; }
+.cursor-glove-grab { cursor: url("./glove-grab.svg") 24 25, grabbing; }
