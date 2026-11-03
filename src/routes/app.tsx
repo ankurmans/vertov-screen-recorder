@@ -37,6 +37,7 @@ import { CreateSpaceDialog } from "@/components/create-space-dialog"
 import { getSessionUser, googleClientId } from "@/lib/auth.server"
 import { authClient } from "@/lib/auth-client"
 import { APP_NAME } from "@/lib/brand"
+import { HOSTED_EDITION } from "@/lib/edition"
 import { formatDuration, formatTimeAgo, formatViews } from "@/lib/format"
 import { flaggedVideos, listFolders, listLibrary, listSpaces } from "@/lib/library.server"
 import { SaveAccountBanner } from "@/components/save-account"
@@ -250,7 +251,7 @@ function Library({ data }: { data: LoadedLibrary }) {
             onClick={() => setAdding(true)}
             className="hidden rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 sm:block"
           >
-            Upload or import
+            {HOSTED_EDITION ? "Upload or import" : "Upload"}
           </button>
           <button
             type="button"
@@ -303,9 +304,9 @@ function Library({ data }: { data: LoadedLibrary }) {
               <NavLink active={view.kind === "archive"} icon={<ArchiveIcon size={16} />} onClick={() => void navigate({ search: { view: "archive" } })}>
                 Archive
               </NavLink>
-              <a href="/playlists" className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-neutral-600 hover:bg-neutral-200/60"><VertovIcon name="playlist" size={16} /> Playlists</a>
-              {canManage(role) && <a href="/analytics" className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-neutral-600 hover:bg-neutral-200/60"><ChartBarIcon size={16} /> Analytics</a>}
-              {canManage(role) && <a href="/tutorials" className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-neutral-600 hover:bg-neutral-200/60"><VertovIcon name="tutorial" size={16} /> Tutorials</a>}
+              {HOSTED_EDITION && <a href="/playlists" className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-neutral-600 hover:bg-neutral-200/60"><VertovIcon name="playlist" size={16} /> Playlists</a>}
+              {HOSTED_EDITION && canManage(role) && <a href="/analytics" className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-neutral-600 hover:bg-neutral-200/60"><ChartBarIcon size={16} /> Analytics</a>}
+              {HOSTED_EDITION && canManage(role) && <a href="/tutorials" className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-neutral-600 hover:bg-neutral-200/60"><VertovIcon name="tutorial" size={16} /> Tutorials</a>}
             </div>
             <div>
               <div className="flex items-center justify-between px-2.5 text-xs font-semibold tracking-wide text-neutral-500 uppercase">
@@ -409,7 +410,7 @@ function Library({ data }: { data: LoadedLibrary }) {
                   <FolderPlusIcon size={16} /> New folder
                 </button>
               )}
-              {videos.filter((video) => video.status === "ready" && !video.deletedAt).length > 1 && view.kind !== "archive" && (
+              {HOSTED_EDITION && videos.filter((video) => video.status === "ready" && !video.deletedAt).length > 1 && view.kind !== "archive" && (
                 <button
                   type="button"
                   onClick={() => {
@@ -526,7 +527,7 @@ function MobileNav({ spaces, active, onPick, manage }: { manage: boolean; spaces
           {item.name}
         </button>
       ))}
-      {manage && <a href="/analytics" className="shrink-0 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-sm text-neutral-700">Analytics</a>}
+      {HOSTED_EDITION && manage && <a href="/analytics" className="shrink-0 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-sm text-neutral-700">Analytics</a>}
     </div>
   )
 }
@@ -956,9 +957,11 @@ function VideoCard({
                   <button type="button" className={item} onClick={() => (setMenu(false), onMove())}>
                     Move…
                   </button>
-                  <button type="button" className={item} onClick={() => (setMenu(false), onAddToPlaylist())}>
-                    Add to playlist…
-                  </button>
+                  {HOSTED_EDITION && (
+                    <button type="button" className={item} onClick={() => (setMenu(false), onAddToPlaylist())}>
+                      Add to playlist…
+                    </button>
+                  )}
                   <button type="button" className={item} onClick={() => (setMenu(false), onPatch({ archived: !video.archivedAt }, true))}>
                     {video.archivedAt ? "Unarchive" : "Archive"}
                   </button>

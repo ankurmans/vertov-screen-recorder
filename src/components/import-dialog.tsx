@@ -1,5 +1,6 @@
 import { CloudArrowUpIcon, LinkSimpleIcon, XIcon } from "@phosphor-icons/react"
 import { useRef, useState } from "react"
+import { HOSTED_EDITION } from "@/lib/edition"
 import { uploadVideoFile } from "@/lib/file-upload"
 
 interface FileJob {
@@ -81,6 +82,7 @@ export function ImportDialog({ onClose, onImported }: { onClose: () => void; onI
             <XIcon size={18} />
           </button>
         </div>
+        {HOSTED_EDITION && (
         <div className="mt-4 flex gap-1 rounded-xl bg-neutral-100 p-1 text-sm font-medium">
           {(
             [
@@ -98,6 +100,7 @@ export function ImportDialog({ onClose, onImported }: { onClose: () => void; onI
             </button>
           ))}
         </div>
+        )}
 
         {tab === "files" ? (
           <div className="mt-4">

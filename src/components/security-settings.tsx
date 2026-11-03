@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import type { AuditEntry } from "@/lib/audit.server"
+import { HOSTED_EDITION } from "@/lib/edition"
 
 interface Overview {
   retentionDays: number | null
@@ -141,6 +142,7 @@ export function SecuritySettings({ isOwner, me }: { isOwner: boolean; me: string
         <p className="text-sm text-neutral-600">{overview.sso ? "Enabled." : "Disabled."}</p>
       </Card>
 
+      {HOSTED_EDITION && (
       <Card title="SCIM provisioning" description="Let your identity provider add and remove people automatically. Removing someone there removes them from this workspace; their videos stay.">
         {token ? (
           <div className="space-y-2 text-sm">
@@ -181,6 +183,7 @@ export function SecuritySettings({ isOwner, me }: { isOwner: boolean; me: string
           )}
         </div>
       </Card>
+      )}
 
       {isOwner && (
         <Card title="Transfer ownership" description="Make another member the owner. You become an admin.">
@@ -210,9 +213,11 @@ export function SecuritySettings({ isOwner, me }: { isOwner: boolean; me: string
       )}
 
       <Card title="Activity log" description="Who changed what, newest first.">
-        <a href="/api/workspace/audit/csv" className="text-sm font-medium text-neutral-900 underline">
-          Download CSV
-        </a>
+        {HOSTED_EDITION && (
+          <a href="/api/workspace/audit/csv" className="text-sm font-medium text-neutral-900 underline">
+            Download CSV
+          </a>
+        )}
         {overview.audit.length === 0 ? (
           <p className="mt-3 text-sm text-neutral-500">Nothing yet.</p>
         ) : (

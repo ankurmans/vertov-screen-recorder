@@ -38,6 +38,7 @@ import { useSkipCuts } from "@/lib/use-skip-cuts";
 import { VideoPlayer } from "@/components/video-player-lazy";
 import { getChapterAtTime } from "@/lib/chapters";
 import { formatDuration, formatTimeAgo, formatViews } from "@/lib/format";
+import { HOSTED_EDITION } from "@/lib/edition";
 import { REACTION_EMOJIS, anonymousViewerId } from "@/lib/reactions";
 import { ReactionIcon, reactionLabel } from "@/components/reaction-icon";
 import { VertovIcon } from "@/components/vertov-icon";
@@ -86,7 +87,7 @@ export function VideoShare({
   const [mounted, setMounted] = useState(false);
   const [currentTime, setCurrentTime] = useState(initialTime);
   const [activeTab, setActiveTab] = useState(
-    initialPanel === "insights" && isOwner ? "insights" : transcript ? "transcript" : "comments",
+    initialPanel === "insights" && HOSTED_EDITION && isOwner ? "insights" : transcript ? "transcript" : "comments",
   );
   const [views, setViews] = useState(upload.views);
   const [mainVideo, setMainVideo] = useState<HTMLVideoElement | null>(null);
@@ -148,7 +149,7 @@ export function VideoShare({
   // time they open it after recording. It never blocks anything and fails quietly.
   const gifTried = useRef(false);
   useEffect(() => {
-    if (!isOwner || upload.gifKey || upload.status !== "ready" || upload.mediaType !== "video" || (upload.duration ?? 0) < 2 || gifTried.current) return;
+    if (!HOSTED_EDITION || !isOwner || upload.gifKey || upload.status !== "ready" || upload.mediaType !== "video" || (upload.duration ?? 0) < 2 || gifTried.current) return;
     gifTried.current = true;
     const timer = setTimeout(() => {
       const from = Math.max(upload.trimStart ?? 0, 0) + 0.3;
@@ -397,8 +398,8 @@ export function VideoShare({
     ...(isOwner && transcript?.words?.length ? [{ value: "edit", label: "Edit" }] : []),
     ...(isOwner && !isRecording ? [{ value: "annotate", label: "Annotate" }] : []),
     ...(showComments ? [{ value: "comments", label: "Comments" }] : []),
-    ...(isOwner ? [{ value: "insights", label: "Insights" }] : []),
-    ...(isOwner && !isRecording ? [{ value: "ai", label: "AI" }] : []),
+    ...(HOSTED_EDITION && isOwner ? [{ value: "insights", label: "Insights" }] : []),
+    ...(HOSTED_EDITION && isOwner && !isRecording ? [{ value: "ai", label: "AI" }] : []),
   ];
   const tab = tabs.some((item) => item.value === activeTab) ? activeTab : (tabs[0]?.value ?? "");
   const sidebarTabs =
@@ -447,7 +448,7 @@ export function VideoShare({
         auth={auth}
         className="h-full"
       />
-    ) : tab === "insights" && isOwner ? (
+    ) : tab === "insights" && HOSTED_EDITION && isOwner ? (
       <InsightsPanel uploadId={upload.id} className="h-full" />
     ) : tab === "ai" && isOwner ? (
       <AiPanel uploadId={upload.id} className="h-full" />
@@ -477,7 +478,7 @@ export function VideoShare({
         : upload.status === "rendering"
           ? "Combining the clips into one video. This page updates when it's done."
         : upload.status === "failed"
-          ? "This video couldn't be finished. If it came from Loom, make sure the Loom is public, then try again."
+          ? (HOSTED_EDITION ? "This video couldn't be finished. If it came from Loom, make sure the Loom is public, then try again." : "This video couldn't be finished. Try uploading it again.")
           : "Still recording. This page updates when it's done."}
     </div>
   ) : !mounted ? (

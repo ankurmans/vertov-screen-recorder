@@ -10,6 +10,7 @@ import { useState } from "react"
 import type { Interval, PlanId, Role } from "@/lib/plans"
 import { getSessionUser } from "@/lib/auth.server"
 import { APP_NAME } from "@/lib/brand"
+import { HOSTED_EDITION } from "@/lib/edition"
 import { HEX_COLOR } from "@/lib/brand-theme"
 import { billingOptions } from "@/lib/polar.server"
 import { EXTRA_BLOCK_HOURS, EXTRA_BLOCK_PRICE, PAID_PLANS, PLANS, canManage, formatHours, yearlyPrice } from "@/lib/plans"
@@ -191,8 +192,8 @@ function GeneralTab() {
         </div>
       </Card>
       {manage && <SlackSettings />}
-      {manage && <BrandingCard />}
-      {manage && <WorkspaceInsightsCard />}
+      {HOSTED_EDITION && manage && <BrandingCard />}
+      {HOSTED_EDITION && manage && <WorkspaceInsightsCard />}
       {me && !(me.role === "owner" && data.members.filter((member) => member.role === "owner").length === 1) && (
         <button type="button" onClick={() => void leave()} className="text-sm text-red-600 hover:underline">
           Leave this workspace
@@ -335,12 +336,16 @@ function AgentsTab() {
   }
 
   const snippets: Array<[string, string, string]> = [
-    ["claude", "Claude Code", `claude mcp add --transport http ${APP_NAME.toLowerCase()} ${server}/mcp --header "Authorization: Bearer ${key}"`],
-    [
-      "json",
-      "Cursor, Claude Desktop and other MCP clients",
-      JSON.stringify({ mcpServers: { [APP_NAME.toLowerCase()]: { url: `${server}/mcp`, headers: { Authorization: `Bearer ${key}` } } } }, null, 2),
-    ],
+    ...(HOSTED_EDITION
+      ? ([
+          ["claude", "Claude Code", `claude mcp add --transport http ${APP_NAME.toLowerCase()} ${server}/mcp --header "Authorization: Bearer ${key}"`],
+          [
+            "json",
+            "Cursor, Claude Desktop and other MCP clients",
+            JSON.stringify({ mcpServers: { [APP_NAME.toLowerCase()]: { url: `${server}/mcp`, headers: { Authorization: `Bearer ${key}` } } } }, null, 2),
+          ],
+        ] satisfies Array<[string, string, string]>)
+      : []),
     [
       "curl",
       "Upload a recording from a script",
@@ -440,7 +445,8 @@ function AgentsTab() {
             </div>
           ))}
           <p className="text-xs text-neutral-500">
-            MCP tools: upload_video, create_video_from_url, list_videos, get_video, get_video_prompt, add_comment, list_spaces. Anyone watching a video can also use Share → Copy for an AI agent.
+            {HOSTED_EDITION && "MCP tools: upload_video, create_video_from_url, list_videos, get_video, get_video_prompt, add_comment, list_spaces. "}
+            Anyone watching a video can also use Share → Copy for an AI agent.
           </p>
         </div>
       </Card>

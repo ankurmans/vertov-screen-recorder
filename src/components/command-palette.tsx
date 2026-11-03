@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import type { KeyboardEvent } from "react"
 import { useLocation } from "@tanstack/react-router"
 import { MagnifyingGlassIcon } from "@phosphor-icons/react"
+import { HOSTED_EDITION } from "@/lib/edition"
 
 interface Item {
   id: string
@@ -19,8 +20,8 @@ const ACTIONS: Item[] = [
   { id: "record", title: "Start a recording", hint: "Screen, camera or both", href: "/record", group: "Actions" },
   {
     id: "upload",
-    title: "Upload or import a video",
-    hint: "Files and Loom links",
+    title: HOSTED_EDITION ? "Upload or import a video" : "Upload a video",
+    hint: HOSTED_EDITION ? "Files and Loom links" : "Video files from your computer",
     href: "/app?import=1",
     group: "Actions",
   },
@@ -31,21 +32,25 @@ const ACTIONS: Item[] = [
     href: "/app?request=1",
     group: "Actions",
   },
-  { id: "analytics", title: "Analytics", hint: "Views, progress and CTA clicks", href: "/analytics", group: "Go to" },
-  { id: "tutorials", title: "Tutorials", hint: "Record a narrated product tutorial", href: "/tutorials", group: "Go to" },
+  ...(HOSTED_EDITION
+    ? [
+        { id: "analytics", title: "Analytics", hint: "Views, progress and CTA clicks", href: "/analytics", group: "Go to" },
+        { id: "tutorials", title: "Tutorials", hint: "Record a narrated product tutorial", href: "/tutorials", group: "Go to" },
+      ]
+    : []),
   { id: "library", title: "My library", hint: "Your recordings", href: "/app", group: "Go to" },
   { id: "later", title: "Watch later", hint: "Saved videos", href: "/app?view=later", group: "Go to" },
   { id: "archive", title: "Archive", hint: "Archived recordings", href: "/app?view=archive", group: "Go to" },
   {
     id: "settings",
     title: "Workspace settings",
-    hint: "Branding, members and notifications",
+    hint: HOSTED_EDITION ? "Branding, members and notifications" : "Members and notifications",
     href: "/settings",
     group: "Go to",
   },
   {
     id: "agents",
-    title: "API keys and MCP",
+    title: HOSTED_EDITION ? "API keys and MCP" : "API keys and webhooks",
     hint: "Connect your agents",
     href: "/settings?tab=agents",
     group: "Go to",

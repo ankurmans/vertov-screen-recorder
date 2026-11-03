@@ -9,6 +9,7 @@ import { CAPTION_STYLES } from "@/lib/caption-styles"
 import { makeAnimatedThumbnail } from "@/lib/gif"
 import { BACKGROUNDS } from "@/lib/stage"
 import { formatDuration } from "@/lib/format"
+import { HOSTED_EDITION } from "@/lib/edition"
 
 export interface StudioState {
   style: StageStyle
@@ -157,8 +158,8 @@ export function StudioPanel({
         </span>
       </div>
 
-      <label className="mt-4 flex gap-2 text-sm"><input type="checkbox" checked={Boolean(state.style.denoise)} onChange={(event) => setStyle({ denoise: event.target.checked })} /> Reduce background noise in MP4 exports</label>
-      <ZoomEditor uploadId={uploadId} points={state.style.zooms ?? []} currentTime={currentTime} duration={duration} onChange={(zooms) => setStyle({ zooms })} onSeek={onSeek} onPickFocus={onPickZoomFocus} screenVisible={!hasCamera || state.style.layout !== "camera"} />
+      {HOSTED_EDITION && <label className="mt-4 flex gap-2 text-sm"><input type="checkbox" checked={Boolean(state.style.denoise)} onChange={(event) => setStyle({ denoise: event.target.checked })} /> Reduce background noise in MP4 exports</label>}
+      {HOSTED_EDITION && <ZoomEditor uploadId={uploadId} points={state.style.zooms ?? []} currentTime={currentTime} duration={duration} onChange={(zooms) => setStyle({ zooms })} onSeek={onSeek} onPickFocus={onPickZoomFocus} screenVisible={!hasCamera || state.style.layout !== "camera"} />}
       <div className="mt-4 grid gap-5 md:grid-cols-2">
         <Field label="Layout">
           <div className="flex flex-wrap gap-1.5">
@@ -214,9 +215,11 @@ export function StudioPanel({
           </div>
         </Field>
 
-        <Field label="Intro & outro">
-          <BookendPicker uploadId={uploadId} intro={state.style.intro} outro={state.style.outro} onPick={(patch) => setStyle(patch)} />
-        </Field>
+        {HOSTED_EDITION && (
+          <Field label="Intro & outro">
+            <BookendPicker uploadId={uploadId} intro={state.style.intro} outro={state.style.outro} onPick={(patch) => setStyle(patch)} />
+          </Field>
+        )}
 
         <Field label="Trim">
           <div className="flex flex-wrap items-center gap-1.5 text-xs">
@@ -347,6 +350,7 @@ export function StudioPanel({
             >
               <VertovIcon name="mail" size={14} /> {state.requireEmail ? "Viewers give their email" : "Ask viewers for email"}
             </Chip>
+            {HOSTED_EDITION && (
             <Chip
               active={state.searchIndexing}
               onClick={() => {
@@ -357,7 +361,8 @@ export function StudioPanel({
             >
               <VertovIcon name="search" size={14} /> {state.searchIndexing ? "Shown in Google search" : "Hidden from search"}
             </Chip>
-            {state.searchIndexing && (!state.openLink || state.hasPassword || state.expiresAt || state.requireEmail) && (
+            )}
+            {HOSTED_EDITION && state.searchIndexing && (!state.openLink || state.hasPassword || state.expiresAt || state.requireEmail) && (
               <p className="text-xs text-neutral-500">Search engines only see videos anyone with the link can watch, with no password, expiry or email gate.</p>
             )}
           </div>
@@ -388,7 +393,7 @@ export function StudioPanel({
         <Field label="More">
           <div className="flex flex-wrap gap-1.5">
             <Chip onClick={() => void useFrameAsThumbnail()}><VertovIcon name="image" size={14} /> Use this frame as thumbnail</Chip>
-            <Chip onClick={() => void makeGif()}><VertovIcon name="film" size={14} /> {makingGif ? "Making GIF…" : "Animated thumbnail for email"}</Chip>
+            {HOSTED_EDITION && <Chip onClick={() => void makeGif()}><VertovIcon name="film" size={14} /> {makingGif ? "Making GIF…" : "Animated thumbnail for email"}</Chip>}
             <Chip
               active={state.socialEnabled}
               onClick={() => {

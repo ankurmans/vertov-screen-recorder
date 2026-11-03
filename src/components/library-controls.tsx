@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { ListIcon, SquaresFourIcon, UploadSimpleIcon, VideoCameraIcon, ArrowUpRightIcon } from "@phosphor-icons/react"
 import type { LibraryVideo } from "@/lib/library.server"
+import { HOSTED_EDITION } from "@/lib/edition"
 import { Eye } from "@/components/eye"
 
 export type LibraryLayout = "grid" | "list"
@@ -145,7 +146,7 @@ export function FirstVideo({
           <UploadSimpleIcon size={22} />
           <span>
             <strong>{spaceId ? "Choose from your library" : "Bring a video over"}</strong>
-            <small>{spaceId ? "Use a video’s Move menu to add it here" : "Upload a file or import from Loom"}</small>
+            <small>{spaceId ? "Use a video’s Move menu to add it here" : HOSTED_EDITION ? "Upload a file or import from Loom" : "Upload a video file"}</small>
           </span>
           <ArrowUpRightIcon size={17} />
         </button>

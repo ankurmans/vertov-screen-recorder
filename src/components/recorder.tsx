@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import type { BackupTake } from "@/lib/local-backup"
+import type { WebBackground } from "@/lib/camera-background"
+import {
+  WEB_BACKGROUNDS,
+  applyBackground,
+  backgroundSupported,
+} from "@/lib/camera-background"
 import { BrandMark } from "@/components/brand-mark"
 import { VertovIcon } from "@/components/vertov-icon"
 import { APP_NAME } from "@/lib/brand"
@@ -50,6 +56,7 @@ interface Prefs {
   cameraId: string
   micId: string
   notes: string
+  background: WebBackground
 }
 
 const DEFAULT_PREFS: Prefs = {
@@ -59,6 +66,7 @@ const DEFAULT_PREFS: Prefs = {
   cameraId: "",
   micId: "",
   notes: "",
+  background: "none",
 }
 const PREFS_KEY = "reelay_recorder"
 
@@ -173,7 +181,7 @@ export function Recorder({
   pipRef.current = pipWindow
   screenRef.current = screenStream
 
-  const { mode, cameraOn, micOn, cameraId, micId, notes } = prefs
+  const { mode, cameraOn, micOn, cameraId, micId, notes, background } = prefs
   const update = (patch: Partial<Prefs>) =>
     setPrefs((current) => {
       const next = { ...current, ...patch }
@@ -230,6 +238,7 @@ export function Recorder({
     }
     let cancelled = false
     let stream: MediaStream | null = null
+    let stopEffect = () => {}
     void mediaDevices
       .getUserMedia({
         video: {
@@ -239,10 +248,17 @@ export function Recorder({
           frameRate: { ideal: 30 },
         },
       })
-      .then((next) => {
+      .then(async (next) => {
         if (cancelled) return stopStreams([next])
         stream = next
-        setCameraStream(next)
+        const effect = await applyBackground(next, background)
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- cleanup can run during the await
+        if (cancelled) {
+          effect.stop()
+          return
+        }
+        stopEffect = effect.stop
+        setCameraStream(effect.stream)
         void refreshDevices().catch(() => {})
         setError(null)
       })
@@ -253,10 +269,11 @@ export function Recorder({
       )
     return () => {
       cancelled = true
+      stopEffect()
       if (stream) stopStreams([stream])
       setCameraStream(null)
     }
-  }, [wantCamera, cameraId, done, devicesEnabled, refreshDevices])
+  }, [wantCamera, cameraId, background, done, devicesEnabled, refreshDevices])
 
   // Mic meter before recording, so you know you're being heard.
   useEffect(() => {
@@ -1069,6 +1086,27 @@ export function Recorder({
                 value={cameraId}
                 onChange={(value) => update({ cameraId: value })}
               />
+              {(mode === "camera" || cameraOn) && backgroundSupported() && (
+                <div className="flex items-center gap-2 rounded-xl bg-white/5 p-2.5 sm:col-span-2">
+                  <span className="shrink-0 px-1 text-xs font-semibold text-neutral-400">
+                    Background
+                  </span>
+                  <select
+                    aria-label="Camera background"
+                    value={background}
+                    onChange={(event) =>
+                      update({ background: event.target.value as WebBackground })
+                    }
+                    className="min-w-0 flex-1 rounded-lg bg-neutral-900 px-2 py-1.5 text-sm"
+                  >
+                    {WEB_BACKGROUNDS.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <DeviceRow
                 label="Mic"
                 enabled={micOn}

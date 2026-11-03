@@ -3,14 +3,19 @@ import { useRef, useState } from "react"
 import type { Overlay, OverlayType } from "@/lib/overlays"
 import { MAX_OVERLAYS, OVERLAY_COLORS, newOverlay, safeUrl } from "@/lib/overlays"
 import { formatDuration } from "@/lib/format"
+import { HOSTED_EDITION } from "@/lib/edition"
 
 const ADD: Array<{ type: OverlayType; label: string; icon: React.ReactNode }> = [
   { type: "text", label: "Text", icon: <TextTIcon size={14} /> },
   { type: "box", label: "Box", icon: <SelectionIcon size={14} /> },
   { type: "arrow", label: "Arrow", icon: <ArrowUpRightIcon size={14} /> },
   { type: "link", label: "Link", icon: <LinkSimpleIcon size={14} /> },
-  { type: "blur", label: "Blur", icon: <EyeSlashIcon size={14} /> },
-  { type: "spotlight", label: "Spotlight", icon: <FlashlightIcon size={14} /> },
+  ...(HOSTED_EDITION
+    ? [
+        { type: "blur" as const, label: "Blur", icon: <EyeSlashIcon size={14} /> },
+        { type: "spotlight" as const, label: "Spotlight", icon: <FlashlightIcon size={14} /> },
+      ]
+    : []),
 ]
 
 const LABELS: Record<OverlayType, string> = { text: "Text", box: "Box", arrow: "Arrow", link: "Link", blur: "Blur", spotlight: "Spotlight", image: "Image" }
@@ -69,7 +74,7 @@ export function AnnotateEditor({
 
   return (
     <div className={`flex flex-col overflow-y-auto px-3 pb-4 ${className ?? ""}`}>
-      <p className="text-xs text-neutral-500">Add text, a box, an arrow, a link, a blur, a spotlight or an image at the moment you're on, then drag it on the video. Each shows for a few seconds.</p>
+      <p className="text-xs text-neutral-500">{HOSTED_EDITION ? "Add text, a box, an arrow, a link, a blur, a spotlight or an image at the moment you're on" : "Add text, a box, an arrow or a link at the moment you're on"}, then drag it on the video. Each shows for a few seconds.</p>
       <div className="mt-3 flex flex-wrap gap-1.5">
         {ADD.map((item) => (
           <button
@@ -81,14 +86,14 @@ export function AnnotateEditor({
             {item.icon} {item.label}
           </button>
         ))}
-        <button
+        {HOSTED_EDITION && <button
           type="button"
           disabled={uploading}
           onClick={() => fileInput.current?.click()}
           className="flex items-center gap-1.5 rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
         >
           <ImageIcon size={14} /> {uploading ? "Uploading…" : "Image"}
-        </button>
+        </button>}
         <input ref={fileInput} type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(event) => (void addImage(event.target.files?.[0]), (event.target.value = ""))} />
       </div>
       {uploadError && <p role="alert" className="mt-2 text-xs text-red-600">{uploadError}</p>}

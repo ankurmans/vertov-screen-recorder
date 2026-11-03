@@ -4,21 +4,15 @@ import type { Transcription } from "@/lib/ai.server";
 import type { Transcript, TranscriptWord } from "@/lib/transcript";
 import { db } from "@/db";
 import { uploads, workspaces } from "@/db/schema";
-import { complete, transcribe } from "@/lib/ai.server";
+import { transcribe } from "@/lib/ai.server";
+import { describe } from "@/lib/describe.server";
 import { parseTranscript } from "@/lib/transcript";
 import { getUploadById } from "@/lib/uploads.server";
 import { aiEnabled } from "@/lib/workspace.server";
 
-const MAX_TRANSCRIPT_CHARS = 24_000;
 // A punctuated prompt nudges Whisper into sentence case and punctuation, and its fillers stop
 // Whisper silently dropping the user's "um"s, which the editor cuts. English audio only.
 const ENGLISH_PROMPT = "Hi there. Um, so, uh, in this video I'll walk you through it.";
-
-interface Metadata {
-  title?: string;
-  summary?: string;
-  chapters?: Array<{ title: string; start: number }>;
-}
 
 /**
  * Queue job after a recording finishes: Whisper transcript from the
@@ -141,53 +135,4 @@ export function toTranscript(output: Transcription): Transcript | null {
     })),
     words,
   });
-}
-
-export async function describe(transcript: Transcript, duration: number): Promise<Metadata> {
-  const lines = transcript.cues
-    .map((cue) => `[${Math.floor(cue.start)}s] ${cue.text}`)
-    .join("\n")
-    .slice(0, MAX_TRANSCRIPT_CHARS);
-  const wantChapters = duration >= 120;
-
-  const raw = await complete(
-    "You write metadata for screen recordings people share with coworkers. Reply with JSON only, no prose. Write every field in the same language as the transcript.",
-    `Transcript with start times in seconds:\n${lines}\n\nReturn JSON: {"title": a specific 3-8 word title in sentence case (capitalize only the first word and proper nouns, like "Walkthrough of the new pricing page") with no quotes or trailing period, "summary": 1-3 plain sentences on what the video covers${
-      wantChapters
-        ? ', "chapters": 3-8 items {"title": 2-5 words, "start": seconds}, the first starting at 0'
-        : ""
-    }}`,
-    1500,
-  );
-  return parseMetadata(raw, duration);
-}
-
-function parseMetadata(raw: string, duration: number): Metadata {
-  const cleaned = raw.replace(/<think>[\s\S]*?<\/think>/g, "");
-  const match = cleaned.match(/\{[\s\S]*\}/);
-  if (!match) return {};
-  try {
-    const parsed = JSON.parse(match[0]) as Record<string, unknown>;
-    const chapters = Array.isArray(parsed.chapters)
-      ? parsed.chapters
-          .filter(
-            (chapter): chapter is { title: string; start: number } =>
-              typeof chapter === "object" &&
-              chapter !== null &&
-              typeof chapter.title === "string" &&
-              Number.isFinite(chapter.start) &&
-              chapter.start >= 0 &&
-              (!duration || chapter.start < duration),
-          )
-          .map((chapter) => ({ title: chapter.title.slice(0, 80), start: chapter.start }))
-          .sort((a, b) => a.start - b.start)
-      : undefined;
-    return {
-      title: typeof parsed.title === "string" ? parsed.title.trim().replace(/^"|"$/g, "") : undefined,
-      summary: typeof parsed.summary === "string" ? parsed.summary.trim() : undefined,
-      chapters,
-    };
-  } catch {
-    return {};
-  }
 }

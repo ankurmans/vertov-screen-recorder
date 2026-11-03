@@ -10,6 +10,7 @@ import { mapToExport, parseCuts } from "@/lib/cuts";
 import { parseOverlays } from "@/lib/overlays";
 import { BACKGROUNDS, parseStyle, stageGeometry } from "@/lib/stage";
 import { getTranscript, getUploadById } from "@/lib/uploads.server";
+import { HOSTED_EDITION } from "@/lib/edition";
 
 /** 1080p by default; recordings captured above 2.5K export at 4K. */
 const exportWidth = (upload: Upload) => ((upload.width ?? 0) >= 2560 ? 3840 : 1920);
@@ -68,8 +69,8 @@ export async function exportJob(upload: Upload) {
     images: placed
       .filter((item) => item.overlay.type === "image" && item.overlay.src)
       .map(({ overlay, start, end, x, y, w }) => ({ start, end, x, y, w, url: `http://media.internal/uploads/overlays/${overlay.src.split("/").slice(-2).join("/")}` })),
-    denoise: style.denoise === true,
-    zoom_points: style.zooms ?? [],
+    denoise: HOSTED_EDITION && style.denoise === true,
+    zoom_points: HOSTED_EDITION ? (style.zooms ?? []) : [],
     ass,
     // Served from R2 by the Exporter's outbound handler.
     screen_url: `http://media.internal/${upload.r2Key}`,
@@ -127,6 +128,7 @@ export async function processExport(id: string): Promise<void> {
 
 /** Joins the video's chosen intro and outro (other ready videos in the same workspace) around its render. */
 async function addBookends(upload: Upload, mainKey: string): Promise<string> {
+  if (!HOSTED_EDITION) return mainKey;
   const style = parseStyle(upload.style);
   const clipKey = async (clipId: string | undefined) => {
     if (!clipId || clipId === upload.id) return null;

@@ -5,7 +5,12 @@
  * upload; the original video is never touched.
  */
 
+import { HOSTED_EDITION } from "@/lib/edition"
+
 export type OverlayType = "text" | "box" | "arrow" | "link" | "blur" | "spotlight" | "image"
+
+/** Effect overlays the public edition doesn't include; parsing drops them there. */
+export const HOSTED_OVERLAYS: ReadonlyArray<OverlayType> = ["blur", "spotlight", "image"]
 
 export interface Overlay {
   id: string
@@ -71,7 +76,7 @@ export function parseOverlays(raw: unknown): Array<Overlay> {
     if (typeof item !== "object" || item === null) continue
     const input = item as Record<string, unknown>
     const type = TYPES.find((candidate) => candidate === input.type)
-    if (!type) continue
+    if (!type || (!HOSTED_EDITION && HOSTED_OVERLAYS.includes(type))) continue
     const src = typeof input.src === "string" && IMAGE_PATH.test(input.src) ? input.src : ""
     if (type === "image" && !src) continue
     const start = num(input.start, 0, 60 * 60 * 6, 0)

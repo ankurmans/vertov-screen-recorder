@@ -111,8 +111,8 @@ export async function backgroundTrack(track, background, imageDataUrl) {
   let person = null
   let mask = null
   let lastStamp = 0
-  const maskSize = 256
-  const maskImage = new ImageData(maskSize, maskSize)
+  // The mask comes back at the frame's resolution, not a fixed size.
+  let maskImage = null
   let maskCtx = null
   let personCtx = null
   let outCtx = null
@@ -123,10 +123,8 @@ export async function backgroundTrack(track, background, imageDataUrl) {
     if (!out || out.width !== w || out.height !== h) {
       out = new OffscreenCanvas(w, h)
       person = new OffscreenCanvas(w, h)
-      mask = new OffscreenCanvas(maskSize, maskSize)
       outCtx = out.getContext("2d")
       personCtx = person.getContext("2d")
-      maskCtx = mask.getContext("2d")
     }
     lastStamp = Math.max(lastStamp + 1, Math.round(performance.now()))
     const result = segmenter.segmentForVideo(frame, lastStamp)
@@ -136,9 +134,14 @@ export async function backgroundTrack(track, background, imageDataUrl) {
       result.close()
       return out
     }
+    if (!mask || mask.width !== confidence.width || mask.height !== confidence.height) {
+      mask = new OffscreenCanvas(confidence.width, confidence.height)
+      maskCtx = mask.getContext("2d")
+      maskImage = new ImageData(confidence.width, confidence.height)
+    }
     const values = confidence.getAsFloat32Array()
     const data = maskImage.data
-    for (let i = 0; i < values.length && i < maskSize * maskSize; i++) {
+    for (let i = 0; i < values.length && i < data.length / 4; i++) {
       // Steepen the edge a little so hair and shoulders stay crisp but not jagged.
       const v = Math.min(1, Math.max(0, (values[i] - 0.35) * 2.2))
       data[i * 4 + 3] = v * 255

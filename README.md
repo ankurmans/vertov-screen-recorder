@@ -2,7 +2,7 @@
 
 A screen recorder and video messaging tool you can run on your own Cloudflare account. Record a tab, window, screen or camera, get a share link the moment you stop, then edit by transcript.
 
-This is the free, self-hostable edition. The hosted service at [vertov.app](https://vertov.app) adds billing, plans, a marketing site and managed infrastructure on top of the same core.
+This is the free, self-hostable edition. The hosted service at [vertov.app](https://vertov.app) is built on the same core and adds billing, managed infrastructure and hosted-only features: an MCP server, tutorial generation, analytics, playlists, Loom import, search indexing, camera backgrounds, SCIM and audit export.
 
 ## What you get
 
@@ -12,15 +12,14 @@ This is the free, self-hostable edition. The hosted service at [vertov.app](http
 - Live Rewind: viewers watch while you are still recording.
 - Request a video: send a link and anyone records into your library with no account.
 - Workspaces, spaces, folders and search across what was said.
-- An HTTP API and an MCP server (`/mcp`) so agents can upload videos and read them back as transcripts and briefs.
-- Import public Loom links, and private ones through the extension.
+- An HTTP API and webhooks so scripts and agents can upload videos and read them back as transcripts and briefs.
 - Passkey sign-in, with optional email links and Google.
 
 No plan limits and no billing: you pay Cloudflare directly for storage and compute.
 
 ## Stack
 
-TanStack Start on Cloudflare Workers, D1 (database), R2 (video files), Queues (transcription, imports, exports) and a Cloudflare Container running ffmpeg for exports. Transcription uses Whisper through Groq or Workers AI. The Chrome extension is plain Manifest V3 JavaScript in `extension/`.
+TanStack Start on Cloudflare Workers, D1 (database), R2 (video files), Queues (transcription and exports) and a Cloudflare Container running ffmpeg for exports. Transcription uses Whisper through Groq or Workers AI. The Chrome extension is plain Manifest V3 JavaScript in `extension/`.
 
 ## Run it locally
 
