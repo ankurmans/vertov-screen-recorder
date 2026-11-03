@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { uploads } from "@/db/schema";
 import { buildAss } from "@/lib/ass";
 import { isCaptionStyle } from "@/lib/caption-styles";
-import { parseCuts } from "@/lib/cuts";
+import { mapToExport, parseCuts } from "@/lib/cuts";
 import { parseOverlays } from "@/lib/overlays";
 import { BACKGROUNDS, parseStyle, stageGeometry } from "@/lib/stage";
 import { getTranscript, getUploadById } from "@/lib/uploads.server";
@@ -49,7 +49,25 @@ export async function exportJob(upload: Upload) {
     captionStyle,
     source: { trimStart: upload.trimStart, trimEnd: upload.trimEnd, cuts: upload.cuts },
   });
+  // Blur regions and images need real frames, so the exporter composites them; times move to the export timeline like the ASS events.
+  const timing = { trimStart: upload.trimStart, trimEnd: upload.trimEnd, cuts: upload.cuts };
+  const placed = overlays.flatMap((overlay) => {
+    const start = mapToExport(timing, overlay.start);
+    if (start == null) return [];
+    const end = mapToExport(timing, overlay.end) ?? start + (overlay.end - overlay.start);
+    if (end - start < 0.05) return [];
+    const clamp = (value: number, max: number) => Math.max(0, Math.min(max, Math.round(value)));
+    const x = clamp((overlay.x / 100) * width, width - 2);
+    const y = clamp((overlay.y / 100) * height, height - 2);
+    const w = Math.max(2, Math.min(width - x, Math.round((overlay.w / 100) * width)));
+    const h = Math.max(2, Math.min(height - y, Math.round((overlay.h / 100) * height)));
+    return [{ overlay, start: Number(start.toFixed(3)), end: Number(end.toFixed(3)), x, y, w, h }];
+  });
   return {
+    blur_boxes: placed.filter((item) => item.overlay.type === "blur").map(({ start, end, x, y, w, h }) => ({ start, end, x, y, w, h })),
+    images: placed
+      .filter((item) => item.overlay.type === "image" && item.overlay.src)
+      .map(({ overlay, start, end, x, y, w }) => ({ start, end, x, y, w, url: `http://media.internal/uploads/overlays/${overlay.src.split("/").slice(-2).join("/")}` })),
     denoise: style.denoise === true,
     zoom_points: style.zooms ?? [],
     ass,
@@ -94,8 +112,9 @@ export async function processExport(id: string): Promise<void> {
     if (!response.ok || !response.body) {
       throw new Error(`render failed (${response.status}): ${(await response.text()).slice(0, 500)}`);
     }
-    const key = `uploads/${id}/export.mp4`;
+    let key = `uploads/${id}/export.mp4`;
     await streamToR2(key, response.body);
+    key = await addBookends(upload, key);
     await db
       .update(uploads)
       .set({ exportKey: key, exportStatus: "done", exportSignature: signature })
@@ -104,6 +123,30 @@ export async function processExport(id: string): Promise<void> {
     console.error(JSON.stringify({ message: "Export failed", id, error: error instanceof Error ? error.message : String(error) }));
     await db.update(uploads).set({ exportStatus: "failed" }).where(eq(uploads.id, id));
   }
+}
+
+/** Joins the video's chosen intro and outro (other ready videos in the same workspace) around its render. */
+async function addBookends(upload: Upload, mainKey: string): Promise<string> {
+  const style = parseStyle(upload.style);
+  const clipKey = async (clipId: string | undefined) => {
+    if (!clipId || clipId === upload.id) return null;
+    const clip = await getUploadById(clipId);
+    if (!clip || clip.workspaceId !== upload.workspaceId || clip.status !== "ready" || clip.mediaType !== "video" || clip.deletedAt) return null;
+    // Its own layout when that render is current; otherwise the recording as captured (never a nested render).
+    return clip.exportStatus === "done" && clip.exportKey && clip.exportSignature === exportSignature(clip) ? clip.exportKey : clip.r2Key;
+  };
+  const intro = await clipKey(style.intro);
+  const outro = await clipKey(style.outro);
+  if (!intro && !outro) return mainKey;
+  const inputs = [intro, mainKey, outro].filter((key): key is string => Boolean(key)).map((key) => `http://media.internal/${key}`);
+  const container = getContainer(env.EXPORTER, `${upload.id}:bookends:${crypto.randomUUID()}`);
+  const response = await container.fetch(
+    new Request("http://exporter/concat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ inputs, size_from: intro ? 1 : 0 }) }),
+  );
+  if (!response.ok || !response.body) throw new Error(`intro/outro join failed (${response.status}): ${(await response.text()).slice(0, 500)}`);
+  const key = `uploads/${upload.id}/export-full.mp4`;
+  await streamToR2(key, response.body);
+  return key;
 }
 
 const even = (value: number) => Math.max(2, Math.round(value / 2) * 2);

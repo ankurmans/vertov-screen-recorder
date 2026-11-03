@@ -127,6 +127,39 @@ export function OverlayLayer({
             </a>
           ) : null
         }
+        if (overlay.type === "blur" || overlay.type === "spotlight" || overlay.type === "image") {
+          const style: React.CSSProperties = {
+            position: "absolute",
+            left: `${overlay.x}%`,
+            top: `${overlay.y}%`,
+            width: `${overlay.w}%`,
+            pointerEvents: editable,
+            cursor: edit ? "move" : undefined,
+            opacity: fade,
+          }
+          if (overlay.type === "blur") {
+            // Redaction: whatever is under the region is blurred past reading.
+            Object.assign(style, { height: `${overlay.h}%`, backdropFilter: "blur(1.4cqw)", WebkitBackdropFilter: "blur(1.4cqw)", background: "rgb(255 255 255 / .08)", borderRadius: "0.6cqw", boxShadow: ring(overlay) })
+          } else if (overlay.type === "spotlight") {
+            // Everything outside the region dims; the huge spread is clipped by the layer.
+            Object.assign(style, { height: `${overlay.h}%`, borderRadius: "1cqw", boxShadow: `0 0 0 300cqw rgb(0 0 0 / ${outOfRange ? 0.2 : 0.55})${ring(overlay) ? `, ${ring(overlay)}` : ""}` })
+          } else {
+            Object.assign(style, { boxShadow: ring(overlay) })
+          }
+          return (
+            <div key={overlay.id} onPointerDown={(event) => drag(event, overlay, (dx, dy) => ({ x: overlay.x + dx, y: overlay.y + dy }))} style={style}>
+              {overlay.type === "image" && <img src={overlay.src} alt="" draggable={false} style={{ display: "block", width: "100%", height: "auto", pointerEvents: "none" }} />}
+              {selected(overlay) && (
+                <span
+                  onPointerDown={(event) =>
+                    drag(event, overlay, (dx, dy) => (overlay.type === "image" ? { w: Math.max(3, overlay.w + dx) } : { w: Math.max(2, overlay.w + dx), h: Math.max(2, overlay.h + dy) }))
+                  }
+                  style={{ position: "absolute", right: -7, bottom: -7, width: 14, height: 14, borderRadius: 99, background: "#2563eb", border: "2px solid #fff", cursor: "nwse-resize" }}
+                />
+              )}
+            </div>
+          )
+        }
         if (overlay.type === "box") {
           return (
             <div

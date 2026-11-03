@@ -7,7 +7,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { env } from "cloudflare:workers"
 import { denyUnlessViewable } from "@/lib/access.server"
 import { optionsResponse, withCors } from "@/lib/api.server"
-import { parseTranscript, transcriptToVtt } from "@/lib/transcript"
+import { parseTranscript, transcriptToVtt, vttToSrt } from "@/lib/transcript"
 import { getUploadById } from "@/lib/uploads.server"
 
 /** WebVTT captions generated from the stored transcript sidecar. */
@@ -23,12 +23,24 @@ export const Route = createFileRoute("/api/captions/$id")({
         }
 
         const query = new URL(request.url).searchParams
+        // ?format=srt downloads SubRip instead of serving WebVTT to the player.
+        const srt = query.get("format") === "srt"
+        const name = (upload.title?.trim() || upload.id).replace(/[^\w .-]+/g, "").slice(0, 80) || upload.id
+        const respond = (vtt: string, cache: string, suffix = "") =>
+          withCors(
+            new Response(srt ? vttToSrt(vtt) : vtt, {
+              headers: srt
+                ? { "content-type": "application/x-subrip; charset=utf-8", "content-disposition": `attachment; filename="${name}${suffix}.srt"`, "cache-control": "private, max-age=60" }
+                : { "content-type": "text/vtt; charset=utf-8", "cache-control": cache },
+            }),
+          )
         if (query.has("languages")) return json({ languages: await translatedLanguages(upload) })
         const language = query.get("lang")
         if (language) {
           if (!(Object.hasOwn(CAPTION_LANGUAGES, language))) return json({ error: "Unknown language" }, 400)
           const translated = await captionTranslation(upload, language)
-          return withCors(new Response(translated?.body ?? "Not generated yet", { status: translated ? 200 : 404, headers: { "content-type": "text/vtt; charset=utf-8", "cache-control": "private, max-age=60" } }))
+          if (!translated) return withCors(new Response("Not generated yet", { status: 404 }))
+          return respond(await translated.text(), "private, max-age=60", `.${language}`)
         }
         const object = await env.BUCKET.get(upload.transcriptKey)
         if (!object) {
@@ -40,14 +52,7 @@ export const Route = createFileRoute("/api/captions/$id")({
           return withCors(new Response("Not found", { status: 404 }))
         }
 
-        return withCors(
-          new Response(transcriptToVtt(transcript), {
-            headers: {
-              "content-type": "text/vtt; charset=utf-8",
-              "cache-control": "public, max-age=31536000, immutable",
-            },
-          }),
-        )
+        return respond(transcriptToVtt(transcript), "public, max-age=31536000, immutable")
       },
       POST: ({ request, params }) => userApi(request, async (user) => {
         const upload = await ownedUpload(params.id, user)

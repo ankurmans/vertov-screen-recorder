@@ -1,10 +1,11 @@
 /**
- * Annotations drawn over the video at playback: text, boxes, arrows and clickable links with a time range.
+ * Annotations drawn over the video at playback: text, boxes, arrows, clickable links, blurred and
+ * spotlit regions, and images, each with a time range.
  * Positions are percent of the stage, so they stay put at any player size. Stored as JSON on the
  * upload; the original video is never touched.
  */
 
-export type OverlayType = "text" | "box" | "arrow" | "link"
+export type OverlayType = "text" | "box" | "arrow" | "link" | "blur" | "spotlight" | "image"
 
 export interface Overlay {
   id: string
@@ -15,7 +16,7 @@ export interface Overlay {
   /** Percent of the stage width and height. Text anchors at its top-left. */
   x: number
   y: number
-  /** Box size in percent. */
+  /** Box size in percent (blur, spotlight and box; image uses `w` and keeps its aspect). */
   w: number
   h: number
   /** Arrow tail is (x, y); its head is (x2, y2). */
@@ -27,12 +28,17 @@ export interface Overlay {
   color: string
   /** Text size in percent of the stage width. */
   size: number
+  /** Image overlays: the uploaded file's path, see IMAGE_PATH. */
+  src: string
 }
+
+/** Overlay images are stored per video and served (behind the video's own access rules) from here. */
+export const IMAGE_PATH = /^\/api\/overlay-image\/[a-f0-9]{8}\/[a-f0-9]{16}\.(png|jpg|webp)$/
 
 export const OVERLAY_COLORS = ["#ef4444", "#f59e0b", "#22c55e", "#3b82f6", "#ffffff", "#111111"] as const
 export const MAX_OVERLAYS = 100
 
-const TYPES: ReadonlyArray<OverlayType> = ["text", "box", "arrow", "link"]
+const TYPES: ReadonlyArray<OverlayType> = ["text", "box", "arrow", "link", "blur", "spotlight", "image"]
 
 /** Only web links; anything else (javascript:, data:) is dropped. */
 export function safeUrl(value: unknown): string {
@@ -66,6 +72,8 @@ export function parseOverlays(raw: unknown): Array<Overlay> {
     const input = item as Record<string, unknown>
     const type = TYPES.find((candidate) => candidate === input.type)
     if (!type) continue
+    const src = typeof input.src === "string" && IMAGE_PATH.test(input.src) ? input.src : ""
+    if (type === "image" && !src) continue
     const start = num(input.start, 0, 60 * 60 * 6, 0)
     result.push({
       id: typeof input.id === "string" && input.id.length <= 40 ? input.id : crypto.randomUUID(),
@@ -82,12 +90,13 @@ export function parseOverlays(raw: unknown): Array<Overlay> {
       url: safeUrl(input.url),
       color: typeof input.color === "string" && /^#[0-9a-f]{6}$/i.test(input.color) ? input.color : OVERLAY_COLORS[0],
       size: num(input.size, 1, 12, 3.2),
+      src,
     })
   }
   return result
 }
 
-export function newOverlay(type: OverlayType, at: number): Overlay {
+export function newOverlay(type: OverlayType, at: number, src = ""): Overlay {
   return {
     id: crypto.randomUUID(),
     type,
@@ -95,7 +104,7 @@ export function newOverlay(type: OverlayType, at: number): Overlay {
     end: Math.round((at + 4) * 10) / 10,
     x: type === "arrow" ? 30 : 32,
     y: type === "arrow" ? 30 : type === "text" || type === "link" ? 40 : 30,
-    w: 26,
+    w: type === "image" ? 20 : 26,
     h: 18,
     x2: 52,
     y2: 52,
@@ -103,6 +112,7 @@ export function newOverlay(type: OverlayType, at: number): Overlay {
     url: "",
     color: OVERLAY_COLORS[0],
     size: 3.6,
+    src,
   }
 }
 

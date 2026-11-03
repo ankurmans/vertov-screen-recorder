@@ -2,6 +2,10 @@ import type { ReactNode } from "react"
 
 const drawings = {
   download: <><path d="M12 3v12m-4-4 4 4 4-4M4 16v4h16v-4" /></>,
+  search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></>,
+  playlist: <><path d="M3 6h12M3 12h12M3 18h8" /><path d="m16 15 5 3-5 3z" strokeLinejoin="round" /></>,
+  blur: <><rect x="3" y="3" width="18" height="18" rx="3" strokeDasharray="3 3" /><path d="M8 9h1M12 9h1M16 9h0M8 13h0M12 13h1M16 13h1M8 17h1M12 17h0" /></>,
+  spotlight: <><rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="12" cy="12" r="4" /></>,
   mail: <><rect x="3" y="5" width="18" height="14" rx="3" /><path d="m4 7 8 6 8-6" /></>,
   image: <><rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="8" cy="8" r="1.5" /><path d="m3 17 6-6 4 4 3-3 5 5" /></>,
   film: <><rect x="3" y="3" width="18" height="18" rx="3" /><path d="M7 3v18M17 3v18M3 8h4M3 16h4M17 8h4M17 16h4" /><path d="m10 9 5 3-5 3z" strokeLinejoin="round" /></>,

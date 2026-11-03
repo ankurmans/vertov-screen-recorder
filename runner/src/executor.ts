@@ -56,20 +56,34 @@ export interface ExecuteArgs {
   headed?: boolean
 }
 
-// A visible pointer for the recording: headless Chrome does not draw the real cursor.
-const CURSOR_SCRIPT = `(() => {
+// A visible pointer for the recording: headless Chrome does not draw the real cursor. A cartoon pointing hand (original artwork) with a click ripple.
+const HAND_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="50" height="56" viewBox="-4 0 108 120" fill="#fff" stroke="#111" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round"><g transform="rotate(-8 50 60)"><path d="M25 60V16A9.5 9.5 0 0 1 44 16V41A8 8 0 0 1 60 41A7.5 7.5 0 0 1 75 45A6.5 6.5 0 0 1 87 53C89 67 89 82 83 92L78 99H39C35 93 30 89 25 85C17 81 9 75 7 69C4 61 11 55 18 59C22 61 25 64 25 66Z"/><path d="M60 41L59.5 50M75 45L74.5 53" fill="none" stroke-width="4.5"/><path d="M52 66Q51 76 52 84M62 66Q61.5 76 62.5 85M72 66Q71.5 75 72.5 83" fill="none" stroke-width="5"/><rect x="37" y="96" width="44" height="14" rx="7"/></g></svg>'
+
+function cursorScript(): string {
+  const image = `data:image/svg+xml;base64,${Buffer.from(HAND_SVG).toString("base64")}`
+  // The fingertip is at (14px, 3px) in the 50px icon; offset the box so it sits on the pointer.
+  const style = `position:fixed;left:-200px;top:-200px;width:50px;height:56px;margin:-3px 0 0 -14px;background:url(${image}) center/contain no-repeat;pointer-events:none;z-index:2147483647;filter:drop-shadow(0 2px 3px rgba(0,0,0,.3));transition:transform .08s ease-out;transform-origin:14px 3px`
+  return `(() => {
   const install = () => {
     if (document.getElementById('__vertov_cursor')) return
     const dot = document.createElement('div')
     dot.id = '__vertov_cursor'
-    dot.style.cssText = 'position:fixed;left:0;top:0;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;background:rgba(220,38,38,.85);border:2px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.35);pointer-events:none;z-index:2147483647;transition:transform .08s ease-out'
+    dot.style.cssText = ${JSON.stringify(style)}
     document.documentElement.appendChild(dot)
+    const ripple = (x, y) => {
+      const ring = document.createElement('div')
+      ring.style.cssText = 'position:fixed;left:' + x + 'px;top:' + y + 'px;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;border:3px solid rgba(37,99,235,.9);pointer-events:none;z-index:2147483646;transition:transform .45s ease-out,opacity .45s ease-out'
+      document.documentElement.appendChild(ring)
+      requestAnimationFrame(() => { ring.style.transform = 'scale(4.5)'; ring.style.opacity = '0' })
+      setTimeout(() => ring.remove(), 600)
+    }
     addEventListener('mousemove', (e) => { dot.style.left = e.clientX + 'px'; dot.style.top = e.clientY + 'px' }, true)
-    addEventListener('mousedown', () => { dot.style.transform = 'scale(.7)' }, true)
+    addEventListener('mousedown', (e) => { dot.style.transform = 'scale(.85)'; ripple(e.clientX, e.clientY) }, true)
     addEventListener('mouseup', () => { dot.style.transform = 'scale(1)' }, true)
   }
   if (document.documentElement) install(); else addEventListener('DOMContentLoaded', install)
 })()`
+}
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
@@ -105,7 +119,7 @@ export async function execute(args: ExecuteArgs): Promise<ExecutionResult> {
       deviceScaleFactor: 1,
       recordVideo: { dir: videoDir, size: VIEWPORT },
     })
-    await context.addInitScript(CURSOR_SCRIPT)
+    await context.addInitScript(cursorScript())
     await context.route("**/*", (route) => {
       const request = route.request()
       // Blocked navigations are aborted, so a step that tries to leave the app fails its expectation rather than succeeding elsewhere.

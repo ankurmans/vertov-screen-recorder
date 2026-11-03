@@ -119,6 +119,7 @@ function Library({ data }: { data: LoadedLibrary }) {
   const [creatingSpace, setCreatingSpace] = useState(false)
   const [query, setQuery] = useState(search.q ?? "")
   const [moving, setMoving] = useState<LibraryVideo | null>(null)
+  const [listing, setListing] = useState<LibraryVideo | null>(null)
   const [combining, setCombining] = useState(false)
   const [picked, setPicked] = useState<Array<string>>([])
   const [combineBusy, setCombineBusy] = useState(false)
@@ -220,10 +221,11 @@ function Library({ data }: { data: LoadedLibrary }) {
   return (
     <main className="library-shell min-h-dvh">
       <SaveAccountBanner google={googleEnabled} />
-      <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-neutral-200 bg-white/85 px-4 backdrop-blur">
+      <header className="sticky top-0 z-20 border-b border-neutral-200 bg-white/85 backdrop-blur">
+        <div className="mx-auto flex h-14 max-w-[1480px] items-center gap-3 px-4 lg:px-8">
         <a href="/app" aria-label="Vertov home"><BrandMark size={28} /></a>
         <WorkspaceSwitcher current={workspace.id} name={workspace.name} memberships={memberships} />
-        <label className="relative ml-auto hidden max-w-sm flex-1 sm:block">
+        <label className="relative ml-2 hidden max-w-md flex-1 sm:block">
           <MagnifyingGlassIcon size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-neutral-400" />
           <input
             value={query}
@@ -234,7 +236,7 @@ function Library({ data }: { data: LoadedLibrary }) {
           />
         </label>
         <CommandPaletteButton />
-        <div className="ml-auto flex shrink-0 items-center gap-2 sm:ml-0">
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           <button
             type="button"
             onClick={() => setAdding(true)}
@@ -257,6 +259,7 @@ function Library({ data }: { data: LoadedLibrary }) {
           </a>
           <AccountMenu name={user.name} avatar={user.avatar} />
         </div>
+        </div>
       </header>
 
       {requesting && <RequestDialog onClose={() => setRequesting(false)} />}
@@ -265,6 +268,7 @@ function Library({ data }: { data: LoadedLibrary }) {
         setCreatingSpace(false)
         void navigate({ search: { view: "space", space: id } })
       }} />}
+      {listing && <AddToPlaylistDialog video={listing} onClose={() => setListing(null)} />}
       {moving && (
         <MoveDialog
           video={moving}
@@ -291,6 +295,7 @@ function Library({ data }: { data: LoadedLibrary }) {
               <NavLink active={view.kind === "archive"} icon={<ArchiveIcon size={16} />} onClick={() => void navigate({ search: { view: "archive" } })}>
                 Archive
               </NavLink>
+              <a href="/playlists" className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-neutral-600 hover:bg-neutral-200/60"><VertovIcon name="playlist" size={16} /> Playlists</a>
               {canManage(role) && <a href="/analytics" className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-neutral-600 hover:bg-neutral-200/60"><ChartBarIcon size={16} /> Analytics</a>}
               {canManage(role) && <a href="/tutorials" className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-neutral-600 hover:bg-neutral-200/60"><VertovIcon name="tutorial" size={16} /> Tutorials</a>}
             </div>
@@ -453,6 +458,7 @@ function Library({ data }: { data: LoadedLibrary }) {
                   onDeleted={() => setVideos((items) => items.filter((item) => item.id !== video.id))}
                   onPatch={(changes, remove) => void patchVideo(video, changes, remove)}
                   onMove={() => setMoving(video)}
+                  onAddToPlaylist={() => setListing(video)}
                   pick={combining ? { index: picked.indexOf(video.id), disabled: video.status !== "ready" || Boolean(video.deletedAt) } : null}
                   onTogglePick={() => togglePick(video.id)}
                 />
@@ -639,6 +645,79 @@ function EmptyState({ view, spaceId, onUpload, onRequest, onBrowse }: { view: Li
   return <div className="library-empty"><FilmStripIcon size={36} className="mb-4 text-neutral-400" /><h2 className="text-xl font-semibold tracking-tight text-neutral-900">{title}</h2><p className="mt-2 max-w-sm text-sm leading-relaxed text-neutral-500">{detail}</p><button type="button" onClick={onBrowse} className="mt-5 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-800 hover:bg-neutral-50">Back to my videos</button></div>
 }
 
+function AddToPlaylistDialog({ video, onClose }: { video: LibraryVideo; onClose: () => void }) {
+  const [playlists, setPlaylists] = useState<Array<{ id: string; title: string; count: number }> | null>(null)
+  const [added, setAdded] = useState<Set<string>>(new Set())
+  const [title, setTitle] = useState("")
+  const [error, setError] = useState("")
+  useEffect(() => {
+    void fetch("/api/playlists")
+      .then((response) => response.json() as Promise<{ playlists?: Array<{ id: string; title: string; count: number }> }>)
+      .then((body) => setPlaylists(body.playlists ?? []), () => setPlaylists([]))
+  }, [])
+
+  async function add(playlistId: string) {
+    const response = await fetch(`/api/playlists/${playlistId}/items`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ uploadId: video.id }) }).catch(() => null)
+    if (response?.ok) return setAdded((current) => new Set(current).add(playlistId))
+    const body = (await response?.json().catch(() => null)) as { error?: string } | null
+    setError(body?.error ?? "Couldn't add it. Try again.")
+  }
+
+  async function createAndAdd(event: React.FormEvent) {
+    event.preventDefault()
+    if (!title.trim()) return
+    const response = await fetch("/api/playlists", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ title }) }).catch(() => null)
+    const body = (await response?.json().catch(() => null)) as { playlist?: { id: string; title: string; count: number }; error?: string } | null
+    if (!body?.playlist) return setError(body?.error ?? "Couldn't create the playlist")
+    const created = body.playlist
+    setPlaylists((current) => [created, ...(current ?? [])])
+    setTitle("")
+    await add(created.id)
+  }
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-neutral-950/40 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-labelledby="playlist-title" className="pop-in w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl" onClick={(event) => event.stopPropagation()}>
+        <h2 id="playlist-title" className="text-lg font-semibold text-neutral-900">
+          Add “{video.title || "Untitled video"}” to a playlist
+        </h2>
+        <ul className="mt-3 max-h-64 space-y-1 overflow-y-auto">
+          {playlists === null && <li className="h-9 animate-pulse rounded-lg bg-neutral-100" />}
+          {playlists?.length === 0 && <li className="text-sm text-neutral-500">No playlists yet. Name one below.</li>}
+          {playlists?.map((playlist) => (
+            <li key={playlist.id} className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-neutral-50">
+              <VertovIcon name="playlist" size={16} />
+              <span className="min-w-0 flex-1 truncate text-sm">{playlist.title}</span>
+              {added.has(playlist.id) ? (
+                <span className="text-xs font-medium text-emerald-700">Added</span>
+              ) : (
+                <button type="button" onClick={() => void add(playlist.id)} className="rounded-md border border-neutral-300 px-2 py-1 text-xs font-medium text-neutral-800 hover:bg-neutral-100">
+                  Add
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+        <form onSubmit={(event) => void createAndAdd(event)} className="mt-3 flex gap-2">
+          <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} placeholder="New playlist" aria-label="New playlist name" className="min-w-0 flex-1 rounded-lg border border-neutral-300 px-3 py-2 text-sm" />
+          <button type="submit" disabled={!title.trim()} className="rounded-lg bg-neutral-900 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40">
+            Create
+          </button>
+        </form>
+        {error && <p role="alert" className="mt-2 text-sm text-red-600">{error}</p>}
+        <div className="mt-4 flex justify-between gap-2">
+          <a href="/playlists" className="rounded-lg px-2 py-2 text-sm text-neutral-600 hover:underline">
+            Manage playlists
+          </a>
+          <button type="button" onClick={onClose} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-semibold text-white">
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function MoveDialog({
   video,
   spaces,
@@ -722,6 +801,7 @@ function VideoCard({
   onDeleted,
   onPatch,
   onMove,
+  onAddToPlaylist,
   pick,
   onTogglePick,
 }: {
@@ -732,6 +812,7 @@ function VideoCard({
   onDeleted: () => void
   onPatch: (changes: Record<string, unknown>, remove: boolean) => void
   onMove: () => void
+  onAddToPlaylist: () => void
   /** Set while combining: this card's place in the pick order (-1 when not picked). */
   pick: { index: number; disabled: boolean } | null
   onTogglePick: () => void
@@ -866,6 +947,9 @@ function VideoCard({
                   <a href={`/${video.id}?panel=insights`} className={item}>View analytics</a>
                   <button type="button" className={item} onClick={() => (setMenu(false), onMove())}>
                     Move…
+                  </button>
+                  <button type="button" className={item} onClick={() => (setMenu(false), onAddToPlaylist())}>
+                    Add to playlist…
                   </button>
                   <button type="button" className={item} onClick={() => (setMenu(false), onPatch({ archived: !video.archivedAt }, true))}>
                     {video.archivedAt ? "Unarchive" : "Archive"}

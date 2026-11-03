@@ -24,6 +24,7 @@ const updateSchema = z.object({
   expiresAt: z.iso.datetime().nullable().optional(),
   downloadsEnabled: z.boolean().optional(),
   requireEmail: z.boolean().optional(),
+  searchIndexing: z.boolean().optional(),
   cuts: z.array(z.tuple([z.number().finite(), z.number().finite()])).max(2000).optional(),
   visibility: z.enum(["link", "workspace"]).optional(),
   overlays: z.array(z.record(z.string(), z.unknown())).max(MAX_OVERLAYS).optional(),
@@ -59,6 +60,7 @@ export const Route = createFileRoute("/api/recordings/$id")({
           }
           if (input.downloadsEnabled !== undefined) changes.downloadsEnabled = input.downloadsEnabled;
           if (input.requireEmail !== undefined) changes.requireEmail = input.requireEmail;
+          if (input.searchIndexing !== undefined) changes.searchIndexing = input.searchIndexing;
           if (input.expiresAt !== undefined) changes.expiresAt = input.expiresAt;
           if (input.password !== undefined) {
             changes.passwordHash = input.password ? await hashPassword(input.password) : null;

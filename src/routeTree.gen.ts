@@ -10,10 +10,12 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TutorialsRouteImport } from './routes/tutorials'
+import { Route as SitemapVideosDotxmlRouteImport } from './routes/sitemap-videos[.]xml'
 import { Route as SigninRouteImport } from './routes/signin'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RecordRouteImport } from './routes/record'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as PlaylistsRouteImport } from './routes/playlists'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as ConnectExtensionRouteImport } from './routes/connect-extension'
 import { Route as AppRouteImport } from './routes/app'
@@ -21,6 +23,7 @@ import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IdRouteImport } from './routes/$id'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RequestIdRouteImport } from './routes/request.$id'
+import { Route as PIdRouteImport } from './routes/p.$id'
 import { Route as JoinTokenRouteImport } from './routes/join.$token'
 import { Route as EmbedIdRouteImport } from './routes/embed/$id'
 import { Route as DocsApiRouteImport } from './routes/docs.api'
@@ -33,6 +36,7 @@ import { Route as ApiSetupRouteImport } from './routes/api/setup'
 import { Route as ApiRequestsRouteImport } from './routes/api/requests'
 import { Route as ApiRegisterRouteImport } from './routes/api/register'
 import { Route as ApiRecordingsRouteImport } from './routes/api/recordings'
+import { Route as ApiPlaylistsRouteImport } from './routes/api/playlists'
 import { Route as ApiPingRouteImport } from './routes/api/ping'
 import { Route as ApiOembedRouteImport } from './routes/api/oembed'
 import { Route as ApiNotificationsRouteImport } from './routes/api/notifications'
@@ -67,7 +71,9 @@ import { Route as ApiRecordingsIdRouteImport } from './routes/api/recordings.$id
 import { Route as ApiReactionsIdRouteImport } from './routes/api/reactions.$id'
 import { Route as ApiPromptIdRouteImport } from './routes/api/prompt.$id'
 import { Route as ApiProgressIdRouteImport } from './routes/api/progress.$id'
+import { Route as ApiProfileAvatarRouteImport } from './routes/api/profile.avatar'
 import { Route as ApiPosterIdRouteImport } from './routes/api/poster.$id'
+import { Route as ApiPlaylistsIdRouteImport } from './routes/api/playlists.$id'
 import { Route as ApiMediaIdRouteImport } from './routes/api/media.$id'
 import { Route as ApiLiveIdRouteImport } from './routes/api/live.$id'
 import { Route as ApiLikesIdRouteImport } from './routes/api/likes.$id'
@@ -83,6 +89,7 @@ import { Route as ApiCommentsIdRouteImport } from './routes/api/comments.$id'
 import { Route as ApiCaptionsIdRouteImport } from './routes/api/captions.$id'
 import { Route as ApiCameraIdRouteImport } from './routes/api/camera.$id'
 import { Route as ApiBrandWorkspaceIdRouteImport } from './routes/api/brand.$workspaceId'
+import { Route as ApiAvatarUserIdRouteImport } from './routes/api/avatar.$userId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiAssetsIdRouteImport } from './routes/api/assets.$id'
 import { Route as ApiAiIdRouteImport } from './routes/api/ai.$id'
@@ -98,9 +105,12 @@ import { Route as ApiUploadMultipartIdRouteImport } from './routes/api/upload.mu
 import { Route as ApiRequestsIdSubmitRouteImport } from './routes/api/requests.$id.submit'
 import { Route as ApiRecordingsIdSidecarRouteImport } from './routes/api/recordings.$id.sidecar'
 import { Route as ApiRecordingsIdPartsRouteImport } from './routes/api/recordings.$id.parts'
+import { Route as ApiRecordingsIdOverlayImageRouteImport } from './routes/api/recordings.$id.overlay-image'
 import { Route as ApiRecordingsIdLiveRouteImport } from './routes/api/recordings.$id.live'
 import { Route as ApiRecordingsIdExportRouteImport } from './routes/api/recordings.$id.export'
 import { Route as ApiRecordingsIdCompleteRouteImport } from './routes/api/recordings.$id.complete'
+import { Route as ApiPlaylistsIdItemsRouteImport } from './routes/api/playlists.$id.items'
+import { Route as ApiOverlayImageUploadIdNameRouteImport } from './routes/api/overlay-image.$uploadId.$name'
 import { Route as ApiLiveIdNRouteImport } from './routes/api/live.$id.$n'
 import { Route as ApiAdminExportIdRouteImport } from './routes/api/admin/export.$id'
 import { Route as ApiV1TutorialsJobsIdRouteImport } from './routes/api/v1.tutorials.jobs.$id'
@@ -112,6 +122,11 @@ import { Route as ApiV1TutorialsJobsIdCancelRouteImport } from './routes/api/v1.
 const TutorialsRoute = TutorialsRouteImport.update({
   id: '/tutorials',
   path: '/tutorials',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapVideosDotxmlRoute = SitemapVideosDotxmlRouteImport.update({
+  id: '/sitemap-videos.xml',
+  path: '/sitemap-videos.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SigninRoute = SigninRouteImport.update({
@@ -132,6 +147,11 @@ const RecordRoute = RecordRouteImport.update({
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlaylistsRoute = PlaylistsRouteImport.update({
+  id: '/playlists',
+  path: '/playlists',
   getParentRoute: () => rootRouteImport,
 } as any)
 const McpRoute = McpRouteImport.update({
@@ -167,6 +187,11 @@ const IndexRoute = IndexRouteImport.update({
 const RequestIdRoute = RequestIdRouteImport.update({
   id: '/request/$id',
   path: '/request/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PIdRoute = PIdRouteImport.update({
+  id: '/p/$id',
+  path: '/p/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JoinTokenRoute = JoinTokenRouteImport.update({
@@ -227,6 +252,11 @@ const ApiRegisterRoute = ApiRegisterRouteImport.update({
 const ApiRecordingsRoute = ApiRecordingsRouteImport.update({
   id: '/api/recordings',
   path: '/api/recordings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPlaylistsRoute = ApiPlaylistsRouteImport.update({
+  id: '/api/playlists',
+  path: '/api/playlists',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPingRoute = ApiPingRouteImport.update({
@@ -400,10 +430,20 @@ const ApiProgressIdRoute = ApiProgressIdRouteImport.update({
   path: '/api/progress/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiProfileAvatarRoute = ApiProfileAvatarRouteImport.update({
+  id: '/api/profile/avatar',
+  path: '/api/profile/avatar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPosterIdRoute = ApiPosterIdRouteImport.update({
   id: '/api/poster/$id',
   path: '/api/poster/$id',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPlaylistsIdRoute = ApiPlaylistsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiPlaylistsRoute,
 } as any)
 const ApiMediaIdRoute = ApiMediaIdRouteImport.update({
   id: '/api/media/$id',
@@ -478,6 +518,11 @@ const ApiCameraIdRoute = ApiCameraIdRouteImport.update({
 const ApiBrandWorkspaceIdRoute = ApiBrandWorkspaceIdRouteImport.update({
   id: '/api/brand/$workspaceId',
   path: '/api/brand/$workspaceId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAvatarUserIdRoute = ApiAvatarUserIdRouteImport.update({
+  id: '/api/avatar/$userId',
+  path: '/api/avatar/$userId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
@@ -556,6 +601,12 @@ const ApiRecordingsIdPartsRoute = ApiRecordingsIdPartsRouteImport.update({
   path: '/parts',
   getParentRoute: () => ApiRecordingsIdRoute,
 } as any)
+const ApiRecordingsIdOverlayImageRoute =
+  ApiRecordingsIdOverlayImageRouteImport.update({
+    id: '/overlay-image',
+    path: '/overlay-image',
+    getParentRoute: () => ApiRecordingsIdRoute,
+  } as any)
 const ApiRecordingsIdLiveRoute = ApiRecordingsIdLiveRouteImport.update({
   id: '/live',
   path: '/live',
@@ -571,6 +622,17 @@ const ApiRecordingsIdCompleteRoute = ApiRecordingsIdCompleteRouteImport.update({
   path: '/complete',
   getParentRoute: () => ApiRecordingsIdRoute,
 } as any)
+const ApiPlaylistsIdItemsRoute = ApiPlaylistsIdItemsRouteImport.update({
+  id: '/items',
+  path: '/items',
+  getParentRoute: () => ApiPlaylistsIdRoute,
+} as any)
+const ApiOverlayImageUploadIdNameRoute =
+  ApiOverlayImageUploadIdNameRouteImport.update({
+    id: '/api/overlay-image/$uploadId/$name',
+    path: '/api/overlay-image/$uploadId/$name',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiLiveIdNRoute = ApiLiveIdNRouteImport.update({
   id: '/$n',
   path: '/$n',
@@ -618,10 +680,12 @@ export interface FileRoutesByFullPath {
   '/app': typeof AppRoute
   '/connect-extension': typeof ConnectExtensionRoute
   '/mcp': typeof McpRoute
+  '/playlists': typeof PlaylistsRoute
   '/privacy': typeof PrivacyRoute
   '/record': typeof RecordRoute
   '/settings': typeof SettingsRoute
   '/signin': typeof SigninRoute
+  '/sitemap-videos.xml': typeof SitemapVideosDotxmlRoute
   '/tutorials': typeof TutorialsRoute
   '/api/combine': typeof ApiCombineRoute
   '/api/commands': typeof ApiCommandsRoute
@@ -631,6 +695,7 @@ export interface FileRoutesByFullPath {
   '/api/notifications': typeof ApiNotificationsRoute
   '/api/oembed': typeof ApiOembedRoute
   '/api/ping': typeof ApiPingRoute
+  '/api/playlists': typeof ApiPlaylistsRouteWithChildren
   '/api/recordings': typeof ApiRecordingsRouteWithChildren
   '/api/register': typeof ApiRegisterRoute
   '/api/requests': typeof ApiRequestsRouteWithChildren
@@ -643,10 +708,12 @@ export interface FileRoutesByFullPath {
   '/docs/api': typeof DocsApiRoute
   '/embed/$id': typeof EmbedIdRoute
   '/join/$token': typeof JoinTokenRoute
+  '/p/$id': typeof PIdRoute
   '/request/$id': typeof RequestIdRoute
   '/api/ai/$id': typeof ApiAiIdRoute
   '/api/assets/$id': typeof ApiAssetsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/avatar/$userId': typeof ApiAvatarUserIdRoute
   '/api/brand/$workspaceId': typeof ApiBrandWorkspaceIdRoute
   '/api/camera/$id': typeof ApiCameraIdRoute
   '/api/captions/$id': typeof ApiCaptionsIdRoute
@@ -662,7 +729,9 @@ export interface FileRoutesByFullPath {
   '/api/likes/$id': typeof ApiLikesIdRoute
   '/api/live/$id': typeof ApiLiveIdRouteWithChildren
   '/api/media/$id': typeof ApiMediaIdRoute
+  '/api/playlists/$id': typeof ApiPlaylistsIdRouteWithChildren
   '/api/poster/$id': typeof ApiPosterIdRoute
+  '/api/profile/avatar': typeof ApiProfileAvatarRoute
   '/api/progress/$id': typeof ApiProgressIdRoute
   '/api/prompt/$id': typeof ApiPromptIdRoute
   '/api/reactions/$id': typeof ApiReactionsIdRoute
@@ -691,9 +760,12 @@ export interface FileRoutesByFullPath {
   '/scim/v2/Users': typeof ScimV2UsersRouteWithChildren
   '/api/admin/export/$id': typeof ApiAdminExportIdRoute
   '/api/live/$id/$n': typeof ApiLiveIdNRoute
+  '/api/overlay-image/$uploadId/$name': typeof ApiOverlayImageUploadIdNameRoute
+  '/api/playlists/$id/items': typeof ApiPlaylistsIdItemsRoute
   '/api/recordings/$id/complete': typeof ApiRecordingsIdCompleteRoute
   '/api/recordings/$id/export': typeof ApiRecordingsIdExportRoute
   '/api/recordings/$id/live': typeof ApiRecordingsIdLiveRoute
+  '/api/recordings/$id/overlay-image': typeof ApiRecordingsIdOverlayImageRoute
   '/api/recordings/$id/parts': typeof ApiRecordingsIdPartsRoute
   '/api/recordings/$id/sidecar': typeof ApiRecordingsIdSidecarRoute
   '/api/requests/$id/submit': typeof ApiRequestsIdSubmitRoute
@@ -719,10 +791,12 @@ export interface FileRoutesByTo {
   '/app': typeof AppRoute
   '/connect-extension': typeof ConnectExtensionRoute
   '/mcp': typeof McpRoute
+  '/playlists': typeof PlaylistsRoute
   '/privacy': typeof PrivacyRoute
   '/record': typeof RecordRoute
   '/settings': typeof SettingsRoute
   '/signin': typeof SigninRoute
+  '/sitemap-videos.xml': typeof SitemapVideosDotxmlRoute
   '/tutorials': typeof TutorialsRoute
   '/api/combine': typeof ApiCombineRoute
   '/api/commands': typeof ApiCommandsRoute
@@ -732,6 +806,7 @@ export interface FileRoutesByTo {
   '/api/notifications': typeof ApiNotificationsRoute
   '/api/oembed': typeof ApiOembedRoute
   '/api/ping': typeof ApiPingRoute
+  '/api/playlists': typeof ApiPlaylistsRouteWithChildren
   '/api/recordings': typeof ApiRecordingsRouteWithChildren
   '/api/register': typeof ApiRegisterRoute
   '/api/requests': typeof ApiRequestsRouteWithChildren
@@ -744,10 +819,12 @@ export interface FileRoutesByTo {
   '/docs/api': typeof DocsApiRoute
   '/embed/$id': typeof EmbedIdRoute
   '/join/$token': typeof JoinTokenRoute
+  '/p/$id': typeof PIdRoute
   '/request/$id': typeof RequestIdRoute
   '/api/ai/$id': typeof ApiAiIdRoute
   '/api/assets/$id': typeof ApiAssetsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/avatar/$userId': typeof ApiAvatarUserIdRoute
   '/api/brand/$workspaceId': typeof ApiBrandWorkspaceIdRoute
   '/api/camera/$id': typeof ApiCameraIdRoute
   '/api/captions/$id': typeof ApiCaptionsIdRoute
@@ -763,7 +840,9 @@ export interface FileRoutesByTo {
   '/api/likes/$id': typeof ApiLikesIdRoute
   '/api/live/$id': typeof ApiLiveIdRouteWithChildren
   '/api/media/$id': typeof ApiMediaIdRoute
+  '/api/playlists/$id': typeof ApiPlaylistsIdRouteWithChildren
   '/api/poster/$id': typeof ApiPosterIdRoute
+  '/api/profile/avatar': typeof ApiProfileAvatarRoute
   '/api/progress/$id': typeof ApiProgressIdRoute
   '/api/prompt/$id': typeof ApiPromptIdRoute
   '/api/reactions/$id': typeof ApiReactionsIdRoute
@@ -792,9 +871,12 @@ export interface FileRoutesByTo {
   '/scim/v2/Users': typeof ScimV2UsersRouteWithChildren
   '/api/admin/export/$id': typeof ApiAdminExportIdRoute
   '/api/live/$id/$n': typeof ApiLiveIdNRoute
+  '/api/overlay-image/$uploadId/$name': typeof ApiOverlayImageUploadIdNameRoute
+  '/api/playlists/$id/items': typeof ApiPlaylistsIdItemsRoute
   '/api/recordings/$id/complete': typeof ApiRecordingsIdCompleteRoute
   '/api/recordings/$id/export': typeof ApiRecordingsIdExportRoute
   '/api/recordings/$id/live': typeof ApiRecordingsIdLiveRoute
+  '/api/recordings/$id/overlay-image': typeof ApiRecordingsIdOverlayImageRoute
   '/api/recordings/$id/parts': typeof ApiRecordingsIdPartsRoute
   '/api/recordings/$id/sidecar': typeof ApiRecordingsIdSidecarRoute
   '/api/requests/$id/submit': typeof ApiRequestsIdSubmitRoute
@@ -821,10 +903,12 @@ export interface FileRoutesById {
   '/app': typeof AppRoute
   '/connect-extension': typeof ConnectExtensionRoute
   '/mcp': typeof McpRoute
+  '/playlists': typeof PlaylistsRoute
   '/privacy': typeof PrivacyRoute
   '/record': typeof RecordRoute
   '/settings': typeof SettingsRoute
   '/signin': typeof SigninRoute
+  '/sitemap-videos.xml': typeof SitemapVideosDotxmlRoute
   '/tutorials': typeof TutorialsRoute
   '/api/combine': typeof ApiCombineRoute
   '/api/commands': typeof ApiCommandsRoute
@@ -834,6 +918,7 @@ export interface FileRoutesById {
   '/api/notifications': typeof ApiNotificationsRoute
   '/api/oembed': typeof ApiOembedRoute
   '/api/ping': typeof ApiPingRoute
+  '/api/playlists': typeof ApiPlaylistsRouteWithChildren
   '/api/recordings': typeof ApiRecordingsRouteWithChildren
   '/api/register': typeof ApiRegisterRoute
   '/api/requests': typeof ApiRequestsRouteWithChildren
@@ -846,10 +931,12 @@ export interface FileRoutesById {
   '/docs/api': typeof DocsApiRoute
   '/embed/$id': typeof EmbedIdRoute
   '/join/$token': typeof JoinTokenRoute
+  '/p/$id': typeof PIdRoute
   '/request/$id': typeof RequestIdRoute
   '/api/ai/$id': typeof ApiAiIdRoute
   '/api/assets/$id': typeof ApiAssetsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/avatar/$userId': typeof ApiAvatarUserIdRoute
   '/api/brand/$workspaceId': typeof ApiBrandWorkspaceIdRoute
   '/api/camera/$id': typeof ApiCameraIdRoute
   '/api/captions/$id': typeof ApiCaptionsIdRoute
@@ -865,7 +952,9 @@ export interface FileRoutesById {
   '/api/likes/$id': typeof ApiLikesIdRoute
   '/api/live/$id': typeof ApiLiveIdRouteWithChildren
   '/api/media/$id': typeof ApiMediaIdRoute
+  '/api/playlists/$id': typeof ApiPlaylistsIdRouteWithChildren
   '/api/poster/$id': typeof ApiPosterIdRoute
+  '/api/profile/avatar': typeof ApiProfileAvatarRoute
   '/api/progress/$id': typeof ApiProgressIdRoute
   '/api/prompt/$id': typeof ApiPromptIdRoute
   '/api/reactions/$id': typeof ApiReactionsIdRoute
@@ -894,9 +983,12 @@ export interface FileRoutesById {
   '/scim/v2/Users': typeof ScimV2UsersRouteWithChildren
   '/api/admin/export/$id': typeof ApiAdminExportIdRoute
   '/api/live/$id/$n': typeof ApiLiveIdNRoute
+  '/api/overlay-image/$uploadId/$name': typeof ApiOverlayImageUploadIdNameRoute
+  '/api/playlists/$id/items': typeof ApiPlaylistsIdItemsRoute
   '/api/recordings/$id/complete': typeof ApiRecordingsIdCompleteRoute
   '/api/recordings/$id/export': typeof ApiRecordingsIdExportRoute
   '/api/recordings/$id/live': typeof ApiRecordingsIdLiveRoute
+  '/api/recordings/$id/overlay-image': typeof ApiRecordingsIdOverlayImageRoute
   '/api/recordings/$id/parts': typeof ApiRecordingsIdPartsRoute
   '/api/recordings/$id/sidecar': typeof ApiRecordingsIdSidecarRoute
   '/api/requests/$id/submit': typeof ApiRequestsIdSubmitRoute
@@ -924,10 +1016,12 @@ export interface FileRouteTypes {
     | '/app'
     | '/connect-extension'
     | '/mcp'
+    | '/playlists'
     | '/privacy'
     | '/record'
     | '/settings'
     | '/signin'
+    | '/sitemap-videos.xml'
     | '/tutorials'
     | '/api/combine'
     | '/api/commands'
@@ -937,6 +1031,7 @@ export interface FileRouteTypes {
     | '/api/notifications'
     | '/api/oembed'
     | '/api/ping'
+    | '/api/playlists'
     | '/api/recordings'
     | '/api/register'
     | '/api/requests'
@@ -949,10 +1044,12 @@ export interface FileRouteTypes {
     | '/docs/api'
     | '/embed/$id'
     | '/join/$token'
+    | '/p/$id'
     | '/request/$id'
     | '/api/ai/$id'
     | '/api/assets/$id'
     | '/api/auth/$'
+    | '/api/avatar/$userId'
     | '/api/brand/$workspaceId'
     | '/api/camera/$id'
     | '/api/captions/$id'
@@ -968,7 +1065,9 @@ export interface FileRouteTypes {
     | '/api/likes/$id'
     | '/api/live/$id'
     | '/api/media/$id'
+    | '/api/playlists/$id'
     | '/api/poster/$id'
+    | '/api/profile/avatar'
     | '/api/progress/$id'
     | '/api/prompt/$id'
     | '/api/reactions/$id'
@@ -997,9 +1096,12 @@ export interface FileRouteTypes {
     | '/scim/v2/Users'
     | '/api/admin/export/$id'
     | '/api/live/$id/$n'
+    | '/api/overlay-image/$uploadId/$name'
+    | '/api/playlists/$id/items'
     | '/api/recordings/$id/complete'
     | '/api/recordings/$id/export'
     | '/api/recordings/$id/live'
+    | '/api/recordings/$id/overlay-image'
     | '/api/recordings/$id/parts'
     | '/api/recordings/$id/sidecar'
     | '/api/requests/$id/submit'
@@ -1025,10 +1127,12 @@ export interface FileRouteTypes {
     | '/app'
     | '/connect-extension'
     | '/mcp'
+    | '/playlists'
     | '/privacy'
     | '/record'
     | '/settings'
     | '/signin'
+    | '/sitemap-videos.xml'
     | '/tutorials'
     | '/api/combine'
     | '/api/commands'
@@ -1038,6 +1142,7 @@ export interface FileRouteTypes {
     | '/api/notifications'
     | '/api/oembed'
     | '/api/ping'
+    | '/api/playlists'
     | '/api/recordings'
     | '/api/register'
     | '/api/requests'
@@ -1050,10 +1155,12 @@ export interface FileRouteTypes {
     | '/docs/api'
     | '/embed/$id'
     | '/join/$token'
+    | '/p/$id'
     | '/request/$id'
     | '/api/ai/$id'
     | '/api/assets/$id'
     | '/api/auth/$'
+    | '/api/avatar/$userId'
     | '/api/brand/$workspaceId'
     | '/api/camera/$id'
     | '/api/captions/$id'
@@ -1069,7 +1176,9 @@ export interface FileRouteTypes {
     | '/api/likes/$id'
     | '/api/live/$id'
     | '/api/media/$id'
+    | '/api/playlists/$id'
     | '/api/poster/$id'
+    | '/api/profile/avatar'
     | '/api/progress/$id'
     | '/api/prompt/$id'
     | '/api/reactions/$id'
@@ -1098,9 +1207,12 @@ export interface FileRouteTypes {
     | '/scim/v2/Users'
     | '/api/admin/export/$id'
     | '/api/live/$id/$n'
+    | '/api/overlay-image/$uploadId/$name'
+    | '/api/playlists/$id/items'
     | '/api/recordings/$id/complete'
     | '/api/recordings/$id/export'
     | '/api/recordings/$id/live'
+    | '/api/recordings/$id/overlay-image'
     | '/api/recordings/$id/parts'
     | '/api/recordings/$id/sidecar'
     | '/api/requests/$id/submit'
@@ -1126,10 +1238,12 @@ export interface FileRouteTypes {
     | '/app'
     | '/connect-extension'
     | '/mcp'
+    | '/playlists'
     | '/privacy'
     | '/record'
     | '/settings'
     | '/signin'
+    | '/sitemap-videos.xml'
     | '/tutorials'
     | '/api/combine'
     | '/api/commands'
@@ -1139,6 +1253,7 @@ export interface FileRouteTypes {
     | '/api/notifications'
     | '/api/oembed'
     | '/api/ping'
+    | '/api/playlists'
     | '/api/recordings'
     | '/api/register'
     | '/api/requests'
@@ -1151,10 +1266,12 @@ export interface FileRouteTypes {
     | '/docs/api'
     | '/embed/$id'
     | '/join/$token'
+    | '/p/$id'
     | '/request/$id'
     | '/api/ai/$id'
     | '/api/assets/$id'
     | '/api/auth/$'
+    | '/api/avatar/$userId'
     | '/api/brand/$workspaceId'
     | '/api/camera/$id'
     | '/api/captions/$id'
@@ -1170,7 +1287,9 @@ export interface FileRouteTypes {
     | '/api/likes/$id'
     | '/api/live/$id'
     | '/api/media/$id'
+    | '/api/playlists/$id'
     | '/api/poster/$id'
+    | '/api/profile/avatar'
     | '/api/progress/$id'
     | '/api/prompt/$id'
     | '/api/reactions/$id'
@@ -1199,9 +1318,12 @@ export interface FileRouteTypes {
     | '/scim/v2/Users'
     | '/api/admin/export/$id'
     | '/api/live/$id/$n'
+    | '/api/overlay-image/$uploadId/$name'
+    | '/api/playlists/$id/items'
     | '/api/recordings/$id/complete'
     | '/api/recordings/$id/export'
     | '/api/recordings/$id/live'
+    | '/api/recordings/$id/overlay-image'
     | '/api/recordings/$id/parts'
     | '/api/recordings/$id/sidecar'
     | '/api/requests/$id/submit'
@@ -1228,10 +1350,12 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRoute
   ConnectExtensionRoute: typeof ConnectExtensionRoute
   McpRoute: typeof McpRoute
+  PlaylistsRoute: typeof PlaylistsRoute
   PrivacyRoute: typeof PrivacyRoute
   RecordRoute: typeof RecordRoute
   SettingsRoute: typeof SettingsRoute
   SigninRoute: typeof SigninRoute
+  SitemapVideosDotxmlRoute: typeof SitemapVideosDotxmlRoute
   TutorialsRoute: typeof TutorialsRoute
   ApiCombineRoute: typeof ApiCombineRoute
   ApiCommandsRoute: typeof ApiCommandsRoute
@@ -1241,6 +1365,7 @@ export interface RootRouteChildren {
   ApiNotificationsRoute: typeof ApiNotificationsRoute
   ApiOembedRoute: typeof ApiOembedRoute
   ApiPingRoute: typeof ApiPingRoute
+  ApiPlaylistsRoute: typeof ApiPlaylistsRouteWithChildren
   ApiRecordingsRoute: typeof ApiRecordingsRouteWithChildren
   ApiRegisterRoute: typeof ApiRegisterRoute
   ApiRequestsRoute: typeof ApiRequestsRouteWithChildren
@@ -1253,10 +1378,12 @@ export interface RootRouteChildren {
   DocsApiRoute: typeof DocsApiRoute
   EmbedIdRoute: typeof EmbedIdRoute
   JoinTokenRoute: typeof JoinTokenRoute
+  PIdRoute: typeof PIdRoute
   RequestIdRoute: typeof RequestIdRoute
   ApiAiIdRoute: typeof ApiAiIdRoute
   ApiAssetsIdRoute: typeof ApiAssetsIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiAvatarUserIdRoute: typeof ApiAvatarUserIdRoute
   ApiBrandWorkspaceIdRoute: typeof ApiBrandWorkspaceIdRoute
   ApiCameraIdRoute: typeof ApiCameraIdRoute
   ApiCaptionsIdRoute: typeof ApiCaptionsIdRoute
@@ -1272,6 +1399,7 @@ export interface RootRouteChildren {
   ApiLiveIdRoute: typeof ApiLiveIdRouteWithChildren
   ApiMediaIdRoute: typeof ApiMediaIdRoute
   ApiPosterIdRoute: typeof ApiPosterIdRoute
+  ApiProfileAvatarRoute: typeof ApiProfileAvatarRoute
   ApiProgressIdRoute: typeof ApiProgressIdRoute
   ApiPromptIdRoute: typeof ApiPromptIdRoute
   ApiReactionsIdRoute: typeof ApiReactionsIdRoute
@@ -1286,6 +1414,7 @@ export interface RootRouteChildren {
   ScimV2ServiceProviderConfigRoute: typeof ScimV2ServiceProviderConfigRoute
   ScimV2UsersRoute: typeof ScimV2UsersRouteWithChildren
   ApiAdminExportIdRoute: typeof ApiAdminExportIdRoute
+  ApiOverlayImageUploadIdNameRoute: typeof ApiOverlayImageUploadIdNameRoute
   ApiV1TutorialsClaimRoute: typeof ApiV1TutorialsClaimRoute
   ApiV1TutorialsJobsRoute: typeof ApiV1TutorialsJobsRouteWithChildren
   ApiV1TutorialsRecipesRoute: typeof ApiV1TutorialsRecipesRoute
@@ -1298,6 +1427,13 @@ declare module '@tanstack/react-router' {
       path: '/tutorials'
       fullPath: '/tutorials'
       preLoaderRoute: typeof TutorialsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap-videos.xml': {
+      id: '/sitemap-videos.xml'
+      path: '/sitemap-videos.xml'
+      fullPath: '/sitemap-videos.xml'
+      preLoaderRoute: typeof SitemapVideosDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/signin': {
@@ -1326,6 +1462,13 @@ declare module '@tanstack/react-router' {
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/playlists': {
+      id: '/playlists'
+      path: '/playlists'
+      fullPath: '/playlists'
+      preLoaderRoute: typeof PlaylistsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mcp': {
@@ -1375,6 +1518,13 @@ declare module '@tanstack/react-router' {
       path: '/request/$id'
       fullPath: '/request/$id'
       preLoaderRoute: typeof RequestIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/p/$id': {
+      id: '/p/$id'
+      path: '/p/$id'
+      fullPath: '/p/$id'
+      preLoaderRoute: typeof PIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/join/$token': {
@@ -1459,6 +1609,13 @@ declare module '@tanstack/react-router' {
       path: '/api/recordings'
       fullPath: '/api/recordings'
       preLoaderRoute: typeof ApiRecordingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/playlists': {
+      id: '/api/playlists'
+      path: '/api/playlists'
+      fullPath: '/api/playlists'
+      preLoaderRoute: typeof ApiPlaylistsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/ping': {
@@ -1699,12 +1856,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiProgressIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/profile/avatar': {
+      id: '/api/profile/avatar'
+      path: '/api/profile/avatar'
+      fullPath: '/api/profile/avatar'
+      preLoaderRoute: typeof ApiProfileAvatarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/poster/$id': {
       id: '/api/poster/$id'
       path: '/api/poster/$id'
       fullPath: '/api/poster/$id'
       preLoaderRoute: typeof ApiPosterIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/playlists/$id': {
+      id: '/api/playlists/$id'
+      path: '/$id'
+      fullPath: '/api/playlists/$id'
+      preLoaderRoute: typeof ApiPlaylistsIdRouteImport
+      parentRoute: typeof ApiPlaylistsRoute
     }
     '/api/media/$id': {
       id: '/api/media/$id'
@@ -1809,6 +1980,13 @@ declare module '@tanstack/react-router' {
       path: '/api/brand/$workspaceId'
       fullPath: '/api/brand/$workspaceId'
       preLoaderRoute: typeof ApiBrandWorkspaceIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/avatar/$userId': {
+      id: '/api/avatar/$userId'
+      path: '/api/avatar/$userId'
+      fullPath: '/api/avatar/$userId'
+      preLoaderRoute: typeof ApiAvatarUserIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/$': {
@@ -1916,6 +2094,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiRecordingsIdPartsRouteImport
       parentRoute: typeof ApiRecordingsIdRoute
     }
+    '/api/recordings/$id/overlay-image': {
+      id: '/api/recordings/$id/overlay-image'
+      path: '/overlay-image'
+      fullPath: '/api/recordings/$id/overlay-image'
+      preLoaderRoute: typeof ApiRecordingsIdOverlayImageRouteImport
+      parentRoute: typeof ApiRecordingsIdRoute
+    }
     '/api/recordings/$id/live': {
       id: '/api/recordings/$id/live'
       path: '/live'
@@ -1936,6 +2121,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/recordings/$id/complete'
       preLoaderRoute: typeof ApiRecordingsIdCompleteRouteImport
       parentRoute: typeof ApiRecordingsIdRoute
+    }
+    '/api/playlists/$id/items': {
+      id: '/api/playlists/$id/items'
+      path: '/items'
+      fullPath: '/api/playlists/$id/items'
+      preLoaderRoute: typeof ApiPlaylistsIdItemsRouteImport
+      parentRoute: typeof ApiPlaylistsIdRoute
+    }
+    '/api/overlay-image/$uploadId/$name': {
+      id: '/api/overlay-image/$uploadId/$name'
+      path: '/api/overlay-image/$uploadId/$name'
+      fullPath: '/api/overlay-image/$uploadId/$name'
+      preLoaderRoute: typeof ApiOverlayImageUploadIdNameRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/live/$id/$n': {
       id: '/api/live/$id/$n'
@@ -2001,10 +2200,35 @@ const ApiFoldersRouteWithChildren = ApiFoldersRoute._addFileChildren(
   ApiFoldersRouteChildren,
 )
 
+interface ApiPlaylistsIdRouteChildren {
+  ApiPlaylistsIdItemsRoute: typeof ApiPlaylistsIdItemsRoute
+}
+
+const ApiPlaylistsIdRouteChildren: ApiPlaylistsIdRouteChildren = {
+  ApiPlaylistsIdItemsRoute: ApiPlaylistsIdItemsRoute,
+}
+
+const ApiPlaylistsIdRouteWithChildren = ApiPlaylistsIdRoute._addFileChildren(
+  ApiPlaylistsIdRouteChildren,
+)
+
+interface ApiPlaylistsRouteChildren {
+  ApiPlaylistsIdRoute: typeof ApiPlaylistsIdRouteWithChildren
+}
+
+const ApiPlaylistsRouteChildren: ApiPlaylistsRouteChildren = {
+  ApiPlaylistsIdRoute: ApiPlaylistsIdRouteWithChildren,
+}
+
+const ApiPlaylistsRouteWithChildren = ApiPlaylistsRoute._addFileChildren(
+  ApiPlaylistsRouteChildren,
+)
+
 interface ApiRecordingsIdRouteChildren {
   ApiRecordingsIdCompleteRoute: typeof ApiRecordingsIdCompleteRoute
   ApiRecordingsIdExportRoute: typeof ApiRecordingsIdExportRoute
   ApiRecordingsIdLiveRoute: typeof ApiRecordingsIdLiveRoute
+  ApiRecordingsIdOverlayImageRoute: typeof ApiRecordingsIdOverlayImageRoute
   ApiRecordingsIdPartsRoute: typeof ApiRecordingsIdPartsRoute
   ApiRecordingsIdSidecarRoute: typeof ApiRecordingsIdSidecarRoute
 }
@@ -2013,6 +2237,7 @@ const ApiRecordingsIdRouteChildren: ApiRecordingsIdRouteChildren = {
   ApiRecordingsIdCompleteRoute: ApiRecordingsIdCompleteRoute,
   ApiRecordingsIdExportRoute: ApiRecordingsIdExportRoute,
   ApiRecordingsIdLiveRoute: ApiRecordingsIdLiveRoute,
+  ApiRecordingsIdOverlayImageRoute: ApiRecordingsIdOverlayImageRoute,
   ApiRecordingsIdPartsRoute: ApiRecordingsIdPartsRoute,
   ApiRecordingsIdSidecarRoute: ApiRecordingsIdSidecarRoute,
 }
@@ -2206,10 +2431,12 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRoute,
   ConnectExtensionRoute: ConnectExtensionRoute,
   McpRoute: McpRoute,
+  PlaylistsRoute: PlaylistsRoute,
   PrivacyRoute: PrivacyRoute,
   RecordRoute: RecordRoute,
   SettingsRoute: SettingsRoute,
   SigninRoute: SigninRoute,
+  SitemapVideosDotxmlRoute: SitemapVideosDotxmlRoute,
   TutorialsRoute: TutorialsRoute,
   ApiCombineRoute: ApiCombineRoute,
   ApiCommandsRoute: ApiCommandsRoute,
@@ -2219,6 +2446,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiNotificationsRoute: ApiNotificationsRoute,
   ApiOembedRoute: ApiOembedRoute,
   ApiPingRoute: ApiPingRoute,
+  ApiPlaylistsRoute: ApiPlaylistsRouteWithChildren,
   ApiRecordingsRoute: ApiRecordingsRouteWithChildren,
   ApiRegisterRoute: ApiRegisterRoute,
   ApiRequestsRoute: ApiRequestsRouteWithChildren,
@@ -2231,10 +2459,12 @@ const rootRouteChildren: RootRouteChildren = {
   DocsApiRoute: DocsApiRoute,
   EmbedIdRoute: EmbedIdRoute,
   JoinTokenRoute: JoinTokenRoute,
+  PIdRoute: PIdRoute,
   RequestIdRoute: RequestIdRoute,
   ApiAiIdRoute: ApiAiIdRoute,
   ApiAssetsIdRoute: ApiAssetsIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiAvatarUserIdRoute: ApiAvatarUserIdRoute,
   ApiBrandWorkspaceIdRoute: ApiBrandWorkspaceIdRoute,
   ApiCameraIdRoute: ApiCameraIdRoute,
   ApiCaptionsIdRoute: ApiCaptionsIdRoute,
@@ -2250,6 +2480,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiLiveIdRoute: ApiLiveIdRouteWithChildren,
   ApiMediaIdRoute: ApiMediaIdRoute,
   ApiPosterIdRoute: ApiPosterIdRoute,
+  ApiProfileAvatarRoute: ApiProfileAvatarRoute,
   ApiProgressIdRoute: ApiProgressIdRoute,
   ApiPromptIdRoute: ApiPromptIdRoute,
   ApiReactionsIdRoute: ApiReactionsIdRoute,
@@ -2264,6 +2495,7 @@ const rootRouteChildren: RootRouteChildren = {
   ScimV2ServiceProviderConfigRoute: ScimV2ServiceProviderConfigRoute,
   ScimV2UsersRoute: ScimV2UsersRouteWithChildren,
   ApiAdminExportIdRoute: ApiAdminExportIdRoute,
+  ApiOverlayImageUploadIdNameRoute: ApiOverlayImageUploadIdNameRoute,
   ApiV1TutorialsClaimRoute: ApiV1TutorialsClaimRoute,
   ApiV1TutorialsJobsRoute: ApiV1TutorialsJobsRouteWithChildren,
   ApiV1TutorialsRecipesRoute: ApiV1TutorialsRecipesRoute,

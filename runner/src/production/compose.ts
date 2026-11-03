@@ -3,6 +3,7 @@ import { access, mkdir } from "node:fs/promises"
 import { join } from "node:path"
 import type { ClickPoint, ExecutionResult, NarrationPlan, ProducedVideo, Recipe, RunnerLogger } from "../types"
 import { probeSeconds, run } from "./media"
+import { captionsFromCues, renderCaptionImages } from "./captions"
 
 /** Zoom limits mirror parseZooms in src/lib/zooms.ts, which clamps whatever it is given. */
 const ZOOM_LEAD = 0.4
@@ -91,6 +92,19 @@ export async function produce(input: {
     videoLabel = "composed"
   }
 
+  const cues = timed.map(({ step, start }) => ({ start: Number(start.toFixed(3)), end: Number((start + step.seconds).toFixed(3)), text: step.text }))
+  const captions = process.env.TUTORIAL_CAPTIONS === "0" ? [] : captionsFromCues(cues)
+  if (captions.length) {
+    const images = await renderCaptionImages(captions, join(workdir, "captions"))
+    for (const [i, image] of images.entries()) {
+      args.push("-loop", "1", "-framerate", "30", "-i", image)
+      const index = next++
+      const out = `cap${i}`
+      filters.push(`[${videoLabel}][${index}:v]overlay=0:0:shortest=1:enable='between(t,${captions[i].start},${captions[i].end})'[${out}]`)
+      videoLabel = out
+    }
+  }
+
   // A silent bed spans the whole video so the mix is always full length and the MP4 always has audio.
   args.push("-f", "lavfi", "-t", total.toFixed(3), "-i", "anullsrc=r=44100:cl=stereo")
   filters.push(`[${next++}:a]aformat=sample_rates=44100:channel_layouts=stereo[bed]`)
@@ -112,10 +126,9 @@ export async function produce(input: {
     "-movflags", "+faststart",
     output,
   )
-  logger.info(`Composing ${timed.length} narration clip(s)${portrait ? " with the presenter portrait" : ""}`)
+  logger.info(`Composing ${timed.length} narration clip(s), ${captions.length} caption(s)${portrait ? " with the presenter portrait" : ""}`)
   await run("ffmpeg", args)
 
   const durationSeconds = await probeSeconds(output)
-  const cues = timed.map(({ step, start }) => ({ start: Number(start.toFixed(3)), end: Number((start + step.seconds).toFixed(3)), text: step.text }))
   return { path: output, durationSeconds, cues, zooms: deriveZooms(execution.clicks, durationSeconds) }
 }

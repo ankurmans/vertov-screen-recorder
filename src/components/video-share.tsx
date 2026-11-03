@@ -109,6 +109,8 @@ export function VideoShare({
     expiresAt: upload.expiresAt,
     downloadsEnabled: upload.downloadsEnabled,
     requireEmail: upload.requireEmail,
+    searchIndexing: upload.searchIndexing,
+    openLink: upload.visibility === "link",
     captionStyle: isCaptionStyle(upload.captionStyle) ? upload.captionStyle : "off",
   }));
   const [overlays, setOverlays] = useState<Array<Overlay>>(() => parseOverlays(upload.overlays));
@@ -427,6 +429,7 @@ export function VideoShare({
       />
     ) : tab === "annotate" && isOwner ? (
       <AnnotateEditor
+        uploadId={upload.id}
         overlays={overlays}
         selectedId={selectedOverlay}
         currentTime={currentTime}
@@ -838,7 +841,7 @@ function VideoInfo({
             )}
           </div>
           {isOwner ? (
-            <DownloadMenu uploadId={upload.id} mediaSource={mediaSource} filename={upload.filename} onNotify={onNotify} />
+            <DownloadMenu uploadId={upload.id} mediaSource={mediaSource} filename={upload.filename} captions={Boolean(upload.transcriptKey)} onNotify={onNotify} />
           ) : upload.downloadsEnabled && (
             <LinkButton
               href={exportReady ? `${origin}/api/export/${upload.id}` : mediaSource}
@@ -865,11 +868,13 @@ function DownloadMenu({
   uploadId,
   mediaSource,
   filename,
+  captions,
   onNotify,
 }: {
   uploadId: string;
   mediaSource: string;
   filename: string;
+  captions: boolean;
   onNotify: (message: string, variant?: "error") => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -922,6 +927,16 @@ function DownloadMenu({
             <span className="font-medium">Original screen recording</span>
             <span className="block text-xs text-neutral-500">As recorded, no camera</span>
           </a>
+          {captions && (
+            <a
+              href={`/api/captions/${uploadId}?format=srt`}
+              onClick={() => setOpen(false)}
+              className="block w-full rounded-lg px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100"
+            >
+              <span className="font-medium">Captions (.srt)</span>
+              <span className="block text-xs text-neutral-500">For YouTube, editors and other players</span>
+            </a>
+          )}
         </div>
       )}
     </div>

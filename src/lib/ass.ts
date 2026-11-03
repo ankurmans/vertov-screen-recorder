@@ -67,6 +67,20 @@ export function buildAss(options: {
       const size = (overlay.size / 100) * width
       const shadow = overlay.color.toLowerCase() === "#111111" ? colour("#ffffff", 0x60) : colour("#000000", 0x50)
       event(2, start, end, "Note", `{\\an7\\pos(${n(px(overlay.x))},${n(py(overlay.y))})\\fs${n(size)}\\1c${c}\\3c${shadow}\\bord${n(size / 14)}\\shad0}${escape(overlay.text)}`)
+    } else if (overlay.type === "spotlight") {
+      // Four dimming bands around the region; ASS drawings can't punch a hole in one shape.
+      const x = Math.max(0, px(overlay.x))
+      const y = Math.max(0, py(overlay.y))
+      const x2 = Math.min(width, px(overlay.x + overlay.w))
+      const y2 = Math.min(height, py(overlay.y + overlay.h))
+      const dim = `\\1c${colour("#000000")}\\1a&H73&\\bord0\\shad0`
+      const band = (left: number, top: number, right: number, bottom: number) =>
+        right - left > 0.5 && bottom - top > 0.5 &&
+        event(0, start, end, "Note", `{\\an7\\pos(0,0)${dim}\\p1}m ${n(left)} ${n(top)} l ${n(right)} ${n(top)} ${n(right)} ${n(bottom)} ${n(left)} ${n(bottom)}{\\p0}`)
+      band(0, 0, width, y)
+      band(0, y2, width, height)
+      band(0, y, x, y2)
+      band(x2, y, width, y2)
     } else if (overlay.type === "box") {
       const stroke = 0.0045 * width
       const w = px(overlay.w)

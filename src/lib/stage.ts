@@ -20,6 +20,9 @@ export interface StageStyle {
   zooms?: ZoomPoint[]
   /** Key into BACKGROUNDS; "none" plays the screen edge to edge. */
   background: string
+  /** Other workspace videos joined before and after this one in MP4 downloads (reusable intro/outro). */
+  intro?: string
+  outro?: string
 }
 
 export const DEFAULT_STYLE: StageStyle = {
@@ -63,8 +66,13 @@ export function parseStyle(raw: unknown): StageStyle {
   }
   const input = (typeof value === "object" && value !== null ? value : {}) as Record<string, unknown>
   const zooms = parseZooms(input.zooms)
+  const clip = (value: unknown) => (typeof value === "string" && /^[a-f0-9]{8}$/.test(value) ? value : undefined)
+  const intro = clip(input.intro)
+  const outro = clip(input.outro)
   return {
     ...(zooms.length ? { zooms } : {}),
+    ...(intro ? { intro } : {}),
+    ...(outro ? { outro } : {}),
     denoise: input.denoise === true,
     layout: pick(input.layout, LAYOUTS, DEFAULT_STYLE.layout),
     corner: pick(input.corner, CORNERS, DEFAULT_STYLE.corner),

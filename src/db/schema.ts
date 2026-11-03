@@ -100,6 +100,8 @@ export const uploads = sqliteTable(
     requestId: text("request_id"),
     // Viewers must give an email address before the video plays.
     requireEmail: integer("require_email", { mode: "boolean" }).notNull().default(false),
+    // Owner opted in to search engines; see isIndexable in src/lib/seo.ts for what else must hold.
+    searchIndexing: integer("search_indexing", { mode: "boolean" }).notNull().default(false),
     // JSON { [kind]: { text, at } } of generated documents (summary doc, SOP, bug report, notes, action items).
     aiDocs: text("ai_docs"),
   },
@@ -206,6 +208,35 @@ export const spaces = sqliteTable(
   },
   (table) => [index("idx_spaces_workspace").on(table.workspaceId)],
 );
+
+export const playlists = sqliteTable(
+  "playlists",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    ownerId: text("owner_id").notNull(),
+    title: text("title").notNull(),
+    description: text("description"),
+    // "link": anyone with the link; "workspace": signed-in members only.
+    visibility: text("visibility").notNull().default("link"),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => [index("idx_playlists_workspace").on(table.workspaceId, table.createdAt)],
+);
+
+export const playlistItems = sqliteTable(
+  "playlist_items",
+  {
+    playlistId: text("playlist_id").notNull(),
+    uploadId: text("upload_id").notNull(),
+    position: integer("position").notNull(),
+    addedAt: text("added_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => [primaryKey({ columns: [table.playlistId, table.uploadId] }), index("idx_playlist_items_upload").on(table.uploadId)],
+);
+
+export type Playlist = typeof playlists.$inferSelect;
 
 export const folders = sqliteTable(
   "folders",

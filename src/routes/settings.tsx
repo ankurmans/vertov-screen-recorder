@@ -142,6 +142,7 @@ function GeneralTab() {
 
   return (
     <div className="space-y-5">
+      <ProfilePictureCard avatar={me?.avatar} name={me?.name ?? ""} />
       <Card title="Workspace name">
         <form
           className="flex gap-2"
@@ -602,6 +603,60 @@ function PlanGrid({
         )
       })}
     </ul>
+  )
+}
+
+function ProfilePictureCard({ avatar, name }: { avatar?: string; name: string }) {
+  const router = useRouter()
+  const [busy, setBusy] = useState<"upload" | "google" | "remove" | null>(null)
+  const [error, setError] = useState("")
+
+  async function run(kind: "upload" | "google" | "remove", request: () => Promise<Response>) {
+    setBusy(kind)
+    setError("")
+    const response = await request().catch(() => null)
+    setBusy(null)
+    if (response?.ok) return void (await router.invalidate())
+    const body = (await response?.json().catch(() => null)) as { error?: string } | null
+    setError(body?.error ?? "Something went wrong. Try again.")
+  }
+
+  return (
+    <Card title="Profile picture" description="Shown next to your name on comments and in your workspace. Use your Google photo or upload your own.">
+      <div className="flex flex-wrap items-center gap-4">
+        {avatar && <img src={avatar} alt={`${name} profile picture`} className="size-16 rounded-full object-cover ring-1 ring-neutral-200" />}
+        <button
+          type="button"
+          disabled={busy !== null}
+          onClick={() => void run("google", () => fetch("/api/profile/avatar?source=google", { method: "POST" }))}
+          className="rounded-lg bg-neutral-900 px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-40"
+        >
+          {busy === "google" ? "Fetching…" : "Use my Google photo"}
+        </button>
+        <label className="cursor-pointer rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-800 hover:bg-neutral-50">
+          {busy === "upload" ? "Uploading…" : "Upload a picture"}
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="sr-only"
+            disabled={busy !== null}
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              if (file) void run("upload", () => fetch("/api/profile/avatar", { method: "POST", headers: { "content-type": file.type }, body: file }))
+            }}
+          />
+        </label>
+        <button
+          type="button"
+          disabled={busy !== null}
+          onClick={() => void run("remove", () => fetch("/api/profile/avatar", { method: "DELETE" }))}
+          className="text-sm text-red-600 hover:underline disabled:opacity-40"
+        >
+          Remove
+        </button>
+      </div>
+      {error && <p role="alert" className="mt-3 text-sm text-red-600">{error}</p>}
+    </Card>
   )
 }
 

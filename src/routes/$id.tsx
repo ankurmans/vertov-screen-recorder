@@ -8,6 +8,7 @@ import { accessFor, publicUpload } from "@/lib/access.server";
 import { VideoShare } from "@/components/video-share";
 import { getAuthState, getSessionUser } from "@/lib/auth.server";
 import { APP_NAME } from "@/lib/brand";
+import { isIndexable, isoDate, isoDuration } from "@/lib/seo";
 import { getBrand } from "@/lib/brand.server";
 import { canManage } from "@/lib/plans";
 import { roleIn } from "@/lib/workspace.server";
@@ -104,6 +105,7 @@ export const Route = createFileRoute("/$id")({
       : "";
     const description = upload.summary?.trim() || `Shared by ${author.name} on ${APP_NAME}${duration}${dimensions}`;
     const title = `${displayTitle} — ${APP_NAME}`;
+    const indexable = isIndexable(upload);
     const previewImage = isVideo
       ? upload.posterKey
         ? `${origin}/api/poster/${upload.id}`
@@ -111,8 +113,31 @@ export const Route = createFileRoute("/$id")({
       : `${origin}/api/image/${upload.id}`;
 
     return {
+      // Share links are unlisted unless the owner opts this video in to search.
+      ...(indexable
+        ? {
+            scripts: [
+              {
+                type: "application/ld+json",
+                children: JSON.stringify({
+                  "@context": "https://schema.org",
+                  "@type": "VideoObject",
+                  name: displayTitle,
+                  description,
+                  uploadDate: isoDate(upload.createdAt),
+                  ...(previewImage ? { thumbnailUrl: previewImage } : {}),
+                  ...(upload.duration ? { duration: isoDuration(upload.duration) } : {}),
+                  contentUrl: `${origin}/api/media/${upload.id}`,
+                  embedUrl: `${origin}/embed/${upload.id}`,
+                }).replace(/</g, "\\u003c"),
+              },
+            ],
+          }
+        : {}),
+      links: indexable ? [{ rel: "canonical", href: `${origin}/${upload.id}` }] : [],
       meta: [
         { title },
+        ...(indexable ? [] : [{ name: "robots", content: "noindex" }]),
         { name: "description", content: description },
         { property: "og:title", content: title },
         { property: "og:description", content: description },

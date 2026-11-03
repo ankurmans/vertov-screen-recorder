@@ -21,6 +21,9 @@ export interface StudioState {
   expiresAt: string | null
   downloadsEnabled: boolean
   requireEmail: boolean
+  searchIndexing: boolean
+  /** Link sharing (not members-only); search indexing needs it. */
+  openLink: boolean
   captionStyle: CaptionStyle
 }
 
@@ -211,6 +214,10 @@ export function StudioPanel({
           </div>
         </Field>
 
+        <Field label="Intro & outro">
+          <BookendPicker uploadId={uploadId} intro={state.style.intro} outro={state.style.outro} onPick={(patch) => setStyle(patch)} />
+        </Field>
+
         <Field label="Trim">
           <div className="flex flex-wrap items-center gap-1.5 text-xs">
             <Chip onClick={() => void setTrim({ trimStart: at > 0.2 ? at : null })}>Start at {formatDuration(at)}</Chip>
@@ -340,6 +347,19 @@ export function StudioPanel({
             >
               <VertovIcon name="mail" size={14} /> {state.requireEmail ? "Viewers give their email" : "Ask viewers for email"}
             </Chip>
+            <Chip
+              active={state.searchIndexing}
+              onClick={() => {
+                const searchIndexing = !state.searchIndexing
+                onChange({ ...state, searchIndexing })
+                void save({ searchIndexing })
+              }}
+            >
+              <VertovIcon name="search" size={14} /> {state.searchIndexing ? "Shown in Google search" : "Hidden from search"}
+            </Chip>
+            {state.searchIndexing && (!state.openLink || state.hasPassword || state.expiresAt || state.requireEmail) && (
+              <p className="text-xs text-neutral-500">Search engines only see videos anyone with the link can watch, with no password, expiry or email gate.</p>
+            )}
           </div>
         </Field>
 
@@ -383,6 +403,44 @@ export function StudioPanel({
         </Field>
       </div>
     </section>
+  )
+}
+
+/** Pick other videos to join before and after this one in MP4 downloads; the same clip can open every video. */
+function BookendPicker({ uploadId, intro, outro, onPick }: { uploadId: string; intro?: string; outro?: string; onPick: (patch: Partial<StageStyle>) => void }) {
+  const [videos, setVideos] = useState<Array<{ id: string; title: string | null }> | null>(null)
+  useEffect(() => {
+    void fetch("/api/v1/videos")
+      .then((response) => response.json() as Promise<{ videos?: Array<{ id: string; title: string | null; status: string }> }>)
+      .then((body) => setVideos((body.videos ?? []).filter((video) => video.id !== uploadId && video.status === "ready")), () => setVideos([]))
+  }, [uploadId])
+  const select = (which: "intro" | "outro", value: string | undefined) => (
+    <label className="block text-xs text-neutral-600">
+      {which === "intro" ? "Before" : "After"}
+      <select
+        value={value ?? ""}
+        disabled={videos === null}
+        onChange={(event) => onPick({ [which]: event.target.value || undefined })}
+        className="mt-1 w-full rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-sm text-neutral-900"
+      >
+        <option value="">None</option>
+        {(videos ?? []).map((video) => (
+          <option key={video.id} value={video.id}>
+            {video.title?.trim() || "Untitled video"}
+          </option>
+        ))}
+        {value && videos && !videos.some((video) => video.id === value) && <option value={value}>Chosen clip</option>}
+      </select>
+    </label>
+  )
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-2">
+        {select("intro", intro)}
+        {select("outro", outro)}
+      </div>
+      <p className="mt-1.5 text-xs text-neutral-500">Joined around this video in MP4 downloads. Record an intro once and use it on any video.</p>
+    </>
   )
 }
 

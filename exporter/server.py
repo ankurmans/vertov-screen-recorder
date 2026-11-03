@@ -214,6 +214,25 @@ def render(job, workdir):
             last = "v_cut"
             audio_map = ["-map", "[a_cut]"] if audio else []
 
+    # Blurred regions (redaction) and placed images sit on the composed, cut timeline, under the ASS layer.
+    for i, box in enumerate(job.get("blur_boxes") or []):
+        w, h = even(box["w"]), even(box["h"])
+        radius = max(2, min(24, min(w, h) // 2 - 1))
+        enable = f"between(t,{box['start']:.3f},{box['end']:.3f})"
+        filters.append(f"[{last}]split[bm{i}][bs{i}]")
+        filters.append(f"[bs{i}]crop={w}:{h}:{int(box['x'])}:{int(box['y'])},boxblur={radius}:2[bb{i}]")
+        filters.append(f"[bm{i}][bb{i}]overlay={int(box['x'])}:{int(box['y'])}:enable='{enable}'[v_b{i}]")
+        last = f"v_b{i}"
+    for i, image in enumerate(job.get("images") or []):
+        image_path = os.path.join(workdir, f"image{i}")
+        download(image["url"], image_path)
+        inputs += ["-loop", "1", "-i", image_path]
+        enable = f"between(t,{image['start']:.3f},{image['end']:.3f})"
+        filters.append(f"[{next_index}:v]scale={even(image['w'])}:-2,format=rgba[im{i}]")
+        filters.append(f"[{last}][im{i}]overlay={int(image['x'])}:{int(image['y'])}:shortest=1:enable='{enable}'[v_i{i}]")
+        last = f"v_i{i}"
+        next_index += 1
+
     if job.get("ass"):
         # Annotations and styled captions, burned in last so they sit over the composed frame.
         ass_path = os.path.join(workdir, "overlay.ass")
@@ -243,7 +262,7 @@ def render(job, workdir):
 
 
 def concat(job, workdir):
-    """Joins finished MP4s into one: every clip is scaled to the first clip's size (letterboxed),
+    """Joins finished MP4s into one: every clip is scaled to one clip's size (letterboxed),
     30 fps, 48 kHz stereo, so clips with different layouts or sources play back to back."""
     urls = job["inputs"]
     paths, durations, audio = [], [], []
@@ -253,8 +272,10 @@ def concat(job, workdir):
         paths.append(path)
         durations.append(probe_duration(path))
         audio.append(has_audio(path))
+    # Size from the clip named by size_from (the main video when an intro precedes it), else the first.
+    reference = paths[min(max(int(job.get("size_from") or 0), 0), len(paths) - 1)]
     probe = subprocess.run(
-        ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "csv=p=0:s=x", paths[0]],
+        ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "csv=p=0:s=x", reference],
         capture_output=True, text=True,
     )
     width, height = (even(int(v)) for v in probe.stdout.strip().split("x"))

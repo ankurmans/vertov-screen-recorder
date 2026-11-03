@@ -78,6 +78,23 @@ function vttTimestamp(seconds: number): string {
 }
 
 /** WebVTT document for the native <track> captions. */
+/** SubRip from WebVTT: numbered cues, comma decimal separator, no header, notes or cue settings. */
+export function vttToSrt(vtt: string): string {
+  const blocks = vtt.replace(/\r\n?/g, "\n").split(/\n{2,}/)
+  const out: Array<string> = []
+  for (const block of blocks) {
+    const lines = block.split("\n")
+    const at = lines.findIndex((line) => line.includes("-->"))
+    if (at === -1) continue
+    const [from, to] = lines[at].split("-->").map((part) => part.trim().split(/\s+/)[0])
+    const stamp = (value: string) => (value.split(":").length === 2 ? `00:${value}` : value).replace(".", ",")
+    const text = lines.slice(at + 1).join("\n").trim()
+    if (!text) continue
+    out.push(`${out.length + 1}\n${stamp(from)} --> ${stamp(to)}\n${text}\n`)
+  }
+  return out.join("\n")
+}
+
 export function transcriptToVtt(transcript: Transcript): string {
   const lines = ["WEBVTT", ""]
   for (const cue of transcript.cues) {
