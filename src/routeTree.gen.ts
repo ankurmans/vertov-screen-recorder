@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TutorialsRouteImport } from './routes/tutorials'
 import { Route as SigninRouteImport } from './routes/signin'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RecordRouteImport } from './routes/record'
@@ -90,6 +91,9 @@ import { Route as ApiWorkspaceSlackTestRouteImport } from './routes/api/workspac
 import { Route as ApiWorkspaceMembersUserIdRouteImport } from './routes/api/workspace.members.$userId'
 import { Route as ApiWorkspaceAuditCsvRouteImport } from './routes/api/workspace.audit.csv'
 import { Route as ApiV1VideosIdRouteImport } from './routes/api/v1.videos.$id'
+import { Route as ApiV1TutorialsRecipesRouteImport } from './routes/api/v1.tutorials.recipes'
+import { Route as ApiV1TutorialsJobsRouteImport } from './routes/api/v1.tutorials.jobs'
+import { Route as ApiV1TutorialsClaimRouteImport } from './routes/api/v1.tutorials.claim'
 import { Route as ApiUploadMultipartIdRouteImport } from './routes/api/upload.multipart.$id'
 import { Route as ApiRequestsIdSubmitRouteImport } from './routes/api/requests.$id.submit'
 import { Route as ApiRecordingsIdSidecarRouteImport } from './routes/api/recordings.$id.sidecar'
@@ -99,7 +103,17 @@ import { Route as ApiRecordingsIdExportRouteImport } from './routes/api/recordin
 import { Route as ApiRecordingsIdCompleteRouteImport } from './routes/api/recordings.$id.complete'
 import { Route as ApiLiveIdNRouteImport } from './routes/api/live.$id.$n'
 import { Route as ApiAdminExportIdRouteImport } from './routes/api/admin/export.$id'
+import { Route as ApiV1TutorialsJobsIdRouteImport } from './routes/api/v1.tutorials.jobs.$id'
+import { Route as ApiV1TutorialsJobsIdProgressRouteImport } from './routes/api/v1.tutorials.jobs.$id.progress'
+import { Route as ApiV1TutorialsJobsIdFailRouteImport } from './routes/api/v1.tutorials.jobs.$id.fail'
+import { Route as ApiV1TutorialsJobsIdCompleteRouteImport } from './routes/api/v1.tutorials.jobs.$id.complete'
+import { Route as ApiV1TutorialsJobsIdCancelRouteImport } from './routes/api/v1.tutorials.jobs.$id.cancel'
 
+const TutorialsRoute = TutorialsRouteImport.update({
+  id: '/tutorials',
+  path: '/tutorials',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SigninRoute = SigninRouteImport.update({
   id: '/signin',
   path: '/signin',
@@ -507,6 +521,21 @@ const ApiV1VideosIdRoute = ApiV1VideosIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => ApiV1VideosRoute,
 } as any)
+const ApiV1TutorialsRecipesRoute = ApiV1TutorialsRecipesRouteImport.update({
+  id: '/api/v1/tutorials/recipes',
+  path: '/api/v1/tutorials/recipes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1TutorialsJobsRoute = ApiV1TutorialsJobsRouteImport.update({
+  id: '/api/v1/tutorials/jobs',
+  path: '/api/v1/tutorials/jobs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV1TutorialsClaimRoute = ApiV1TutorialsClaimRouteImport.update({
+  id: '/api/v1/tutorials/claim',
+  path: '/api/v1/tutorials/claim',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiUploadMultipartIdRoute = ApiUploadMultipartIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -552,6 +581,35 @@ const ApiAdminExportIdRoute = ApiAdminExportIdRouteImport.update({
   path: '/api/admin/export/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV1TutorialsJobsIdRoute = ApiV1TutorialsJobsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiV1TutorialsJobsRoute,
+} as any)
+const ApiV1TutorialsJobsIdProgressRoute =
+  ApiV1TutorialsJobsIdProgressRouteImport.update({
+    id: '/progress',
+    path: '/progress',
+    getParentRoute: () => ApiV1TutorialsJobsIdRoute,
+  } as any)
+const ApiV1TutorialsJobsIdFailRoute =
+  ApiV1TutorialsJobsIdFailRouteImport.update({
+    id: '/fail',
+    path: '/fail',
+    getParentRoute: () => ApiV1TutorialsJobsIdRoute,
+  } as any)
+const ApiV1TutorialsJobsIdCompleteRoute =
+  ApiV1TutorialsJobsIdCompleteRouteImport.update({
+    id: '/complete',
+    path: '/complete',
+    getParentRoute: () => ApiV1TutorialsJobsIdRoute,
+  } as any)
+const ApiV1TutorialsJobsIdCancelRoute =
+  ApiV1TutorialsJobsIdCancelRouteImport.update({
+    id: '/cancel',
+    path: '/cancel',
+    getParentRoute: () => ApiV1TutorialsJobsIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -564,6 +622,7 @@ export interface FileRoutesByFullPath {
   '/record': typeof RecordRoute
   '/settings': typeof SettingsRoute
   '/signin': typeof SigninRoute
+  '/tutorials': typeof TutorialsRoute
   '/api/combine': typeof ApiCombineRoute
   '/api/commands': typeof ApiCommandsRoute
   '/api/folders': typeof ApiFoldersRouteWithChildren
@@ -639,11 +698,19 @@ export interface FileRoutesByFullPath {
   '/api/recordings/$id/sidecar': typeof ApiRecordingsIdSidecarRoute
   '/api/requests/$id/submit': typeof ApiRequestsIdSubmitRoute
   '/api/upload/multipart/$id': typeof ApiUploadMultipartIdRoute
+  '/api/v1/tutorials/claim': typeof ApiV1TutorialsClaimRoute
+  '/api/v1/tutorials/jobs': typeof ApiV1TutorialsJobsRouteWithChildren
+  '/api/v1/tutorials/recipes': typeof ApiV1TutorialsRecipesRoute
   '/api/v1/videos/$id': typeof ApiV1VideosIdRoute
   '/api/workspace/audit/csv': typeof ApiWorkspaceAuditCsvRoute
   '/api/workspace/members/$userId': typeof ApiWorkspaceMembersUserIdRoute
   '/api/workspace/slack/test': typeof ApiWorkspaceSlackTestRoute
   '/scim/v2/Users/$id': typeof ScimV2UsersIdRoute
+  '/api/v1/tutorials/jobs/$id': typeof ApiV1TutorialsJobsIdRouteWithChildren
+  '/api/v1/tutorials/jobs/$id/cancel': typeof ApiV1TutorialsJobsIdCancelRoute
+  '/api/v1/tutorials/jobs/$id/complete': typeof ApiV1TutorialsJobsIdCompleteRoute
+  '/api/v1/tutorials/jobs/$id/fail': typeof ApiV1TutorialsJobsIdFailRoute
+  '/api/v1/tutorials/jobs/$id/progress': typeof ApiV1TutorialsJobsIdProgressRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -656,6 +723,7 @@ export interface FileRoutesByTo {
   '/record': typeof RecordRoute
   '/settings': typeof SettingsRoute
   '/signin': typeof SigninRoute
+  '/tutorials': typeof TutorialsRoute
   '/api/combine': typeof ApiCombineRoute
   '/api/commands': typeof ApiCommandsRoute
   '/api/folders': typeof ApiFoldersRouteWithChildren
@@ -731,11 +799,19 @@ export interface FileRoutesByTo {
   '/api/recordings/$id/sidecar': typeof ApiRecordingsIdSidecarRoute
   '/api/requests/$id/submit': typeof ApiRequestsIdSubmitRoute
   '/api/upload/multipart/$id': typeof ApiUploadMultipartIdRoute
+  '/api/v1/tutorials/claim': typeof ApiV1TutorialsClaimRoute
+  '/api/v1/tutorials/jobs': typeof ApiV1TutorialsJobsRouteWithChildren
+  '/api/v1/tutorials/recipes': typeof ApiV1TutorialsRecipesRoute
   '/api/v1/videos/$id': typeof ApiV1VideosIdRoute
   '/api/workspace/audit/csv': typeof ApiWorkspaceAuditCsvRoute
   '/api/workspace/members/$userId': typeof ApiWorkspaceMembersUserIdRoute
   '/api/workspace/slack/test': typeof ApiWorkspaceSlackTestRoute
   '/scim/v2/Users/$id': typeof ScimV2UsersIdRoute
+  '/api/v1/tutorials/jobs/$id': typeof ApiV1TutorialsJobsIdRouteWithChildren
+  '/api/v1/tutorials/jobs/$id/cancel': typeof ApiV1TutorialsJobsIdCancelRoute
+  '/api/v1/tutorials/jobs/$id/complete': typeof ApiV1TutorialsJobsIdCompleteRoute
+  '/api/v1/tutorials/jobs/$id/fail': typeof ApiV1TutorialsJobsIdFailRoute
+  '/api/v1/tutorials/jobs/$id/progress': typeof ApiV1TutorialsJobsIdProgressRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -749,6 +825,7 @@ export interface FileRoutesById {
   '/record': typeof RecordRoute
   '/settings': typeof SettingsRoute
   '/signin': typeof SigninRoute
+  '/tutorials': typeof TutorialsRoute
   '/api/combine': typeof ApiCombineRoute
   '/api/commands': typeof ApiCommandsRoute
   '/api/folders': typeof ApiFoldersRouteWithChildren
@@ -824,11 +901,19 @@ export interface FileRoutesById {
   '/api/recordings/$id/sidecar': typeof ApiRecordingsIdSidecarRoute
   '/api/requests/$id/submit': typeof ApiRequestsIdSubmitRoute
   '/api/upload/multipart/$id': typeof ApiUploadMultipartIdRoute
+  '/api/v1/tutorials/claim': typeof ApiV1TutorialsClaimRoute
+  '/api/v1/tutorials/jobs': typeof ApiV1TutorialsJobsRouteWithChildren
+  '/api/v1/tutorials/recipes': typeof ApiV1TutorialsRecipesRoute
   '/api/v1/videos/$id': typeof ApiV1VideosIdRoute
   '/api/workspace/audit/csv': typeof ApiWorkspaceAuditCsvRoute
   '/api/workspace/members/$userId': typeof ApiWorkspaceMembersUserIdRoute
   '/api/workspace/slack/test': typeof ApiWorkspaceSlackTestRoute
   '/scim/v2/Users/$id': typeof ScimV2UsersIdRoute
+  '/api/v1/tutorials/jobs/$id': typeof ApiV1TutorialsJobsIdRouteWithChildren
+  '/api/v1/tutorials/jobs/$id/cancel': typeof ApiV1TutorialsJobsIdCancelRoute
+  '/api/v1/tutorials/jobs/$id/complete': typeof ApiV1TutorialsJobsIdCompleteRoute
+  '/api/v1/tutorials/jobs/$id/fail': typeof ApiV1TutorialsJobsIdFailRoute
+  '/api/v1/tutorials/jobs/$id/progress': typeof ApiV1TutorialsJobsIdProgressRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -843,6 +928,7 @@ export interface FileRouteTypes {
     | '/record'
     | '/settings'
     | '/signin'
+    | '/tutorials'
     | '/api/combine'
     | '/api/commands'
     | '/api/folders'
@@ -918,11 +1004,19 @@ export interface FileRouteTypes {
     | '/api/recordings/$id/sidecar'
     | '/api/requests/$id/submit'
     | '/api/upload/multipart/$id'
+    | '/api/v1/tutorials/claim'
+    | '/api/v1/tutorials/jobs'
+    | '/api/v1/tutorials/recipes'
     | '/api/v1/videos/$id'
     | '/api/workspace/audit/csv'
     | '/api/workspace/members/$userId'
     | '/api/workspace/slack/test'
     | '/scim/v2/Users/$id'
+    | '/api/v1/tutorials/jobs/$id'
+    | '/api/v1/tutorials/jobs/$id/cancel'
+    | '/api/v1/tutorials/jobs/$id/complete'
+    | '/api/v1/tutorials/jobs/$id/fail'
+    | '/api/v1/tutorials/jobs/$id/progress'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -935,6 +1029,7 @@ export interface FileRouteTypes {
     | '/record'
     | '/settings'
     | '/signin'
+    | '/tutorials'
     | '/api/combine'
     | '/api/commands'
     | '/api/folders'
@@ -1010,11 +1105,19 @@ export interface FileRouteTypes {
     | '/api/recordings/$id/sidecar'
     | '/api/requests/$id/submit'
     | '/api/upload/multipart/$id'
+    | '/api/v1/tutorials/claim'
+    | '/api/v1/tutorials/jobs'
+    | '/api/v1/tutorials/recipes'
     | '/api/v1/videos/$id'
     | '/api/workspace/audit/csv'
     | '/api/workspace/members/$userId'
     | '/api/workspace/slack/test'
     | '/scim/v2/Users/$id'
+    | '/api/v1/tutorials/jobs/$id'
+    | '/api/v1/tutorials/jobs/$id/cancel'
+    | '/api/v1/tutorials/jobs/$id/complete'
+    | '/api/v1/tutorials/jobs/$id/fail'
+    | '/api/v1/tutorials/jobs/$id/progress'
   id:
     | '__root__'
     | '/'
@@ -1027,6 +1130,7 @@ export interface FileRouteTypes {
     | '/record'
     | '/settings'
     | '/signin'
+    | '/tutorials'
     | '/api/combine'
     | '/api/commands'
     | '/api/folders'
@@ -1102,11 +1206,19 @@ export interface FileRouteTypes {
     | '/api/recordings/$id/sidecar'
     | '/api/requests/$id/submit'
     | '/api/upload/multipart/$id'
+    | '/api/v1/tutorials/claim'
+    | '/api/v1/tutorials/jobs'
+    | '/api/v1/tutorials/recipes'
     | '/api/v1/videos/$id'
     | '/api/workspace/audit/csv'
     | '/api/workspace/members/$userId'
     | '/api/workspace/slack/test'
     | '/scim/v2/Users/$id'
+    | '/api/v1/tutorials/jobs/$id'
+    | '/api/v1/tutorials/jobs/$id/cancel'
+    | '/api/v1/tutorials/jobs/$id/complete'
+    | '/api/v1/tutorials/jobs/$id/fail'
+    | '/api/v1/tutorials/jobs/$id/progress'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1120,6 +1232,7 @@ export interface RootRouteChildren {
   RecordRoute: typeof RecordRoute
   SettingsRoute: typeof SettingsRoute
   SigninRoute: typeof SigninRoute
+  TutorialsRoute: typeof TutorialsRoute
   ApiCombineRoute: typeof ApiCombineRoute
   ApiCommandsRoute: typeof ApiCommandsRoute
   ApiFoldersRoute: typeof ApiFoldersRouteWithChildren
@@ -1173,10 +1286,20 @@ export interface RootRouteChildren {
   ScimV2ServiceProviderConfigRoute: typeof ScimV2ServiceProviderConfigRoute
   ScimV2UsersRoute: typeof ScimV2UsersRouteWithChildren
   ApiAdminExportIdRoute: typeof ApiAdminExportIdRoute
+  ApiV1TutorialsClaimRoute: typeof ApiV1TutorialsClaimRoute
+  ApiV1TutorialsJobsRoute: typeof ApiV1TutorialsJobsRouteWithChildren
+  ApiV1TutorialsRecipesRoute: typeof ApiV1TutorialsRecipesRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/tutorials': {
+      id: '/tutorials'
+      path: '/tutorials'
+      fullPath: '/tutorials'
+      preLoaderRoute: typeof TutorialsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/signin': {
       id: '/signin'
       path: '/signin'
@@ -1744,6 +1867,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV1VideosIdRouteImport
       parentRoute: typeof ApiV1VideosRoute
     }
+    '/api/v1/tutorials/recipes': {
+      id: '/api/v1/tutorials/recipes'
+      path: '/api/v1/tutorials/recipes'
+      fullPath: '/api/v1/tutorials/recipes'
+      preLoaderRoute: typeof ApiV1TutorialsRecipesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/tutorials/jobs': {
+      id: '/api/v1/tutorials/jobs'
+      path: '/api/v1/tutorials/jobs'
+      fullPath: '/api/v1/tutorials/jobs'
+      preLoaderRoute: typeof ApiV1TutorialsJobsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/tutorials/claim': {
+      id: '/api/v1/tutorials/claim'
+      path: '/api/v1/tutorials/claim'
+      fullPath: '/api/v1/tutorials/claim'
+      preLoaderRoute: typeof ApiV1TutorialsClaimRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/upload/multipart/$id': {
       id: '/api/upload/multipart/$id'
       path: '/$id'
@@ -1806,6 +1950,41 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/admin/export/$id'
       preLoaderRoute: typeof ApiAdminExportIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/v1/tutorials/jobs/$id': {
+      id: '/api/v1/tutorials/jobs/$id'
+      path: '/$id'
+      fullPath: '/api/v1/tutorials/jobs/$id'
+      preLoaderRoute: typeof ApiV1TutorialsJobsIdRouteImport
+      parentRoute: typeof ApiV1TutorialsJobsRoute
+    }
+    '/api/v1/tutorials/jobs/$id/progress': {
+      id: '/api/v1/tutorials/jobs/$id/progress'
+      path: '/progress'
+      fullPath: '/api/v1/tutorials/jobs/$id/progress'
+      preLoaderRoute: typeof ApiV1TutorialsJobsIdProgressRouteImport
+      parentRoute: typeof ApiV1TutorialsJobsIdRoute
+    }
+    '/api/v1/tutorials/jobs/$id/fail': {
+      id: '/api/v1/tutorials/jobs/$id/fail'
+      path: '/fail'
+      fullPath: '/api/v1/tutorials/jobs/$id/fail'
+      preLoaderRoute: typeof ApiV1TutorialsJobsIdFailRouteImport
+      parentRoute: typeof ApiV1TutorialsJobsIdRoute
+    }
+    '/api/v1/tutorials/jobs/$id/complete': {
+      id: '/api/v1/tutorials/jobs/$id/complete'
+      path: '/complete'
+      fullPath: '/api/v1/tutorials/jobs/$id/complete'
+      preLoaderRoute: typeof ApiV1TutorialsJobsIdCompleteRouteImport
+      parentRoute: typeof ApiV1TutorialsJobsIdRoute
+    }
+    '/api/v1/tutorials/jobs/$id/cancel': {
+      id: '/api/v1/tutorials/jobs/$id/cancel'
+      path: '/cancel'
+      fullPath: '/api/v1/tutorials/jobs/$id/cancel'
+      preLoaderRoute: typeof ApiV1TutorialsJobsIdCancelRouteImport
+      parentRoute: typeof ApiV1TutorialsJobsIdRoute
     }
   }
 }
@@ -1992,6 +2171,34 @@ const ScimV2UsersRouteWithChildren = ScimV2UsersRoute._addFileChildren(
   ScimV2UsersRouteChildren,
 )
 
+interface ApiV1TutorialsJobsIdRouteChildren {
+  ApiV1TutorialsJobsIdCancelRoute: typeof ApiV1TutorialsJobsIdCancelRoute
+  ApiV1TutorialsJobsIdCompleteRoute: typeof ApiV1TutorialsJobsIdCompleteRoute
+  ApiV1TutorialsJobsIdFailRoute: typeof ApiV1TutorialsJobsIdFailRoute
+  ApiV1TutorialsJobsIdProgressRoute: typeof ApiV1TutorialsJobsIdProgressRoute
+}
+
+const ApiV1TutorialsJobsIdRouteChildren: ApiV1TutorialsJobsIdRouteChildren = {
+  ApiV1TutorialsJobsIdCancelRoute: ApiV1TutorialsJobsIdCancelRoute,
+  ApiV1TutorialsJobsIdCompleteRoute: ApiV1TutorialsJobsIdCompleteRoute,
+  ApiV1TutorialsJobsIdFailRoute: ApiV1TutorialsJobsIdFailRoute,
+  ApiV1TutorialsJobsIdProgressRoute: ApiV1TutorialsJobsIdProgressRoute,
+}
+
+const ApiV1TutorialsJobsIdRouteWithChildren =
+  ApiV1TutorialsJobsIdRoute._addFileChildren(ApiV1TutorialsJobsIdRouteChildren)
+
+interface ApiV1TutorialsJobsRouteChildren {
+  ApiV1TutorialsJobsIdRoute: typeof ApiV1TutorialsJobsIdRouteWithChildren
+}
+
+const ApiV1TutorialsJobsRouteChildren: ApiV1TutorialsJobsRouteChildren = {
+  ApiV1TutorialsJobsIdRoute: ApiV1TutorialsJobsIdRouteWithChildren,
+}
+
+const ApiV1TutorialsJobsRouteWithChildren =
+  ApiV1TutorialsJobsRoute._addFileChildren(ApiV1TutorialsJobsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   IdRoute: IdRoute,
@@ -2003,6 +2210,7 @@ const rootRouteChildren: RootRouteChildren = {
   RecordRoute: RecordRoute,
   SettingsRoute: SettingsRoute,
   SigninRoute: SigninRoute,
+  TutorialsRoute: TutorialsRoute,
   ApiCombineRoute: ApiCombineRoute,
   ApiCommandsRoute: ApiCommandsRoute,
   ApiFoldersRoute: ApiFoldersRouteWithChildren,
@@ -2056,6 +2264,9 @@ const rootRouteChildren: RootRouteChildren = {
   ScimV2ServiceProviderConfigRoute: ScimV2ServiceProviderConfigRoute,
   ScimV2UsersRoute: ScimV2UsersRouteWithChildren,
   ApiAdminExportIdRoute: ApiAdminExportIdRoute,
+  ApiV1TutorialsClaimRoute: ApiV1TutorialsClaimRoute,
+  ApiV1TutorialsJobsRoute: ApiV1TutorialsJobsRouteWithChildren,
+  ApiV1TutorialsRecipesRoute: ApiV1TutorialsRecipesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -436,3 +436,45 @@ export const videoNotifications = sqliteTable("video_notifications", {
   pendingComments: integer("pending_comments").notNull().default(0),
   scheduled: integer("scheduled").notNull().default(0),
 })
+
+export const tutorialJobs = sqliteTable(
+  "tutorial_jobs",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    createdBy: text("created_by").notNull(),
+    recipeId: text("recipe_id").notNull(),
+    recipeVersion: integer("recipe_version").notNull(),
+    title: text("title").notNull(),
+    // JSON of the resolved recipe parameters; never credentials or browser state.
+    parameters: text("parameters").notNull(),
+    presenter: integer("presenter", { mode: "boolean" }).notNull().default(false),
+    // queued | running | completed | failed | cancelled
+    state: text("state").notNull().default("queued"),
+    attempts: integer("attempts").notNull().default(0),
+    claimedBy: text("claimed_by"),
+    claimExpiresAt: text("claim_expires_at"),
+    stage: text("stage"),
+    step: text("step"),
+    message: text("message"),
+    percent: integer("percent").notNull().default(0),
+    error: text("error"),
+    videoId: text("video_id"),
+    verified: text("verified"),
+    cancelRequested: integer("cancel_requested", { mode: "boolean" }).notNull().default(false),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+    completedAt: text("completed_at"),
+  },
+  (table) => [index("idx_tutorial_jobs_workspace").on(table.workspaceId, table.createdAt)],
+);
+
+export const tutorialRunners = sqliteTable(
+  "tutorial_runners",
+  {
+    workspaceId: text("workspace_id").notNull(),
+    runnerId: text("runner_id").notNull(),
+    lastSeenAt: text("last_seen_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => [primaryKey({ columns: [table.workspaceId, table.runnerId] })],
+);

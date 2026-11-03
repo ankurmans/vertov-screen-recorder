@@ -1,0 +1,22 @@
+{
+  "name": "vertov-tutorial-runner",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Local runner that performs Vertov tutorial recipes in a dedicated browser and uploads the narrated recording.",
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "setup": "tsx src/session-setup.ts",
+    "run-local": "tsx src/run-local.ts",
+    "test": "tsx --test test/*.test.ts",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "playwright-core": "^1.55.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  }
+}

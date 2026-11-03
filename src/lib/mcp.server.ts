@@ -10,6 +10,8 @@ import { APP_NAME } from "@/lib/brand"
 import { listLibrary, listSpaces, spaceInWorkspace } from "@/lib/library.server"
 import { getUploadById } from "@/lib/uploads.server"
 import { libraryFullMessage } from "@/lib/workspace.server"
+import { canManage } from "@/lib/plans"
+import * as tutorials from "@/lib/tutorials.server"
 
 /**
  * A stateless MCP server (Streamable HTTP, JSON responses) over the same API keys as /api/v1.
@@ -96,6 +98,35 @@ const TOOLS: Array<Tool> = [
       },
       required: ["video", "text"],
     },
+  },
+  {
+    name: "list_tutorial_recipes",
+    description: "The product tutorials a local runner can record by itself (registered recipes), with their scripts and parameters. Owners and admins only.",
+    inputSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "start_tutorial",
+    description:
+      "Queue a narrated tutorial recording from a registered recipe, e.g. recipe_id create-space-and-organize. A runner on the owner's machine claims the job, drives a real browser through the recipe and uploads a private video. Returns a job id; poll get_tutorial_job for progress and the share link. Owners and admins only.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        recipe_id: { type: "string" },
+        parameters: { type: "object", description: "Values for the recipe's parameters, e.g. {\"spaceName\": \"Design reviews\"}." },
+        presenter: { type: "boolean", description: "Add the still presenter portrait (not lip-synced)." },
+      },
+      required: ["recipe_id"],
+    },
+  },
+  {
+    name: "get_tutorial_job",
+    description: "A tutorial job's state (queued, running, completed, failed, cancelled), progress, error and, once finished, the video link and which steps were verified on screen.",
+    inputSchema: { type: "object", properties: { job_id: { type: "string" } }, required: ["job_id"] },
+  },
+  {
+    name: "cancel_tutorial_job",
+    description: "Cancel a queued tutorial job, or ask a running one to stop.",
+    inputSchema: { type: "object", properties: { job_id: { type: "string" } }, required: ["job_id"] },
   },
   {
     name: "list_spaces",
@@ -199,6 +230,24 @@ async function callTool(name: string, args: Record<string, unknown>, user: Sessi
         timestamp,
       })
       return text(`Comment added: ${origin}/${upload.id}${timestamp != null ? `?t=${Math.floor(timestamp)}` : ""}`)
+    }
+    case "list_tutorial_recipes":
+    case "start_tutorial":
+    case "get_tutorial_job":
+    case "cancel_tutorial_job": {
+      if (!canManage(role)) return fail("Only workspace owners and admins can record tutorials.")
+      if (name === "list_tutorial_recipes") return text(JSON.stringify(tutorials.listRecipes(), null, 2))
+      if (name === "start_tutorial") {
+        const result = await tutorials.startJob(user, workspace, { recipeId: args.recipe_id, parameters: args.parameters, presenter: args.presenter })
+        return result.ok ? text(JSON.stringify(result.job, null, 2)) : fail(result.error)
+      }
+      const jobId = typeof args.job_id === "string" ? args.job_id : ""
+      if (name === "cancel_tutorial_job") {
+        const state = await tutorials.cancel(workspace.id, jobId)
+        return state === "not_found" ? fail("Job not found.") : text(`Job ${jobId} is now ${state}.`)
+      }
+      const job = await tutorials.jobFor(workspace.id, jobId, origin)
+      return job ? text(JSON.stringify(job, null, 2)) : fail("Job not found.")
     }
     case "list_spaces": {
       const spaces = await listSpaces(workspace.id)

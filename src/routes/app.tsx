@@ -4,6 +4,7 @@ import { CommandPaletteButton } from "@/components/command-palette"
 import { libraryUrl, validateLibrarySearch } from "@/lib/library-search"
 import type { LibrarySearch } from "@/lib/library-search"
 import { BrandMark } from "@/components/brand-mark"
+import { VertovIcon } from "@/components/vertov-icon"
 import { createFileRoute, redirect, useNavigate, useRouter } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
@@ -291,6 +292,7 @@ function Library({ data }: { data: LoadedLibrary }) {
                 Archive
               </NavLink>
               {canManage(role) && <a href="/analytics" className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-neutral-600 hover:bg-neutral-200/60"><ChartBarIcon size={16} /> Analytics</a>}
+              {canManage(role) && <a href="/tutorials" className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-neutral-600 hover:bg-neutral-200/60"><VertovIcon name="tutorial" size={16} /> Tutorials</a>}
             </div>
             <div>
               <div className="flex items-center justify-between px-2.5 text-xs font-semibold tracking-wide text-neutral-500 uppercase">

@@ -32,6 +32,7 @@ const ACTIONS: Item[] = [
     group: "Actions",
   },
   { id: "analytics", title: "Analytics", hint: "Views, progress and CTA clicks", href: "/analytics", group: "Go to" },
+  { id: "tutorials", title: "Tutorials", hint: "Record a narrated product tutorial", href: "/tutorials", group: "Go to" },
   { id: "library", title: "My library", hint: "Your recordings", href: "/app", group: "Go to" },
   { id: "later", title: "Watch later", hint: "Saved videos", href: "/app?view=later", group: "Go to" },
   { id: "archive", title: "Archive", hint: "Archived recordings", href: "/app?view=archive", group: "Go to" },
@@ -73,7 +74,7 @@ export function CommandPaletteButton() {
 
 export function CommandPalette() {
   const { pathname } = useLocation()
-  const enabled = pathname === "/analytics" || pathname === "/app" || pathname === "/settings" || /^\/[a-f0-9]{8}$/.test(pathname)
+  const enabled = pathname === "/analytics" || pathname === "/tutorials" || pathname === "/app" || pathname === "/settings" || /^\/[a-f0-9]{8}$/.test(pathname)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<Results>({ videos: [], spaces: [] })
@@ -170,7 +171,7 @@ export function CommandPalette() {
   }, [query, open, pathname])
 
   const needle = query.trim().toLowerCase()
-  const actions = ACTIONS.filter((item) => (item.id !== "analytics" || results.canManage) && (!needle || `${item.title} ${item.hint}`.toLowerCase().includes(needle)))
+  const actions = ACTIONS.filter((item) => ((item.id !== "analytics" && item.id !== "tutorials") || results.canManage) && (!needle || `${item.title} ${item.hint}`.toLowerCase().includes(needle)))
   const items: Item[] = signedOut
     ? [
         {

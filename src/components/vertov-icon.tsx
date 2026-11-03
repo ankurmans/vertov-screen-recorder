@@ -28,6 +28,7 @@ const drawings = {
   surprise: <><circle cx="12" cy="12" r="9" /><path d="M8 8v1m8-1v1" strokeWidth="2.5" /><ellipse cx="12" cy="15" rx="2.5" ry="3" /></>,
   fire: <path d="M13 2c1 6-5 7-3 11 2-1 3-3 3-5 5 3 7 6 6 9a7 7 0 0 1-14-1c0-4 3-7 3-7-1 5 1 5 1 5C6 8 12 7 13 2z" />,
   eyes: <><ellipse cx="7" cy="12" rx="5" ry="8" /><ellipse cx="17" cy="12" rx="5" ry="8" /><circle cx="8" cy="13" r="2" fill="currentColor" stroke="none" /><circle cx="18" cy="13" r="2" fill="currentColor" stroke="none" /></>,
+  tutorial: <><rect x="2" y="4" width="20" height="14" rx="3" /><path d="m10 8 5 3-5 3z" strokeLinejoin="round" /><path d="M7 21h10M12 18v3" /></>,
   thanks: <><path d="m8 21-4-4-2-6c2-1 3 2 4 3V7a1 1 0 0 1 2 0v4-6a1 1 0 0 1 2 0v8m6 8 4-4 2-6c-2-1-3 2-4 3V7a1 1 0 0 0-2 0v4-6a1 1 0 0 0-2 0v8M12 1v2M6 2l1 1M18 2l-1 1" /></>,
 } satisfies Record<string, ReactNode>
 
