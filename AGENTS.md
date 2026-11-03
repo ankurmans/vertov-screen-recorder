@@ -1,3 +1,11 @@
+# Product state and decisions
+
+If `docs/product-state.md` exists, read it before planning or changing product behavior. It is the current state index; follow its links to the AI policy and feature evidence. Hosted operational documents are omitted from the public edition.
+
+Keep that index current when work changes a feature, provider/model selection, deployment, migration, activation, verification result or owner decision. Record the date, evidence and outstanding checks. Distinguish proposed, implemented locally, tested, committed, pushed, deployed and activated; none implies the next. Update the short release/decision log as part of the same change. Do not call a feature shipped based only on source code or an old note. Never record credentials, browser sessions or access-bearing URLs.
+
+Model/provider choices require explicit owner approval. Preserve existing choices during unrelated work; disclose fallback behavior. Follow the project AI policy when present, and document approved changes and the effective configuration.
+
 # Cloudflare Workers
 
 STOP. Your knowledge of Cloudflare Workers APIs and limits may be outdated. Always retrieve current documentation before any Workers, KV, R2, D1, Durable Objects, Queues, Vectorize, AI, or Agents SDK task.
