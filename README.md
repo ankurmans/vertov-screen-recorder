@@ -2,13 +2,13 @@
 
 A screen recorder and video messaging tool you can run on your own Cloudflare account. Record a tab, window, screen or camera, get a share link the moment you stop, then edit by transcript.
 
-This is the free, self-hostable edition. The hosted service at [vertov.app](https://vertov.app) is built on the same core and adds billing, managed infrastructure and hosted-only features: an MCP server, tutorial generation, analytics, playlists, Loom import, search indexing, camera backgrounds, SCIM and audit export.
+This is the free, self-hostable edition. The hosted service at [vertov.app](https://vertov.app) is built on the same core and adds billing, managed infrastructure and hosted-only features: AI titles, summaries, chapters and documents, caption translation, an MCP server, tutorial generation, analytics, playlists, Loom import, search indexing, Slack, custom branding, camera backgrounds, SCIM and audit export, and studio effects such as zooms, blur and spotlight, styled captions, noise reduction, intro/outro clips and combining videos.
 
 ## What you get
 
 - Record from the web app or the Chrome extension. The upload happens while you record, so the link is ready when you stop.
-- Share pages with transcript, chapters, comments, reactions, passwords, expiry and embeds.
-- Edit by text: cut words from the transcript, trim, add captions, links and annotations, combine videos, choose a background and layout. Exports render with ffmpeg and include your edits.
+- Share pages with transcript, comments, reactions, passwords, expiry and embeds.
+- Edit by text: cut words from the transcript, trim, add captions, text, boxes, arrows and links, choose a background and layout. Exports render with ffmpeg and include your edits.
 - Live Rewind: viewers watch while you are still recording.
 - Request a video: send a link and anyone records into your library with no account.
 - Workspaces, spaces, folders and search across what was said.
@@ -40,6 +40,10 @@ pnpm run db:migrate:local
 ## Chrome extension
 
 Load `extension/` unpacked in Chrome. In the popup choose "Self-hosting? Change the server" and enter your Worker's URL before connecting.
+
+## Contributing
+
+Pull requests are welcome. Before one can be merged, its author agrees to the [Contributor License Agreement](CLA.md) by leaving a one-line comment on the pull request. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
