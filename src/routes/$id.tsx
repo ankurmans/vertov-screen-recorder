@@ -4,7 +4,8 @@ import { getRequest, getRequestUrl } from "@tanstack/react-start/server";
 import type { Upload } from "@/db/schema";
 import { LockedShare } from "@/components/locked-share";
 import { ShareViewer } from "@/components/share-viewer";
-import { accessFor, publicUpload } from "@/lib/access.server";
+import { accessFor, isUnclaimedGuest, publicUpload } from "@/lib/access.server";
+import { ClaimGate } from "@/components/claim-gate";
 import { VideoShare } from "@/components/video-share";
 import { getAuthState, getSessionUser } from "@/lib/auth.server";
 import { APP_NAME } from "@/lib/brand";
@@ -51,6 +52,8 @@ const loadShare = createServerFn({ method: "GET" })
       exportReady:
         upload.exportStatus === "done" && upload.exportSignature === exportSignature(stored),
       isOwner: await canEdit(stored),
+      // The recorder is a guest: the link stays private until they create an account (see accessFor).
+      claimRequired: Boolean(stored.ownerId) && stored.ownerId === (await getSessionUser(getRequest()))?.sub && (await isUnclaimedGuest(stored.ownerId)),
     };
   });
 
@@ -67,6 +70,7 @@ const LOCKED_TITLES = {
   expired: "Link expired",
   members: "Members-only video",
   removed: "Video removed",
+  unclaimed: "Video not shared yet",
   email: "Email required",
 } as const;
 
@@ -193,10 +197,14 @@ function SharedMediaPage() {
   const share = Route.useLoaderData();
   const { t, panel } = Route.useSearch();
   if (share.locked) return <LockedShare id={share.id} reason={share.locked} />;
-  if (share.upload.mediaType === "video") {
-    return <VideoShare {...share} initialTime={t} initialPanel={panel} />;
-  }
-  return <ShareViewer {...share} />;
+  const page = share.upload.mediaType === "video" ? <VideoShare {...share} initialTime={t} initialPanel={panel} /> : <ShareViewer {...share} />;
+  if (!share.claimRequired) return page;
+  return (
+    <>
+      <div inert aria-hidden="true">{page}</div>
+      <ClaimGate id={share.upload.id} title={share.upload.title} providers={share.auth.providers} />
+    </>
+  );
 }
 
 function ShareNotFound() {

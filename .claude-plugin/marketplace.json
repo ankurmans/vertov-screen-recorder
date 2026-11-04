@@ -1,0 +1,12 @@
+{
+  "name": "vertov",
+  "owner": { "name": "KMF Ventures", "email": "ankur@kmfv.cc" },
+  "metadata": { "description": "Vertov plugins for Claude" },
+  "plugins": [
+    {
+      "name": "vertov",
+      "source": "./plugins/claude/vertov",
+      "description": "Read Vertov screen recordings as transcripts and briefs, search your videos and turn video files into share links."
+    }
+  ]
+}

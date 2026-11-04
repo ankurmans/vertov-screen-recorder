@@ -1,0 +1,10 @@
+{
+  "name": "vertov",
+  "version": "1.0.0",
+  "description": "Read Vertov screen recordings as transcripts and briefs, search your video library, and turn video files into share links.",
+  "author": { "name": "KMF Ventures", "email": "ankur@kmfv.cc", "url": "https://vertov.app" },
+  "homepage": "https://vertov.app/docs/mcp",
+  "repository": "https://github.com/ankurmans/vertov-screen-recorder",
+  "license": "AGPL-3.0-only",
+  "keywords": ["screen recording", "video", "transcripts", "loom alternative", "async video"]
+}

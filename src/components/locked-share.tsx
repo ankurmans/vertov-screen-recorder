@@ -1,9 +1,9 @@
-import { EnvelopeSimpleIcon, LockSimpleIcon, TimerIcon, TrashIcon, UsersThreeIcon } from "@phosphor-icons/react"
+import { EnvelopeSimpleIcon, HourglassIcon, LockSimpleIcon, TimerIcon, TrashIcon, UsersThreeIcon } from "@phosphor-icons/react"
 import { useState } from "react"
 import { APP_NAME } from "@/lib/brand"
 
-/** Shown instead of the video when the link has a password, has expired, is members-only or was removed. */
-export function LockedShare({ id, reason }: { id: string; reason: "locked" | "expired" | "members" | "removed" | "email" }) {
+/** Shown instead of the video when the link has a password, has expired, is members-only, was removed or its guest recorder has not signed up. */
+export function LockedShare({ id, reason }: { id: string; reason: "locked" | "expired" | "members" | "removed" | "email" | "unclaimed" }) {
   const [password, setPassword] = useState("")
   const [email, setEmail] = useState("")
   const [error, setError] = useState<string | null>(null)
@@ -57,6 +57,8 @@ export function LockedShare({ id, reason }: { id: string; reason: "locked" | "ex
             <UsersThreeIcon size={22} />
           ) : reason === "removed" ? (
             <TrashIcon size={22} />
+          ) : reason === "unclaimed" ? (
+            <HourglassIcon size={22} />
           ) : (
             <LockSimpleIcon size={22} />
           )}
@@ -101,6 +103,17 @@ export function LockedShare({ id, reason }: { id: string; reason: "locked" | "ex
           <>
             <h1 className="mt-4 text-lg font-semibold text-neutral-900">This video was removed</h1>
             <p className="mt-1 text-sm text-neutral-600">Nobody had watched it in a while, so it was cleared from the free plan. The person who recorded it can still restore it for a few weeks.</p>
+          </>
+        ) : reason === "unclaimed" ? (
+          <>
+            <h1 className="mt-4 text-lg font-semibold text-neutral-900">This video isn't shared yet</h1>
+            <p className="mt-1 text-sm text-neutral-600">The person who recorded it hasn't finished creating their account. The link starts working as soon as they do.</p>
+            <a
+              href={`/signin?redirect=${encodeURIComponent(`/${id}`)}`}
+              className="mt-4 block w-full rounded-lg bg-neutral-900 px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-neutral-800"
+            >
+              It's mine. Sign in
+            </a>
           </>
         ) : reason === "expired" ? (
           <>

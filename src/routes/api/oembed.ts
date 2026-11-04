@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { accessFor } from "@/lib/access.server";
 import { json, optionsResponse } from "@/lib/api.server";
 import { APP_NAME } from "@/lib/brand";
 import { getUploadAuthor, getUploadById } from "@/lib/uploads.server";
@@ -13,6 +14,8 @@ export const Route = createFileRoute("/api/oembed")({
         const id = /\/([a-f0-9]{8})(?:[/?#]|$)/.exec(target)?.[1];
         const upload = id ? await getUploadById(id) : null;
         if (!upload || upload.mediaType !== "video") return json({ error: "Not found" }, 404);
+        // Locked, members-only or unclaimed videos give embedders nothing, not even the title.
+        if ((await accessFor(upload, request)) !== "open") return json({ error: "Not found" }, 404);
         const origin = requestUrl.origin;
         const maxWidth = Number(requestUrl.searchParams.get("maxwidth")) || 960;
         const aspect = upload.width && upload.height ? upload.width / upload.height : 16 / 9;

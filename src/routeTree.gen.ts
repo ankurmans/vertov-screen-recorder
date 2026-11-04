@@ -73,6 +73,7 @@ import { Route as ApiCameraIdRouteImport } from './routes/api/camera.$id'
 import { Route as ApiAvatarUserIdRouteImport } from './routes/api/avatar.$userId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiAssetsIdRouteImport } from './routes/api/assets.$id'
+import { Route as ApiAdminReviewAccountRouteImport } from './routes/api/admin/review-account'
 import { Route as ApiAdminAiConfigRouteImport } from './routes/api/admin/ai-config'
 import { Route as ApiWorkspaceMembersUserIdRouteImport } from './routes/api/workspace.members.$userId'
 import { Route as ApiV1VideosIdRouteImport } from './routes/api/v1.videos.$id'
@@ -406,6 +407,11 @@ const ApiAssetsIdRoute = ApiAssetsIdRouteImport.update({
   path: '/api/assets/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminReviewAccountRoute = ApiAdminReviewAccountRouteImport.update({
+  id: '/api/admin/review-account',
+  path: '/api/admin/review-account',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminAiConfigRoute = ApiAdminAiConfigRouteImport.update({
   id: '/api/admin/ai-config',
   path: '/api/admin/ai-config',
@@ -498,6 +504,7 @@ export interface FileRoutesByFullPath {
   '/join/$token': typeof JoinTokenRoute
   '/request/$id': typeof RequestIdRoute
   '/api/admin/ai-config': typeof ApiAdminAiConfigRoute
+  '/api/admin/review-account': typeof ApiAdminReviewAccountRoute
   '/api/assets/$id': typeof ApiAssetsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/avatar/$userId': typeof ApiAvatarUserIdRoute
@@ -576,6 +583,7 @@ export interface FileRoutesByTo {
   '/join/$token': typeof JoinTokenRoute
   '/request/$id': typeof RequestIdRoute
   '/api/admin/ai-config': typeof ApiAdminAiConfigRoute
+  '/api/admin/review-account': typeof ApiAdminReviewAccountRoute
   '/api/assets/$id': typeof ApiAssetsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/avatar/$userId': typeof ApiAvatarUserIdRoute
@@ -655,6 +663,7 @@ export interface FileRoutesById {
   '/join/$token': typeof JoinTokenRoute
   '/request/$id': typeof RequestIdRoute
   '/api/admin/ai-config': typeof ApiAdminAiConfigRoute
+  '/api/admin/review-account': typeof ApiAdminReviewAccountRoute
   '/api/assets/$id': typeof ApiAssetsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/avatar/$userId': typeof ApiAvatarUserIdRoute
@@ -735,6 +744,7 @@ export interface FileRouteTypes {
     | '/join/$token'
     | '/request/$id'
     | '/api/admin/ai-config'
+    | '/api/admin/review-account'
     | '/api/assets/$id'
     | '/api/auth/$'
     | '/api/avatar/$userId'
@@ -813,6 +823,7 @@ export interface FileRouteTypes {
     | '/join/$token'
     | '/request/$id'
     | '/api/admin/ai-config'
+    | '/api/admin/review-account'
     | '/api/assets/$id'
     | '/api/auth/$'
     | '/api/avatar/$userId'
@@ -891,6 +902,7 @@ export interface FileRouteTypes {
     | '/join/$token'
     | '/request/$id'
     | '/api/admin/ai-config'
+    | '/api/admin/review-account'
     | '/api/assets/$id'
     | '/api/auth/$'
     | '/api/avatar/$userId'
@@ -970,6 +982,7 @@ export interface RootRouteChildren {
   JoinTokenRoute: typeof JoinTokenRoute
   RequestIdRoute: typeof RequestIdRoute
   ApiAdminAiConfigRoute: typeof ApiAdminAiConfigRoute
+  ApiAdminReviewAccountRoute: typeof ApiAdminReviewAccountRoute
   ApiAssetsIdRoute: typeof ApiAssetsIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiAvatarUserIdRoute: typeof ApiAvatarUserIdRoute
@@ -1449,6 +1462,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAssetsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/review-account': {
+      id: '/api/admin/review-account'
+      path: '/api/admin/review-account'
+      fullPath: '/api/admin/review-account'
+      preLoaderRoute: typeof ApiAdminReviewAccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/ai-config': {
       id: '/api/admin/ai-config'
       path: '/api/admin/ai-config'
@@ -1715,6 +1735,7 @@ const rootRouteChildren: RootRouteChildren = {
   JoinTokenRoute: JoinTokenRoute,
   RequestIdRoute: RequestIdRoute,
   ApiAdminAiConfigRoute: ApiAdminAiConfigRoute,
+  ApiAdminReviewAccountRoute: ApiAdminReviewAccountRoute,
   ApiAssetsIdRoute: ApiAssetsIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiAvatarUserIdRoute: ApiAvatarUserIdRoute,

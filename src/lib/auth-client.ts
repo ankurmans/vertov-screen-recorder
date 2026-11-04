@@ -29,6 +29,12 @@ export async function sendMagicLink(email: string, callbackURL: string) {
   if (res.error) throw new Error(res.error.message ?? "Couldn't send the link.")
 }
 
+/** Email and password, for accounts an operator created (app-directory reviewers). There's no password sign-up. */
+export async function signInWithPassword(email: string, password: string) {
+  const res = await authClient.signIn.email({ email, password })
+  if (res.error) throw new Error(res.error.message ?? "That email and password didn't match.")
+}
+
 export async function signInWithGoogle(callbackURL: string) {
   const res = await authClient.signIn.social({ provider: "google", callbackURL })
   if (res.error) throw new Error(res.error.message ?? "Google sign-in isn't available.")

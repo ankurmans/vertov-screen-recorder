@@ -2,9 +2,10 @@ import { env } from "cloudflare:workers"
 import type { PublicUpload, Upload } from "@/db/schema"
 import { withCors } from "@/lib/api.server"
 import { getSessionUser } from "@/lib/auth.server"
+import { HOSTED_EDITION } from "@/lib/edition"
 import { roleIn } from "@/lib/workspace.server"
 
-export type Access = "open" | "locked" | "expired" | "members" | "removed" | "email"
+export type Access = "open" | "locked" | "expired" | "members" | "removed" | "email" | "unclaimed"
 
 const ITERATIONS = 100_000
 const UNLOCK_DAYS = 30
@@ -92,16 +93,34 @@ export function isExpired(upload: Upload): boolean {
 }
 
 /**
+ * True for a guest who has not signed up with Google, an email link or a passkey. Hosted only: their share links work for
+ * nobody else until they do. Passkey accounts stay anonymous in the auth table but can sign back in, so they count as claimed.
+ */
+export async function isUnclaimedGuest(userId: string | null): Promise<boolean> {
+  if (!HOSTED_EDITION || !userId) return false
+  const row = await env.DB.prepare(
+    'SELECT 1 AS guest FROM "user" WHERE id = ? AND "isAnonymous" = 1 AND id NOT IN (SELECT "userId" FROM passkey)',
+  )
+    .bind(userId)
+    .first<{ guest: number }>()
+  return Boolean(row)
+}
+
+const ownerIsGuest = (upload: Upload) => isUnclaimedGuest(upload.ownerId)
+
+/**
  * Who may watch. The recorder always can (even a removed video, to restore it). Otherwise: removed
  * videos nobody; members-only videos signed-in members of the workspace; then expiry and password.
  */
 export async function accessFor(upload: Upload, request: Request): Promise<Access> {
   const expired = isExpired(upload)
   const membersOnly = upload.visibility === "workspace"
-  if (!expired && !upload.passwordHash && !membersOnly && !upload.deletedAt && !upload.requireEmail) return "open"
+  const guestOwned = await ownerIsGuest(upload)
+  if (!expired && !upload.passwordHash && !membersOnly && !upload.deletedAt && !upload.requireEmail && !guestOwned) return "open"
   const user = await getSessionUser(request)
   if (user && upload.ownerId === user.sub) return "open"
   if (upload.deletedAt) return "removed"
+  if (guestOwned) return "unclaimed"
   if (membersOnly && !(user && (await roleIn(upload.workspaceId, user.sub)))) return "members"
   if (expired) return "expired"
   if (upload.passwordHash && readCookie(request, cookieName(upload.id)) !== (await unlockToken(upload))) return "locked"
@@ -116,6 +135,7 @@ const DENIED: Record<Exclude<Access, "open">, string> = {
   members: "Only workspace members can watch this",
   removed: "This video was removed",
   email: "Email required",
+  unclaimed: "This video hasn't been shared yet",
 }
 
 /** For media/asset routes: a 403 when the viewer can't see this upload, otherwise null. */

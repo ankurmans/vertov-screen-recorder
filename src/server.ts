@@ -10,6 +10,7 @@ import { processImport } from "@/lib/import.server"
 import { processRecording } from "@/lib/process.server"
 import { processStitch } from "@/lib/stitch.server"
 import { runRetention } from "@/lib/retention.server"
+import { sweepOAuth } from "@/lib/oauth.server"
 
 export type ProcessMessage =
   | { id: string; kind: "notification" }
@@ -74,5 +75,6 @@ export default {
     }
     console.log(JSON.stringify({ message: "Retention run", ...(await runRetention()) }))
     console.log(JSON.stringify({ message: "Guest sweep", ...(await sweepGuests()) }))
+    await sweepOAuth()
   },
 } satisfies ExportedHandler<Env, ProcessMessage>

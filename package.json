@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Screendrop Cloud \u2014 screenshot sharing powered by Cloudflare Workers, R2, and D1",
   "private": true,
+  "license": "AGPL-3.0-only",
   "type": "module",
   "cloudflare": {
     "bindings": {
@@ -79,6 +80,5 @@
     "typescript": "^6.0.3",
     "vite": "^8.1.4",
     "wrangler": "^4.107.1"
-  },
-  "license": "AGPL-3.0-only"
+  }
 }

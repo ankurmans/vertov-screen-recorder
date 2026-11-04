@@ -15,6 +15,7 @@ import type { FloatingReaction } from "@/components/stage-layer";
 import type { StudioState } from "@/components/studio-panel";
 import type { Cut } from "@/lib/cuts";
 import type { Overlay } from "@/lib/overlays";
+import type { Brand } from "@/lib/brand-theme";
 import { AnnotateEditor } from "@/components/annotate-editor";
 import { CaptionLayer } from "@/components/caption-layer";
 import { CommentsPanel } from "@/components/comments-panel";
@@ -25,8 +26,7 @@ import { LivePlayer } from "@/components/live-player";
 import { OverlayLayer } from "@/components/overlay-layer";
 import { ShareHeader } from "@/components/share-header";
 import { brandStyle } from "@/lib/brand-theme";
-import type { Brand } from "@/lib/brand-theme";
-import { CameraTrack, countCtaClick, EndCard, ReactionLayer } from "@/components/stage-layer";
+import { CameraTrack, EndCard, ReactionLayer, countCtaClick } from "@/components/stage-layer";
 import { AiPanel } from "@/components/ai-panel";
 import { StudioPanel } from "@/components/studio-panel";
 import { TranscriptEditor } from "@/components/transcript-editor";
@@ -56,6 +56,8 @@ interface VideoShareProps {
   likeCount: number;
   auth: AuthState;
   isOwner: boolean;
+  /** The owner is a guest, so the link is not live yet and the claim gate is showing. */
+  claimRequired?: boolean;
   exportReady: boolean;
   initialTime?: number;
   initialPanel?: "insights";
@@ -79,6 +81,7 @@ export function VideoShare({
   likeCount,
   auth: initialAuth,
   isOwner,
+  claimRequired = false,
   exportReady,
   initialTime = 0,
   initialPanel,
@@ -131,7 +134,7 @@ export function VideoShare({
   useEffect(() => {
     const url = new URL(window.location.href);
     if (!url.searchParams.has("new")) return;
-    if (isOwner) {
+    if (isOwner && !claimRequired) {
       toastManager.add({ title: "Your link is on the clipboard. Paste it anywhere." });
     }
     url.searchParams.delete("new");

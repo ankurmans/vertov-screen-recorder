@@ -28,6 +28,12 @@ export async function sweepGuests(): Promise<{ guests: number }> {
     .all<{ id: string }>()
   for (const { id } of stale.results) {
     await env.DB.batch([
+      // Leftovers in the guest's own workspace: keys, tutorial jobs and runners, audit rows. Nothing else can be in it,
+      // since the guest owns no uploads and the personal workspace has no other members.
+      env.DB.prepare("DELETE FROM api_keys WHERE user_id = ? OR workspace_id = ?").bind(id, `p_${id}`),
+      env.DB.prepare("DELETE FROM tutorial_jobs WHERE workspace_id = ?").bind(`p_${id}`),
+      env.DB.prepare("DELETE FROM tutorial_runners WHERE workspace_id = ?").bind(`p_${id}`),
+      env.DB.prepare("DELETE FROM audit_log WHERE workspace_id = ?").bind(`p_${id}`),
       env.DB.prepare('DELETE FROM session WHERE "userId" = ?').bind(id),
       env.DB.prepare('DELETE FROM account WHERE "userId" = ?').bind(id),
       env.DB.prepare("DELETE FROM workspace_members WHERE user_id = ?").bind(id),

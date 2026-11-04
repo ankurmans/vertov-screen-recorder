@@ -6,6 +6,7 @@ import type { AuthProvider, AuthState } from "@/lib/use-auth";
 import type { MailEnv } from "@/lib/mail.server";
 import { APP_NAME } from "@/lib/brand";
 import { withMailer } from "@/lib/mail.server";
+import { userForOAuthToken } from "@/lib/oauth.server";
 
 /**
  * Accounts via Better Auth on D1: passkeys (no setup needed), email magic
@@ -85,6 +86,9 @@ function buildAuth(origin: string) {
     trustedOrigins: [origin],
     session: { expiresIn: 60 * 60 * 24 * 365, updateAge: 60 * 60 * 24 * 7 },
     socialProviders: google ?? {},
+    // Passwords exist only for accounts an operator creates (app-directory reviewers, who can't use email links or
+    // passkeys); nobody can sign up with one. See /api/admin/review-account.
+    emailAndPassword: { enabled: true, disableSignUp: true, minPasswordLength: 12 },
     plugins: [
       // A passkey needs an account to live on, so passkey sign-up starts anonymous.
       anonymous({
@@ -150,6 +154,7 @@ export async function getSessionUser(
 ): Promise<SessionUser | null> {
   const authorization = request.headers.get("authorization");
   if (authorization?.startsWith("Bearer rk_")) return userForApiKey(authorization.slice(7).trim());
+  if (authorization?.startsWith("Bearer vat_")) return userForOAuthToken(authorization.slice(7).trim(), new URL(request.url).origin);
   try {
     const session = await getAuth(request).api.getSession({
       headers: request.headers,

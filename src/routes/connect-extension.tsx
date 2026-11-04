@@ -1,10 +1,11 @@
-import { BrandMark } from "@/components/brand-mark"
 import { createFileRoute, redirect } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { BrandMark } from "@/components/brand-mark"
 import { getSessionUser } from "@/lib/auth.server"
 import { APP_NAME } from "@/lib/brand"
+import { reportChromeEvent } from "@/lib/chrome-analytics"
 import { getWorkspaceContext } from "@/lib/workspace.server"
 
 // Chrome extension ids are 32 letters a-p.
@@ -42,6 +43,10 @@ function ConnectPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  useEffect(() => {
+    if (ext) reportChromeEvent("extension_onboarding_started")
+  }, [ext])
+
   async function pick(id: string) {
     await fetch("/api/workspace/switch", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id }) })
     window.location.reload()
@@ -61,6 +66,7 @@ function ConnectPage() {
       setBusy(false)
       return
     }
+    reportChromeEvent("extension_authenticated")
     const fragment = new URLSearchParams({ server: window.location.origin, token: body.token, workspace: data.workspace })
     window.location.href = `chrome-extension://${ext}/connect.html#${fragment.toString()}`
   }

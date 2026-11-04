@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "vertov": {
+      "type": "http",
+      "url": "https://vertov.app/mcp"
+    }
+  }
+}

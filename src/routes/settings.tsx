@@ -9,12 +9,13 @@ import { ArrowLeftIcon, CheckIcon, CopyIcon, LinkSimpleIcon, PuzzlePieceIcon } f
 import { useState } from "react"
 import type { Interval, PlanId, Role } from "@/lib/plans"
 import { getSessionUser } from "@/lib/auth.server"
-import { APP_NAME } from "@/lib/brand"
+import { APP_NAME, CHROME_STORE_URL } from "@/lib/brand"
 import { HOSTED_EDITION } from "@/lib/edition"
 import { HEX_COLOR } from "@/lib/brand-theme"
 import { billingOptions } from "@/lib/polar.server"
 import { EXTRA_BLOCK_HOURS, EXTRA_BLOCK_PRICE, PAID_PLANS, PLANS, canManage, formatHours, yearlyPrice } from "@/lib/plans"
 import { listApiKeys } from "@/lib/api-keys.server"
+import { listConnections } from "@/lib/oauth.server"
 import { listWebhookEndpoints } from "@/lib/webhooks"
 import { listInvites, listMembers } from "@/lib/workspace-api.server"
 import { getWorkspaceContext, isHosted, toPublicWorkspace, usageOf } from "@/lib/workspace.server"
@@ -38,6 +39,7 @@ const loadSettings = createServerFn({ method: "GET" }).handler(async () => {
     hosted: isHosted(),
     billing: billingOptions(),
     apiKeys: await listApiKeys(user.sub, workspace.id),
+    connections: HOSTED_EDITION ? await listConnections(user.sub) : [],
     webhooks: canManage(role) ? await listWebhookEndpoints(workspace.id) : [],
   }
 })
@@ -338,7 +340,9 @@ function AgentsTab() {
   const snippets: Array<[string, string, string]> = [
     ...(HOSTED_EDITION
       ? ([
-          ["claude", "Claude Code", `claude mcp add --transport http ${APP_NAME.toLowerCase()} ${server}/mcp --header "Authorization: Bearer ${key}"`],
+          ["claude-oauth", "Claude Code, signing in (no key needed)", `claude mcp add --transport http ${APP_NAME.toLowerCase()} ${server}/mcp`],
+          ["codex-oauth", "Codex, signing in (no key needed)", `codex mcp add ${APP_NAME.toLowerCase()} --url ${server}/mcp`],
+          ["claude", "Claude Code with an API key", `claude mcp add --transport http ${APP_NAME.toLowerCase()} ${server}/mcp --header "Authorization: Bearer ${key}"`],
           [
             "json",
             "Cursor, Claude Desktop and other MCP clients",
@@ -362,16 +366,51 @@ function AgentsTab() {
     <div className="space-y-5">
       <Card
         title="Chrome extension"
-        description="Record any tab or your whole screen from the toolbar, with click capture so agents see what you did. Until it is in the Chrome Web Store: download it, unzip it, open chrome://extensions, turn on Developer mode and choose Load unpacked."
+        description="Record any tab or your whole screen from the toolbar, with click capture so agents see what you did."
       >
         <a
-          href="/extension/vertov-extension.zip"
-          download
+          href={CHROME_STORE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
           className="inline-flex items-center gap-2 rounded-lg bg-neutral-900 px-4 py-2 text-sm font-semibold text-white hover:bg-neutral-800"
         >
-          <PuzzlePieceIcon size={16} /> Download the extension
+          <PuzzlePieceIcon size={16} /> Add to Chrome
         </a>
       </Card>
+      {HOSTED_EDITION && (
+        <Card
+          title="Connected apps"
+          description={`Claude, ChatGPT and Codex connect by signing in: add ${server}/mcp as a connector and choose Allow. Each connection works in one workspace.`}
+        >
+          {data.connections.length === 0 ? (
+            <p className="text-sm text-neutral-500">Nothing connected yet.</p>
+          ) : (
+            <ul className="divide-y divide-neutral-100 rounded-lg border border-neutral-200">
+              {data.connections.map((connection) => (
+                <li key={connection.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium text-neutral-900">{connection.clientName}</span>
+                    <span className="block text-xs text-neutral-500">
+                      {connection.workspaceName ?? "Workspace"} · connected {new Date(connection.createdAt).toLocaleDateString()}
+                      {connection.lastUsedAt ? ` · used ${new Date(connection.lastUsedAt).toLocaleDateString()}` : ""}
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!confirm(`Disconnect “${connection.clientName}”? It has to sign in again to use ${APP_NAME}.`)) return
+                      void send("/api/oauth/connections", "DELETE", { id: connection.id }).then(() => router.invalidate())
+                    }}
+                    className="rounded-md px-2 py-1 text-xs text-red-600 hover:bg-red-50"
+                  >
+                    Disconnect
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      )}
       <Card
         title="Let agents record and read videos"
         description="An API key lets an agent or script act as you in this workspace: upload a recording and get a share link back, or read any video it can see as a transcript and brief. No computer use needed: browser agents already have video from Playwright or a screencast."
@@ -445,7 +484,7 @@ function AgentsTab() {
             </div>
           ))}
           <p className="text-xs text-neutral-500">
-            {HOSTED_EDITION && "MCP tools: upload_video, create_video_from_url, list_videos, get_video, get_video_prompt, add_comment, list_spaces. "}
+            {HOSTED_EDITION && "MCP tools: upload_video, create_video_from_url, list_videos, get_video, get_video_prompt, get_ai_doc, generate_ai_doc, add_comment, list_spaces and the tutorial tools. "}
             Anyone watching a video can also use Share → Copy for an AI agent.
           </p>
         </div>

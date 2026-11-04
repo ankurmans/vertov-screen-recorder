@@ -36,6 +36,13 @@ const SECTIONS: Array<{ title: string; body: Array<string> }> = [
     ],
   },
   {
+    title: "AI apps you connect (Claude, ChatGPT, Codex and others)",
+    body: [
+      "If you connect an AI app to Vertov, you sign in and pick one workspace. The app can then call Vertov's tools as you in that workspace: list and search videos you can see, read their titles, summaries, chapters, transcripts and the documents written from them, upload videos, and add comments under your name. It can't delete videos or change who can see them.",
+      "We keep a record of each connection (the app's name, the workspace, when it was made and last used) and hashed access tokens. We receive the tool calls the app makes, not your conversation with it. What the app does with the results is covered by that app's own privacy policy. Disconnect any time in Settings, under Agents.",
+    ],
+  },
+  {
     title: "People who watch a video",
     body: [
       "When someone opens a share page, we record that it was watched, their country and city as reported by our network provider, the website they came from, a coarse device label such as Mac or iPhone, and how far they watched. We do not store their IP address. Cookies are not needed to watch.",

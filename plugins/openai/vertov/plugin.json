@@ -1,0 +1,29 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "vertov",
+  "version": "1.0.0",
+  "description": "Read Vertov screen recordings as transcripts and briefs, search your video library, and turn video files into share links.",
+  "author": { "name": "KMF Ventures", "email": "ankur@kmfv.cc", "url": "https://vertov.app" },
+  "homepage": "https://vertov.app/docs/mcp",
+  "repository": "https://github.com/ankurmans/vertov-screen-recorder",
+  "license": "AGPL-3.0-only",
+  "keywords": ["screen recording", "video", "transcripts", "async video"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Vertov",
+        "shortDescription": "Your screen recordings, readable",
+        "longDescription": "Vertov is a screen recorder that gives every recording a share link, a transcript and a summary. Connect it to read any Vertov video you can see as a timestamped brief of what was shown and said, search your videos by what was said in them, write SOPs, bug reports and meeting notes from a recording, and upload a video file to get its share link. You sign in with your Vertov account and choose one workspace. No tool deletes videos or changes who can see them.",
+        "developerName": "KMF Ventures",
+        "category": "Productivity",
+        "websiteURL": "https://vertov.app",
+        "supportURL": "https://vertov.app/support",
+        "privacyPolicyURL": "https://vertov.app/privacy",
+        "termsOfServiceURL": "https://vertov.app/terms",
+        "composerIcon": "./assets/icon.png",
+        "logo": "./assets/logo.png",
+        "brandColor": "#D92B14"
+      }
+    }
+  }
+}
