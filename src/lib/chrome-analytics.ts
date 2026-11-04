@@ -1,12 +1,11 @@
 /**
  * Events for the Chrome extension landing page. Two sinks, both existing: PostHog (consent-gated; cookieless until the
  * visitor accepts) and the anonymous daily counter behind `/api/tool-event`. A Web Store click is not an install, so it is
- * named `chrome_store_outbound_click`; the store reports installs, and `extension_authenticated` is what proves use.
+ * counted once, as `chrome_store_outbound_click`; the store reports installs, and `extension_authenticated` is what proves use.
  * Nothing about recordings, devices or the visitor is sent.
  */
 export const CHROME_EVENTS = [
   "chrome_landing_view",
-  "chrome_install_cta_click",
   "chrome_store_outbound_click",
   "extension_onboarding_started",
   "extension_authenticated",

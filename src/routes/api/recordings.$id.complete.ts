@@ -8,6 +8,7 @@ import { json } from "@/lib/api.server";
 import { deleteLive } from "@/lib/live.server";
 import { notify } from "@/lib/slack.server";
 import { emitWebhook } from "@/lib/webhooks";
+import { countRecorderActivation } from "@/lib/activation-events.server";
 import { ownedUpload, userApi } from "@/lib/recordings.server";
 
 const completeSchema = z.object({
@@ -111,6 +112,7 @@ export const Route = createFileRoute("/api/recordings/$id/complete")({
             db.delete(uploadParts).where(eq(uploadParts.uploadId, upload.id)),
           ]);
           await deleteLive(upload.id).catch(() => {});
+          if (upload.ownerId) await countRecorderActivation(upload.ownerId, upload.id, upload.createdAt);
           if (willProcess) await env.PROCESS_QUEUE.send({ id: upload.id });
           await notify(upload.workspaceId, `New video: ${upload.title || "Untitled"}\n${url}`);
           emitWebhook(upload.workspaceId, "video.ready", { id: upload.id, url, title: upload.title, duration: parsed.data.duration });

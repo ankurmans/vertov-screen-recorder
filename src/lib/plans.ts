@@ -19,7 +19,7 @@ export interface Plan {
 }
 
 export const PLANS: Record<PlanId, Plan> = {
-  free: { id: "free", name: "Free", monthly: 0, hours: 5, ai: false, blurb: "Every recording and editing feature, no length limit per video." },
+  free: { id: "free", name: "Free", monthly: 0, hours: 5, ai: false, blurb: "Every recording and editing feature, no plan limit on video length." },
   pro: { id: "pro", name: "Pro", monthly: 9, hours: 50, ai: true, blurb: "AI titles, summaries and chapters, and room for a real library." },
   team: { id: "team", name: "Team", monthly: 29, hours: 200, ai: true, blurb: "A shared library for the whole team. Members never cost extra." },
   business: { id: "business", name: "Business", monthly: 99, hours: 1000, ai: true, blurb: "A thousand hours for larger teams." },

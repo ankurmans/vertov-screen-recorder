@@ -82,6 +82,7 @@ export const Route = createFileRoute("/privacy")({
       { title: `Privacy · ${APP_NAME}` },
       { name: "description", content: `What the ${APP_NAME} app and Chrome extension record, where it goes and what we do with it.` },
     ],
+    links: [{ rel: "canonical", href: "https://vertov.app/privacy" }],
   }),
   component: Privacy,
 })

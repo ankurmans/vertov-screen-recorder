@@ -53,7 +53,9 @@ export function enabledProviders(origin: string): Array<AuthProvider> {
   return providers;
 }
 
-const authByOrigin = new Map<string, ReturnType<typeof buildAuth>>();
+// One instance per request, never shared: a Worker never resolves a promise left pending by a cancelled request, so
+// no lazily started promise inside better-auth may outlive the request that started it. Building one is cheap.
+const authByRequest = new WeakMap<Request, ReturnType<typeof buildAuth>>();
 
 function buildAuth(origin: string) {
   const secret = optionalEnv("BETTER_AUTH_SECRET");
@@ -83,6 +85,10 @@ function buildAuth(origin: string) {
     basePath: "/api/auth",
     secret: secret || "local-dev-secret-not-for-production-use",
     database: env.DB,
+    // Better Auth otherwise checks the database schema at runtime (a query per table, about 0.6 s on D1) and keeps
+    // that check's promise. A Worker never resolves a promise whose request was cancelled, so one cancelled first
+    // request left every later sign-in check in the isolate hanging. Migrations in drizzle/ own the schema.
+    advanced: { database: { validateSchema: false } },
     trustedOrigins: [origin],
     session: { expiresIn: 60 * 60 * 24 * 365, updateAge: 60 * 60 * 24 * 7 },
     socialProviders: google ?? {},
@@ -140,11 +146,10 @@ function buildAuth(origin: string) {
 }
 
 export function getAuth(request: Request) {
-  const origin = new URL(request.url).origin;
-  let auth = authByOrigin.get(origin);
+  let auth = authByRequest.get(request);
   if (!auth) {
-    auth = buildAuth(origin);
-    authByOrigin.set(origin, auth);
+    auth = buildAuth(new URL(request.url).origin);
+    authByRequest.set(request, auth);
   }
   return auth;
 }
