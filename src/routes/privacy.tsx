@@ -12,13 +12,13 @@ const SECTIONS: Array<{ title: string; body: Array<string> }> = [
   {
     title: "Optional: click capture for AI agents",
     body: [
-      "If you turn on \"Capture clicks for AI agents\", the extension notes which element you clicked (its visible label and a selector) and which pages you opened, with timestamps, and attaches them to that recording's agent brief. It never records what you type. It is off by default.",
+      "If you turn on \"Capture clicks for AI agents\", the extension notes which element you clicked (its visible label and a selector) and which pages you opened, with timestamps, and attaches them to that recording's agent brief. The same click positions can suggest zoom points in the editor. It never records what you type. It is off by default.",
     ],
   },
   {
     title: "Camera backgrounds, sizing and live viewing",
     body: [
-      "Blurring or replacing your background and resizing a recording happen on your computer, in the extension, before anything is uploaded. The segmentation model ships inside the extension and nothing is sent anywhere to run it.",
+      "Blurring or replacing your background and resizing a recording happen on your computer, before anything is uploaded. In the extension the segmentation model ships inside the package. In the web recorder the model is downloaded from this site the first time you pick a background. Either way your camera frames are processed in your browser and nothing is sent anywhere to run it.",
       "If you turn on \"Let viewers watch live\", a second copy of the recording uploads a few seconds at a time so people with the link can watch while you record. It is deleted when the recording ends.",
     ],
   },
@@ -31,8 +31,15 @@ const SECTIONS: Array<{ title: string; body: Array<string> }> = [
   {
     title: "Browsing and permissions",
     body: [
-      "The extension asks for access to all sites only so the camera bubble and drawing tools can appear on the tab you are recording and so old Loom links can open your copy. It does not read page content except for the optional click capture above, and it does not track your browsing.",
+      "When you press record, the extension gets temporary access to the tab you are on, so the camera bubble and drawing tools can appear on it. It also asks, when you start recording, for access to all sites, so those tools follow you to other tabs you record. You can decline and recording still works on the tab you started from. The extension also needs vertov.app, and loom.com so old Loom links can open your copy. It does not read page content except for the optional click capture above, and it does not track your browsing.",
       "The connection to your workspace is an API key stored in the extension's local storage. You can disconnect any time from the popup, and revoke the key in settings.",
+    ],
+  },
+  {
+    title: "People who watch a video",
+    body: [
+      "When someone opens a share page, we record that it was watched, their country and city as reported by our network provider, the website they came from, a coarse device label such as Mac or iPhone, and how far they watched. We do not store their IP address. Cookies are not needed to watch.",
+      "The owner of the video can see these counts. If they turned them on, they get an email when their video is first watched, and a webhook, if they set one up, includes the viewer's country and the website they came from. People who leave a comment are shown by the name they give.",
     ],
   },
   {
