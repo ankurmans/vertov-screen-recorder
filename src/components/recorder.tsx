@@ -156,6 +156,8 @@ export function Recorder({
   )
   const [devicesEnabled, setDevicesEnabled] = useState(!embedded)
   const [screenSupported, setScreenSupported] = useState(true)
+  // Browser capability, so it is only known after mount; reading it while rendering made the server and client HTML differ.
+  const [canBlurBackground, setCanBlurBackground] = useState(false)
   const [phase, setPhase] = useState<Phase>("setup")
   const [cameras, setCameras] = useState<Array<MediaDeviceInfo>>([])
   const [mics, setMics] = useState<Array<MediaDeviceInfo>>([])
@@ -202,6 +204,7 @@ export function Recorder({
     setScreenSupported(
       typeof browserMediaDevices()?.getDisplayMedia === "function",
     )
+    setCanBlurBackground(backgroundSupported())
   }, [embedded])
   useEffect(() => void unfinishedTakes().then(setSavedTakes), [])
 
@@ -1086,7 +1089,7 @@ export function Recorder({
                 value={cameraId}
                 onChange={(value) => update({ cameraId: value })}
               />
-              {(mode === "camera" || cameraOn) && backgroundSupported() && (
+              {(mode === "camera" || cameraOn) && canBlurBackground && (
                 <div className="flex items-center gap-2 rounded-xl bg-white/5 p-2.5 sm:col-span-2">
                   <span className="shrink-0 px-1 text-xs font-semibold text-neutral-400">
                     Background

@@ -132,11 +132,36 @@ const secret = (name: string) => {
 
 type TextProvider = "anthropic" | "groq" | "workers"
 
+/** The model each provider will use: its default, or the override set in the Worker's variables (ANTHROPIC_MODEL, GROQ_TEXT_MODEL, WORKERS_TEXT_MODEL). */
+const textModel = (name: TextProvider) =>
+  name === "anthropic" ? (secret("ANTHROPIC_MODEL") ?? ANTHROPIC_MODEL) : name === "groq" ? (secret("GROQ_TEXT_MODEL") ?? GROQ_TEXT) : (secret("WORKERS_TEXT_MODEL") ?? WORKERS_TEXT)
+
 /** Text providers in the order to try them: AI_CHAIN (comma separated) or Claude, Groq, then Workers AI. Unconfigured ones drop out. */
 function textChain(): Array<TextProvider> {
   const wanted = (secret("AI_CHAIN") ?? "anthropic,groq,workers").split(",").map((name) => name.trim())
   const chain = wanted.filter((name): name is TextProvider => name === "anthropic" || name === "groq" || name === "workers")
   return chain.filter((name) => (name === "anthropic" ? Boolean(secret("ANTHROPIC_API_KEY")) : name === "groq" ? Boolean(groqKey()) : true))
+}
+
+/** What `complete()` would do right now, for the operator: provider order, exact model IDs, which providers are keyed and which are cooling down after a failure. No keys or prompts. */
+export function textConfig() {
+  const requested = (secret("AI_CHAIN") ?? "anthropic,groq,workers").split(",").map((name) => name.trim())
+  return {
+    requestedOrder: requested,
+    effectiveOrder: textChain().map((name) => ({
+      provider: name,
+      model: textModel(name),
+      coolingDownSeconds: Math.max(0, Math.ceil(((coolingUntil.get(name) ?? 0) - Date.now()) / 1000)),
+    })),
+    overrides: {
+      AI_CHAIN: secret("AI_CHAIN") !== null,
+      ANTHROPIC_MODEL: secret("ANTHROPIC_MODEL") !== null,
+      GROQ_TEXT_MODEL: secret("GROQ_TEXT_MODEL") !== null,
+      WORKERS_TEXT_MODEL: secret("WORKERS_TEXT_MODEL") !== null,
+    },
+    keys: { anthropic: Boolean(secret("ANTHROPIC_API_KEY")), groq: Boolean(groqKey()) },
+    speech: { groq: GROQ_WHISPER, workers: WORKERS_WHISPER },
+  }
 }
 
 /** A JSON-only completion; returns the raw text for the caller to parse. Falls through the provider chain on any failure. */
@@ -150,14 +175,14 @@ export async function complete(system: string, user: string, maxTokens = 800): P
     try {
       const text = name === "anthropic" ? await anthropicComplete(system, user, maxTokens) : name === "groq" ? await groqComplete(system, user, maxTokens) : await workersComplete(system, user, maxTokens)
       if (text.trim()) {
-        console.log(JSON.stringify({ message: "AI completion succeeded", provider: name }))
+        console.log(JSON.stringify({ message: "AI completion succeeded", provider: name, model: textModel(name), fallback: name !== order[0] }))
         return text
       }
       lastError = new Error(`${name} returned nothing`)
     } catch (error) {
       lastError = error
       coolingUntil.set(name, Date.now() + COOLDOWN_MS)
-      console.warn(`AI provider ${name} failed, trying the next`, error instanceof Error ? error.message : error)
+      console.warn(`AI provider ${name} (${textModel(name)}) failed, trying the next`, error instanceof Error ? error.message : error)
     }
   }
   throw lastError
@@ -168,7 +193,7 @@ async function anthropicComplete(system: string, user: string, maxTokens: number
     method: "POST",
     headers: { "x-api-key": secret("ANTHROPIC_API_KEY") ?? "", "anthropic-version": "2023-06-01", "content-type": "application/json" },
     body: JSON.stringify({
-      model: secret("ANTHROPIC_MODEL") ?? ANTHROPIC_MODEL,
+      model: textModel("anthropic"),
       max_tokens: maxTokens,
       system,
       messages: [{ role: "user", content: user }],
@@ -184,7 +209,7 @@ async function groqComplete(system: string, user: string, maxTokens: number): Pr
     method: "POST",
     headers: { authorization: `Bearer ${groqKey()}`, "content-type": "application/json" },
     body: JSON.stringify({
-      model: GROQ_TEXT,
+      model: textModel("groq"),
       messages: [
         { role: "system", content: system },
         { role: "user", content: user },
@@ -202,7 +227,7 @@ async function groqComplete(system: string, user: string, maxTokens: number): Pr
 
 async function workersComplete(system: string, user: string, maxTokens: number): Promise<string> {
   const result = (await env.AI.run(
-    WORKERS_TEXT,
+    textModel("workers"),
     {
       messages: [
         { role: "system", content: `${system} /no_think` },

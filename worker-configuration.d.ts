@@ -4,6 +4,8 @@
 interface __BaseEnv_Env {
 	BUCKET: R2Bucket;
 	DB: D1Database;
+	TOOL_EVENT_LIMITER: RateLimit;
+	AB_EVENT_LIMITER: RateLimit;
 	PROCESS_QUEUE: Queue;
 	AI: Ai;
 	UPLOAD_TOKEN: string;

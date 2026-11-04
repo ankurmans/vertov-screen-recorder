@@ -73,6 +73,7 @@ import { Route as ApiCameraIdRouteImport } from './routes/api/camera.$id'
 import { Route as ApiAvatarUserIdRouteImport } from './routes/api/avatar.$userId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiAssetsIdRouteImport } from './routes/api/assets.$id'
+import { Route as ApiAdminAiConfigRouteImport } from './routes/api/admin/ai-config'
 import { Route as ApiWorkspaceMembersUserIdRouteImport } from './routes/api/workspace.members.$userId'
 import { Route as ApiV1VideosIdRouteImport } from './routes/api/v1.videos.$id'
 import { Route as ApiUploadMultipartIdRouteImport } from './routes/api/upload.multipart.$id'
@@ -405,6 +406,11 @@ const ApiAssetsIdRoute = ApiAssetsIdRouteImport.update({
   path: '/api/assets/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminAiConfigRoute = ApiAdminAiConfigRouteImport.update({
+  id: '/api/admin/ai-config',
+  path: '/api/admin/ai-config',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiWorkspaceMembersUserIdRoute =
   ApiWorkspaceMembersUserIdRouteImport.update({
     id: '/members/$userId',
@@ -491,6 +497,7 @@ export interface FileRoutesByFullPath {
   '/embed/$id': typeof EmbedIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/request/$id': typeof RequestIdRoute
+  '/api/admin/ai-config': typeof ApiAdminAiConfigRoute
   '/api/assets/$id': typeof ApiAssetsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/avatar/$userId': typeof ApiAvatarUserIdRoute
@@ -568,6 +575,7 @@ export interface FileRoutesByTo {
   '/embed/$id': typeof EmbedIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/request/$id': typeof RequestIdRoute
+  '/api/admin/ai-config': typeof ApiAdminAiConfigRoute
   '/api/assets/$id': typeof ApiAssetsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/avatar/$userId': typeof ApiAvatarUserIdRoute
@@ -646,6 +654,7 @@ export interface FileRoutesById {
   '/embed/$id': typeof EmbedIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/request/$id': typeof RequestIdRoute
+  '/api/admin/ai-config': typeof ApiAdminAiConfigRoute
   '/api/assets/$id': typeof ApiAssetsIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/avatar/$userId': typeof ApiAvatarUserIdRoute
@@ -725,6 +734,7 @@ export interface FileRouteTypes {
     | '/embed/$id'
     | '/join/$token'
     | '/request/$id'
+    | '/api/admin/ai-config'
     | '/api/assets/$id'
     | '/api/auth/$'
     | '/api/avatar/$userId'
@@ -802,6 +812,7 @@ export interface FileRouteTypes {
     | '/embed/$id'
     | '/join/$token'
     | '/request/$id'
+    | '/api/admin/ai-config'
     | '/api/assets/$id'
     | '/api/auth/$'
     | '/api/avatar/$userId'
@@ -879,6 +890,7 @@ export interface FileRouteTypes {
     | '/embed/$id'
     | '/join/$token'
     | '/request/$id'
+    | '/api/admin/ai-config'
     | '/api/assets/$id'
     | '/api/auth/$'
     | '/api/avatar/$userId'
@@ -957,6 +969,7 @@ export interface RootRouteChildren {
   EmbedIdRoute: typeof EmbedIdRoute
   JoinTokenRoute: typeof JoinTokenRoute
   RequestIdRoute: typeof RequestIdRoute
+  ApiAdminAiConfigRoute: typeof ApiAdminAiConfigRoute
   ApiAssetsIdRoute: typeof ApiAssetsIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiAvatarUserIdRoute: typeof ApiAvatarUserIdRoute
@@ -1436,6 +1449,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAssetsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/ai-config': {
+      id: '/api/admin/ai-config'
+      path: '/api/admin/ai-config'
+      fullPath: '/api/admin/ai-config'
+      preLoaderRoute: typeof ApiAdminAiConfigRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/workspace/members/$userId': {
       id: '/api/workspace/members/$userId'
       path: '/members/$userId'
@@ -1694,6 +1714,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmbedIdRoute: EmbedIdRoute,
   JoinTokenRoute: JoinTokenRoute,
   RequestIdRoute: RequestIdRoute,
+  ApiAdminAiConfigRoute: ApiAdminAiConfigRoute,
   ApiAssetsIdRoute: ApiAssetsIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiAvatarUserIdRoute: ApiAvatarUserIdRoute,
