@@ -1,6 +1,6 @@
 {
   "name": "vertov",
-  "owner": { "name": "KMF Ventures", "email": "ankur@kmfv.cc" },
+  "owner": { "name": "KMF Ventures", "email": "support@vertov.app" },
   "metadata": { "description": "Vertov plugins for Claude" },
   "plugins": [
     {

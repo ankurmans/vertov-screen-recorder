@@ -36,7 +36,7 @@ The server can reach only the workspace you chose when signing in, and only vide
 
 ## Help
 
-Docs: https://vertov.app/docs/mcp. Support: https://vertov.app/support or ankur@kmfv.cc.
+Docs: https://vertov.app/docs/mcp. Support: https://vertov.app/support or support@vertov.app.
 
 ## License
 

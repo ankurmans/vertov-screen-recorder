@@ -7,5 +7,5 @@ export const CHROME_STORE_URL = "https://chromewebstore.google.com/detail/vertov
 /** The one indexable page about the extension. */
 export const CHROME_PAGE = "/screen-recorder/chrome"
 
-/** Where people and app-directory reviewers reach us. The same address the Chrome Web Store listing shows. */
-export const SUPPORT_EMAIL = "ankur@kmfv.cc"
+/** Where people and app-directory reviewers reach us (support pages, plugin manifests, directory listings). */
+export const SUPPORT_EMAIL = "support@vertov.app"
