@@ -985,13 +985,13 @@ export function Recorder({
       {!embedded && (
         <header className="flex h-14 items-center justify-between border-b border-white/10 px-4">
           <a
-            href="/app"
+            href="/home"
             className="flex items-center gap-2 font-semibold tracking-tight"
           >
             <BrandMark />
             {APP_NAME}
           </a>
-          <a href="/app" className="text-sm text-neutral-400 hover:text-white">
+          <a href="/home" className="text-sm text-neutral-400 hover:text-white">
             My library
           </a>
         </header>

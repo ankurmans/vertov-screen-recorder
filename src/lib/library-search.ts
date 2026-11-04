@@ -19,5 +19,5 @@ export const validateLibrarySearch = (search: Record<string, unknown>): LibraryS
 export function libraryUrl(search: LibrarySearch): string {
   const params = new URLSearchParams()
   for (const [key, value] of Object.entries(search)) if (value !== undefined) params.set(key, String(value))
-  return `/app${params.size ? `?${params}` : ""}`
+  return `/home${params.size ? `?${params}` : ""}`
 }

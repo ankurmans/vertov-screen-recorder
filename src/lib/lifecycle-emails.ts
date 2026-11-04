@@ -56,7 +56,7 @@ export const LESSONS: readonly Lesson[] = [
       "Open your video, copy its link, and send it to the person waiting on your explanation. Ask them to leave their question on the video so the context stays together.",
     reply: "Who is your next walkthrough for?",
     cta: "Open your library",
-    path: "/app",
+    path: "/home",
     image: "email-preview.gif",
     alt: "Animated preview of an example website walkthrough recorded in Vertov.",
   },
@@ -88,7 +88,7 @@ export const LESSONS: readonly Lesson[] = [
       "Open a recording and use Edit to select the words you want to cut from its transcript. Play it back and hear the shorter version.",
     reply: "What do you usually cut from a walkthrough?",
     cta: "Edit a recording",
-    path: "/app",
+    path: "/home",
     image: "edit-by-text.webp",
     alt: "Vertov Edit panel showing removed filler words and a selected transcript word.",
   },
@@ -104,7 +104,7 @@ export const LESSONS: readonly Lesson[] = [
       "Open Customize on a recording and move the camera bubble. Try a side-by-side layout when your face and the screen both need room.",
     reply: "Which layout fits your work?",
     cta: "Customize a video",
-    path: "/app",
+    path: "/home",
     image: "customize.webp",
     alt: "Customize panel with camera layouts, backgrounds and trim controls.",
   },
@@ -120,7 +120,7 @@ export const LESSONS: readonly Lesson[] = [
       "Use Import from Loom in your library and paste a public Loom share link. Start with one video, then check playback in Vertov before you share its new link. Private Loom videos aren’t supported by this importer.",
     reply: "What would you need before moving more of your library?",
     cta: "Open your library",
-    path: "/app",
+    path: "/home",
     image: null,
     alt: null,
   },
@@ -136,7 +136,7 @@ export const LESSONS: readonly Lesson[] = [
       "Open Customize on a video and review Who can watch. Set a password when the recipient needs an extra gate, then test the link as a viewer before sending it.",
     reply: "What access control does your team depend on?",
     cta: "Review a video",
-    path: "/app",
+    path: "/home",
     image: "customize.webp",
     alt: "Who can watch controls showing password and link expiry options.",
   },
@@ -152,7 +152,7 @@ export const LESSONS: readonly Lesson[] = [
       "Reply with the last video you made and what happened after you sent it. Did it answer the question? Did someone still need a call? That tells me more than a feature wish list.",
     reply: "What happened after your last walkthrough?",
     cta: "Open Vertov",
-    path: "/app",
+    path: "/home",
     image: null,
     alt: null,
   },
@@ -181,7 +181,7 @@ export function renderLesson(
 ) {
   const first = name.trim().split(/\s+/)[0] || "there";
   const target = new URL(
-    lesson.id === "loom-import" ? "/app?import=1" : lesson.path,
+    lesson.id === "loom-import" ? "/home?import=1" : lesson.path,
     "https://vertov.app",
   );
   target.searchParams.set("utm_source", "email");

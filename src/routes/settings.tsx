@@ -70,7 +70,7 @@ function SettingsPage() {
   return (
     <main className="min-h-dvh bg-neutral-50">
       <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-neutral-200 bg-white/85 px-4 backdrop-blur">
-        <a href="/app" className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm text-neutral-700 hover:bg-neutral-100">
+        <a href="/home" className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm text-neutral-700 hover:bg-neutral-100">
           <BrandMark /> <ArrowLeftIcon size={16} /> Library
         </a>
         <span className="truncate text-sm font-semibold text-neutral-900">{data.workspace.name}</span>
@@ -138,7 +138,7 @@ function GeneralTab() {
   async function leave() {
     if (!confirm(`Leave ${data.workspace.name}? Your videos stay in it.`)) return
     const { ok } = await send(`/api/workspace/members/${data.me}`, "DELETE")
-    if (ok) window.location.href = "/app"
+    if (ok) window.location.href = "/home"
   }
 
   return (

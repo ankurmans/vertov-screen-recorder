@@ -32,7 +32,7 @@ export function SaveAccountBanner({ google = false }: { google?: boolean }) {
     setBusy(true)
     setError(null)
     try {
-      await signInWithGoogle("/app")
+      await signInWithGoogle("/home")
     } catch (err) {
       setBusy(false)
       setError(err instanceof Error ? err.message : "Google sign-in isn't available.")

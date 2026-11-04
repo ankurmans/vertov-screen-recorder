@@ -22,14 +22,14 @@ const ACTIONS: Item[] = [
     id: "upload",
     title: HOSTED_EDITION ? "Upload or import a video" : "Upload a video",
     hint: HOSTED_EDITION ? "Files and Loom links" : "Video files from your computer",
-    href: "/app?import=1",
+    href: "/home?import=1",
     group: "Actions",
   },
   {
     id: "request",
     title: "Request a video",
     hint: "Let someone record for you",
-    href: "/app?request=1",
+    href: "/home?request=1",
     group: "Actions",
   },
   ...(HOSTED_EDITION
@@ -38,9 +38,9 @@ const ACTIONS: Item[] = [
         { id: "tutorials", title: "Tutorials", hint: "Record a narrated product tutorial", href: "/tutorials", group: "Go to" },
       ]
     : []),
-  { id: "library", title: "My library", hint: "Your recordings", href: "/app", group: "Go to" },
-  { id: "later", title: "Watch later", hint: "Saved videos", href: "/app?view=later", group: "Go to" },
-  { id: "archive", title: "Archive", hint: "Archived recordings", href: "/app?view=archive", group: "Go to" },
+  { id: "library", title: "My library", hint: "Your recordings", href: "/home", group: "Go to" },
+  { id: "later", title: "Watch later", hint: "Saved videos", href: "/home?view=later", group: "Go to" },
+  { id: "archive", title: "Archive", hint: "Archived recordings", href: "/home?view=archive", group: "Go to" },
   {
     id: "settings",
     title: "Workspace settings",
@@ -79,7 +79,7 @@ export function CommandPaletteButton() {
 
 export function CommandPalette() {
   const { pathname } = useLocation()
-  const enabled = pathname === "/analytics" || pathname === "/tutorials" || pathname === "/app" || pathname === "/settings" || /^\/[a-f0-9]{8}$/.test(pathname)
+  const enabled = pathname === "/analytics" || pathname === "/tutorials" || pathname === "/home" || pathname === "/settings" || /^\/[a-f0-9]{8}$/.test(pathname)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<Results>({ videos: [], spaces: [] })
@@ -183,7 +183,7 @@ export function CommandPalette() {
           id: "signin",
           title: "Sign in to your library",
           hint: "Search your recordings and workspaces",
-          href: "/signin?redirect=/app",
+          href: "/signin?redirect=/home",
           group: "Account",
         },
       ]
@@ -200,7 +200,7 @@ export function CommandPalette() {
           id: `space-${space.id}`,
           title: space.name,
           hint: "Shared space",
-          href: `/app?view=space&space=${encodeURIComponent(space.id)}`,
+          href: `/home?view=space&space=${encodeURIComponent(space.id)}`,
           group: "Spaces",
         })),
         ...(!needle ? actions.filter((item) => item.group !== "Actions") : []),
@@ -210,7 +210,7 @@ export function CommandPalette() {
                 id: "search",
                 title: `Search library for “${query.trim()}”`,
                 hint: "Titles, summaries and transcripts",
-                href: `/app?q=${encodeURIComponent(query.trim().slice(0, 100))}`,
+                href: `/home?q=${encodeURIComponent(query.trim().slice(0, 100))}`,
                 group: "Search",
               },
             ]

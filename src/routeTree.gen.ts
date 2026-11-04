@@ -13,6 +13,7 @@ import { Route as SigninRouteImport } from './routes/signin'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as RecordRouteImport } from './routes/record'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as HomeRouteImport } from './routes/home'
 import { Route as ConnectExtensionRouteImport } from './routes/connect-extension'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IdRouteImport } from './routes/$id'
@@ -102,6 +103,11 @@ const RecordRoute = RecordRouteImport.update({
 const PrivacyRoute = PrivacyRouteImport.update({
   id: '/privacy',
   path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HomeRoute = HomeRouteImport.update({
+  id: '/home',
+  path: '/home',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConnectExtensionRoute = ConnectExtensionRouteImport.update({
@@ -461,6 +467,7 @@ export interface FileRoutesByFullPath {
   '/$id': typeof IdRoute
   '/app': typeof AppRoute
   '/connect-extension': typeof ConnectExtensionRoute
+  '/home': typeof HomeRoute
   '/privacy': typeof PrivacyRoute
   '/record': typeof RecordRoute
   '/settings': typeof SettingsRoute
@@ -537,6 +544,7 @@ export interface FileRoutesByTo {
   '/$id': typeof IdRoute
   '/app': typeof AppRoute
   '/connect-extension': typeof ConnectExtensionRoute
+  '/home': typeof HomeRoute
   '/privacy': typeof PrivacyRoute
   '/record': typeof RecordRoute
   '/settings': typeof SettingsRoute
@@ -614,6 +622,7 @@ export interface FileRoutesById {
   '/$id': typeof IdRoute
   '/app': typeof AppRoute
   '/connect-extension': typeof ConnectExtensionRoute
+  '/home': typeof HomeRoute
   '/privacy': typeof PrivacyRoute
   '/record': typeof RecordRoute
   '/settings': typeof SettingsRoute
@@ -692,6 +701,7 @@ export interface FileRouteTypes {
     | '/$id'
     | '/app'
     | '/connect-extension'
+    | '/home'
     | '/privacy'
     | '/record'
     | '/settings'
@@ -768,6 +778,7 @@ export interface FileRouteTypes {
     | '/$id'
     | '/app'
     | '/connect-extension'
+    | '/home'
     | '/privacy'
     | '/record'
     | '/settings'
@@ -844,6 +855,7 @@ export interface FileRouteTypes {
     | '/$id'
     | '/app'
     | '/connect-extension'
+    | '/home'
     | '/privacy'
     | '/record'
     | '/settings'
@@ -921,6 +933,7 @@ export interface RootRouteChildren {
   IdRoute: typeof IdRoute
   AppRoute: typeof AppRoute
   ConnectExtensionRoute: typeof ConnectExtensionRoute
+  HomeRoute: typeof HomeRoute
   PrivacyRoute: typeof PrivacyRoute
   RecordRoute: typeof RecordRoute
   SettingsRoute: typeof SettingsRoute
@@ -1001,6 +1014,13 @@ declare module '@tanstack/react-router' {
       path: '/privacy'
       fullPath: '/privacy'
       preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/home': {
+      id: '/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof HomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/connect-extension': {
@@ -1650,6 +1670,7 @@ const rootRouteChildren: RootRouteChildren = {
   IdRoute: IdRoute,
   AppRoute: AppRoute,
   ConnectExtensionRoute: ConnectExtensionRoute,
+  HomeRoute: HomeRoute,
   PrivacyRoute: PrivacyRoute,
   RecordRoute: RecordRoute,
   SettingsRoute: SettingsRoute,
