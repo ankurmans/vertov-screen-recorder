@@ -26,9 +26,10 @@ import { LivePlayer } from "@/components/live-player";
 import { OverlayLayer } from "@/components/overlay-layer";
 import { ShareHeader } from "@/components/share-header";
 import { brandStyle } from "@/lib/brand-theme";
-import { CameraTrack, EndCard, ReactionLayer, countCtaClick } from "@/components/stage-layer";
+import { CameraTrack, EndCard, ReactionLayer, VoiceTrack, countCtaClick } from "@/components/stage-layer";
 import { AiPanel } from "@/components/ai-panel";
 import { StudioPanel } from "@/components/studio-panel";
+import { markGuide } from "@/components/library-guide";
 import { TranscriptEditor } from "@/components/transcript-editor";
 import { TranscriptPanel } from "@/components/transcript-panel";
 import { makeAnimatedThumbnail } from "@/lib/gif";
@@ -60,7 +61,7 @@ interface VideoShareProps {
   claimRequired?: boolean;
   exportReady: boolean;
   initialTime?: number;
-  initialPanel?: "insights";
+  initialPanel?: "insights" | "customize";
   brand?: Brand | null;
 }
 
@@ -97,7 +98,10 @@ export function VideoShare({
   const [ended, setEnded] = useState(false);
   const [floating, setFloating] = useState<Array<FloatingReaction>>([]);
   const [reactions, setReactions] = useState<Array<StoredReaction>>([]);
-  const [studioOpen, setStudioOpen] = useState(false);
+  const [studioOpen, setStudioOpen] = useState(initialPanel === "customize" && isOwner);
+  useEffect(() => {
+    if (initialPanel === "customize" && isOwner) markGuide("customized");
+  }, [initialPanel, isOwner]);
   const [zoomFocusPicker, setZoomFocusPicker] = useState<((x: number, y: number) => void) | null>(null);
   const pickZoomFocus = useCallback((picker: ((x: number, y: number) => void) | null) => {
     setZoomFocusPicker(() => picker);
@@ -137,7 +141,11 @@ export function VideoShare({
     if (isOwner && !claimRequired) {
       toastManager.add({ title: "Your link is on the clipboard. Paste it anywhere." });
     }
+    if (isOwner && url.searchParams.has("limit")) {
+      toastManager.add({ title: "Recording stopped at the six-hour limit. Everything up to that point is saved." });
+    }
     url.searchParams.delete("new");
+    url.searchParams.delete("limit");
     window.history.replaceState(null, "", url.pathname + url.search);
   }, []);
 
@@ -163,6 +171,7 @@ export function VideoShare({
     return () => clearTimeout(timer);
   }, [isOwner, upload.gifKey, upload.status, upload.mediaType, upload.duration, upload.trimStart, upload.id, mediaSource]);
   const cameraSource = upload.cameraKey ? `${origin}/api/camera/${upload.id}` : null;
+  const voiceSource = upload.voiceKey ? `${origin}/api/voiceover/${upload.id}?v=${encodeURIComponent(upload.voiceKey)}` : null;
   const posterSource = upload.posterKey
     ? `${origin}/api/poster/${upload.id}?v=${encodeURIComponent(upload.posterKey)}`
     : undefined;
@@ -396,13 +405,14 @@ export function VideoShare({
     );
   }, [upload.id, isOwner]);
 
+  // What every viewer sees comes first, as on Loom; the owner's tools follow.
   const tabs = [
     ...(hasTranscript ? [{ value: "transcript", label: "Transcript" }] : []),
+    ...(showComments ? [{ value: "comments", label: "Comments" }] : []),
+    ...(HOSTED_EDITION && isOwner && !isRecording ? [{ value: "ai", label: "AI docs" }] : []),
     ...(isOwner && transcript?.words?.length ? [{ value: "edit", label: "Edit" }] : []),
     ...(isOwner && !isRecording ? [{ value: "annotate", label: "Annotate" }] : []),
-    ...(showComments ? [{ value: "comments", label: "Comments" }] : []),
-    ...(HOSTED_EDITION && isOwner ? [{ value: "insights", label: "Insights" }] : []),
-    ...(HOSTED_EDITION && isOwner && !isRecording ? [{ value: "ai", label: "AI" }] : []),
+    ...(HOSTED_EDITION && isOwner ? [{ value: "insights", label: "Analytics" }] : []),
   ];
   const tab = tabs.some((item) => item.value === activeTab) ? activeTab : (tabs[0]?.value ?? "");
   const sidebarTabs =
@@ -503,19 +513,23 @@ export function VideoShare({
       stageBackground={background.css}
       screenBox={geometry.screen}
       zooms={studio.style.zooms}
+      cursor={studio.style.cursor}
+      cursorUrl={`/api/cursor/${upload.id}`}
       onPickZoomFocus={zoomFocusPicker ? (x, y) => { zoomFocusPicker(x, y); setZoomFocusPicker(null); } : undefined}
       className="block h-full w-full"
     >
+      {voiceSource && <VoiceTrack src={voiceSource} main={mainVideo} offset={upload.voiceOffset ?? 0} />}
       {cameraSource && geometry.camera && (
         <CameraTrack
           src={cameraSource}
           main={mainVideo}
           box={geometry.camera}
-          shape={studio.style.layout === "side" ? "rounded" : studio.style.shape}
-          full={studio.style.layout === "camera"}
-          editable={isOwner && studioOpen && studio.style.layout === "bubble"}
-          onCornerChange={(corner) => {
-            const style = { ...studio.style, corner };
+          layout={studio.style.layout}
+          shape={studio.style.shape}
+          stageAspect={geometry.stageAspect}
+          editable={isOwner && studioOpen}
+          onStyleChange={(patch) => {
+            const style = { ...studio.style, ...patch };
             setStudio({ ...studio, style });
             void fetch(`/api/recordings/${upload.id}`, {
               method: "PATCH",
@@ -593,6 +607,7 @@ export function VideoShare({
                   getFrame={getFrame}
                   mediaSource={mediaSource}
                   hasTranscript={hasTranscript}
+                  hasVoiceover={Boolean(upload.voiceKey)}
                   onNotify={notify}
                   onSeek={(time) => { if (activeVideoRef.current) { activeVideoRef.current.currentTime = time; activeVideoRef.current.pause(); } setCurrentTime(time); }}
                   onPickZoomFocus={pickZoomFocus}
@@ -709,6 +724,9 @@ function VideoInfo({
   );
   const [editing, setEditing] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  // The actions row sits near the bottom of the window, so the menu opens upward when there's no room below.
+  const [shareUp, setShareUp] = useState(false);
+  const shareButton = useRef<HTMLDivElement>(null);
   const saveTitle = async (next: string) => {
     setEditing(false);
     const trimmed = next.trim();
@@ -786,12 +804,20 @@ function VideoInfo({
               {ctaLabel}
             </LinkButton>
           )}
-          <div className="relative">
-            <Button variant="secondary" icon={<LinkIcon weight="bold" />} onClick={() => setShareOpen((open) => !open)}>
+          <div ref={shareButton} className="relative">
+            <Button
+              variant="secondary"
+              icon={<LinkIcon weight="bold" />}
+              onClick={() => {
+                const rect = shareButton.current?.getBoundingClientRect();
+                if (rect) setShareUp(window.innerHeight - rect.bottom < 320 && rect.top > window.innerHeight - rect.bottom);
+                setShareOpen((open) => !open);
+              }}
+            >
               Share
             </Button>
             {shareOpen && (
-              <div className="pop-in absolute right-0 z-30 mt-1 w-60 rounded-xl border border-neutral-200 bg-white p-1 shadow-lg">
+              <div className={`pop-in absolute right-0 z-30 max-h-[min(22rem,70dvh)] w-60 overflow-y-auto rounded-xl border border-neutral-200 bg-white p-1 shadow-lg ${shareUp ? "bottom-full mb-1" : "top-full mt-1"}`}>
                 <MenuItem onClick={() => void copy(pageUrl, "Link copied")}>Copy link</MenuItem>
                 {at > 0 && (
                   <MenuItem onClick={() => void copy(`${pageUrl}?t=${at}`, `Link at ${formatDuration(at)} copied`)}>
@@ -857,7 +883,7 @@ function VideoInfo({
             </LinkButton>
           )}
           {isOwner && (
-            <Button variant={studioOpen ? "primary" : "secondary"} onClick={onToggleStudio}>
+            <Button variant={studioOpen ? "primary" : "secondary"} onClick={() => { markGuide("customized"); onToggleStudio(); }}>
               {!studioOpen && <VertovIcon name="customize" />} {studioOpen ? "Done" : "Customize"}
             </Button>
           )}

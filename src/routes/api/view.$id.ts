@@ -1,8 +1,9 @@
-import { denyUnlessViewable } from "@/lib/access.server";
-import { recordNotification } from "@/lib/notifications.server";
 import { createFileRoute } from "@tanstack/react-router";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
+import { denyUnlessViewable } from "@/lib/access.server";
+import { SHARE_COUNTER_KEY, countAppEvent } from "@/lib/activation-events.server";
+import { recordNotification } from "@/lib/notifications.server";
 import { db } from "@/db";
 import { uploads, viewEvents } from "@/db/schema";
 import { json, optionsResponse } from "@/lib/api.server";
@@ -45,6 +46,8 @@ export const Route = createFileRoute("/api/view/$id")({
         if (result.meta.changes === 0) {
           return json({ error: "Upload not found" }, 404);
         }
+        // Someone other than the owner opened the link for the first time: the observable result of sharing a video.
+        if (upload.views === 0) await countAppEvent({ key: SHARE_COUNTER_KEY, event: "first_external_view" });
 
         const parsed = bodySchema.safeParse(
           await request.json().catch(() => null),

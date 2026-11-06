@@ -1,4 +1,5 @@
 import { backgroundTrack, fitTrack } from "./lib/effects.js"
+import { limitState, reportedDuration } from "./lib/recording-limit.js"
 import { LiveUploader, PartUploader, pickAudioMimeType, pickCameraMimeType, pickVideoMimeType } from "./lib/part-uploader.js"
 
 // Offscreen documents only get chrome.runtime, so the server and key arrive with each start.
@@ -205,13 +206,27 @@ async function start(options) {
       streams,
       audioContext,
       events: [],
+      pointer: [],
       startedAt: performance.now(),
       pausedAt: null,
       pausedTotal: 0,
       width: settings.width ?? null,
       height: settings.height ?? null,
-      ticker: setInterval(() => send({ type: "tick", elapsed: elapsedSeconds(), paused: Boolean(session?.pausedAt) }), 1000),
+      ticker: setInterval(() => {
+        if (!session) return
+        const elapsed = elapsedSeconds()
+        const limit = limitState(elapsed, Math.max(session.uploader.partCount, session.cameraUploader?.partCount ?? 0))
+        send({ type: "tick", elapsed, paused: Boolean(session.pausedAt), level: limit.level, remaining: limit.remaining })
+        // Finish just before the server's six-hour limit instead of letting the upload be refused.
+        if (limit.stop && session.id === id) void stop(true).then((result) => send({ type: "finished", ...result }), (error) => send({ type: "failed", error: error.message }))
+      }, 1000),
     }
+    // The recorder's data events are not throttled the way timers can be, so they check the limit too.
+    recorder.addEventListener("dataavailable", () => {
+      if (session?.id !== id) return
+      const limit = limitState(elapsedSeconds(), Math.max(session.uploader.partCount, session.cameraUploader?.partCount ?? 0))
+      if (limit.stop) void stop(true).then((result) => send({ type: "finished", ...result }), (error) => send({ type: "failed", error: error.message }))
+    })
     // Chrome's own "Stop sharing" button ends the track: treat it as stop.
     sourceTrack.addEventListener("ended", () => {
       if (session?.id === id) void stop().then((result) => send({ type: "finished", ...result }), (error) => send({ type: "failed", error: error.message }))
@@ -241,6 +256,11 @@ function togglePause(pause) {
 
 function recordEvent(event) {
   if (!session || session.pausedAt || !event) return {}
+  // The mouse path is its own, larger sidecar; it never crowds out the click and page events.
+  if (event.type === "pointer") {
+    if (event.coordinateSpace === "recorded-tab" && session.pointer.length < 40000) session.pointer.push({ t: Math.round(elapsedSeconds() * 100) / 100, x: event.x, y: event.y, vw: event.viewportWidth, vh: event.viewportHeight })
+    return {}
+  }
   // Tab switches and reloads repeat the page you're already on.
   const lastPage = session.events.findLast((item) => item.type === "page")
   if (event.type === "page" && lastPage?.url === event.url) return {}
@@ -265,11 +285,11 @@ function release(current) {
   void current.audioContext.close()
 }
 
-async function stop() {
+async function stop(atLimit = false) {
   const current = session
   if (!current) throw new Error("Not recording.")
   session = null
-  const duration = (performance.now() - current.startedAt - current.pausedTotal - (current.pausedAt ? performance.now() - current.pausedAt : 0)) / 1000
+  const duration = reportedDuration((performance.now() - current.startedAt - current.pausedTotal - (current.pausedAt ? performance.now() - current.pausedAt : 0)) / 1000)
   copyToClipboard(current.url)
   await stopRecorders(current)
   release(current)
@@ -288,13 +308,21 @@ async function stop() {
       body: JSON.stringify(current.events.slice(0, 5000)),
     }).catch(() => {})
   }
+  if (current.pointer.length > 1) {
+    const clicks = current.events.filter((e) => e.type === "click" && e.coordinateSpace === "recorded-tab").map((e) => [e.t, e.x, e.y])
+    await api(`/api/recordings/${current.id}/sidecar?kind=cursor`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ v: 1, points: current.pointer.map((p) => [p.t, p.x, p.y]), clicks, vw: current.pointer.at(-1).vw, vh: current.pointer.at(-1).vh }),
+    }).catch(() => {})
+  }
   const done = await api(`/api/recordings/${current.id}/complete`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ duration, partCount, cameraPartCount, width: current.width, height: current.height }),
   })
   if (!done.ok) throw new Error(await errorFrom(done, "The upload couldn't be finished."))
-  return { id: current.id, url: current.url }
+  return { id: current.id, url: current.url, ...(atLimit ? { limit: true } : {}) }
 }
 
 async function discard() {

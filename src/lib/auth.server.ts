@@ -53,6 +53,18 @@ export function enabledProviders(origin: string): Array<AuthProvider> {
   return providers;
 }
 
+/** The mailer sign-in emails go through (SES when configured). */
+export function authMailer(): MailEnv {
+  return withMailer<MailEnv>({
+    SES_ACCESS_KEY_ID: optionalEnv("SES_ACCESS_KEY_ID"),
+    SES_SECRET_ACCESS_KEY: optionalEnv("SES_SECRET_ACCESS_KEY"),
+    SES_REGION: optionalEnv("SES_REGION") || undefined,
+    EMAIL_FROM: optionalEnv("EMAIL_FROM") || undefined,
+  });
+}
+
+export const isLocalOrigin = (origin: string) => isLocal(origin);
+
 // One instance per request, never shared: a Worker never resolves a promise left pending by a cancelled request, so
 // no lazily started promise inside better-auth may outlive the request that started it. Building one is cheap.
 const authByRequest = new WeakMap<Request, ReturnType<typeof buildAuth>>();
@@ -62,12 +74,7 @@ function buildAuth(origin: string) {
   if (!secret && !isLocal(origin)) {
     throw new Error("BETTER_AUTH_SECRET is not set");
   }
-  const mail = withMailer<MailEnv>({
-    SES_ACCESS_KEY_ID: optionalEnv("SES_ACCESS_KEY_ID"),
-    SES_SECRET_ACCESS_KEY: optionalEnv("SES_SECRET_ACCESS_KEY"),
-    SES_REGION: optionalEnv("SES_REGION") || undefined,
-    EMAIL_FROM: optionalEnv("EMAIL_FROM") || undefined,
-  });
+  const mail = authMailer();
   const google =
     optionalEnv("GOOGLE_CLIENT_ID") && optionalEnv("GOOGLE_CLIENT_SECRET")
       ? {
@@ -256,5 +263,11 @@ export async function moveAccountData(fromId: string, toId: string): Promise<voi
     env.DB.prepare("UPDATE workspace_invites SET created_by = ? WHERE created_by = ?").bind(toId, fromId),
     env.DB.prepare("UPDATE video_requests SET created_by = ? WHERE created_by = ?").bind(toId, fromId),
     env.DB.prepare("UPDATE api_keys SET user_id = ? WHERE user_id = ?").bind(toId, fromId),
+    env.DB.prepare("UPDATE playlists SET owner_id = ? WHERE owner_id = ?").bind(toId, fromId),
+    env.DB.prepare("UPDATE webhook_endpoints SET created_by = ? WHERE created_by = ?").bind(toId, fromId),
+    env.DB.prepare("UPDATE tutorial_jobs SET created_by = ? WHERE created_by = ?").bind(toId, fromId),
+    env.DB.prepare("UPDATE audit_log SET actor_id = ? WHERE actor_id = ?").bind(toId, fromId),
+    env.DB.prepare("UPDATE oauth_tokens SET user_id = ? WHERE user_id = ?").bind(toId, fromId),
+    env.DB.prepare("UPDATE OR IGNORE watch_later SET user_id = ? WHERE user_id = ?").bind(toId, fromId),
   ]);
 }

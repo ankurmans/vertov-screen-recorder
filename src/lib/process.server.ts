@@ -1,3 +1,4 @@
+import { queuePoster } from "@/lib/poster.server";
 import { and, desc, eq, isNotNull } from "drizzle-orm";
 import { env } from "cloudflare:workers";
 import type { Transcription } from "@/lib/ai.server";
@@ -30,7 +31,10 @@ export async function processRecording(id: string): Promise<void> {
     const bytes = new Uint8Array(await audio.arrayBuffer());
     const contentType = audio.httpMetadata?.contentType ?? upload.contentType;
 
-    const spoken = await transcribeInLanguage(bytes, contentType, await languageHint(upload.ownerId));
+    const spoken = dropSilenceHallucinations(
+      await transcribeInLanguage(bytes, contentType, await languageHint(upload.ownerId)),
+      upload.duration,
+    );
     const transcript = toTranscript(spoken);
 
     if (!transcript) {
@@ -74,6 +78,8 @@ export async function processRecording(id: string): Promise<void> {
         aiStatus: "done",
       })
       .where(eq(uploads.id, id));
+    // The AI title usually lands after the first cover was made from the bare filename.
+    if (!latest?.title && metadata.title) await queuePoster(id, 2, "refresh");
   } catch (error) {
     console.error(
       JSON.stringify({
@@ -118,6 +124,36 @@ export async function transcribeInLanguage(
     ...second,
     language: second.language ?? first.language,
   }));
+}
+
+// What Whisper writes when it hears silence: phrases from the subtitled videos it learned on.
+const SILENCE_PHRASES = new Set([
+  "thank you", "thank you very much", "thank you so much", "thanks", "thanks for watching", "thank you for watching",
+  "you", "bye", "bye bye", "please subscribe", "subscribe", "subtitles by the amaraorg community",
+]);
+const normalise = (text: string) => text.toLowerCase().replace(/[^\p{L}\p{N} ]/gu, "").replace(/\s+/g, " ").trim();
+
+/**
+ * Whisper invents a line ("Thank you.") for silent audio, and its confidence scores don't flag it (no_speech_prob
+ * comes back 0). Its timing does: the line runs past the end of the audio, or a single word lasts seconds. Real
+ * speech can't do either, so those segments go.
+ */
+export function dropSilenceHallucinations(output: Transcription, audioSeconds: number | null): Transcription {
+  const length = audioSeconds ?? output.duration;
+  const invented = (segment: Transcription["segments"][number]) => {
+    if (length && segment.start >= length - 0.05) return true;
+    if (!SILENCE_PHRASES.has(normalise(segment.text))) return false;
+    if (length && segment.end > length + 0.5) return true;
+    return output.words.some((word) => word.start >= segment.start && word.end <= segment.end + 0.01 && word.end - word.start > 2.5);
+  };
+  const dropped = output.segments.filter(invented);
+  if (dropped.length === 0) return output;
+  const inDropped = (time: number) => dropped.some((segment) => time >= segment.start && time <= segment.end);
+  return {
+    ...output,
+    segments: output.segments.filter((segment) => !dropped.includes(segment)),
+    words: output.words.filter((word) => !inDropped(word.start)),
+  };
 }
 
 export function toTranscript(output: Transcription): Transcript | null {

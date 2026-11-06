@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { queuePoster } from "@/lib/poster.server";
 import { db } from "@/db";
 import { uploads } from "@/db/schema";
 import { hashPassword } from "@/lib/access.server";
+import { EDITOR_COUNTER_KEY, countAppEvent } from "@/lib/activation-events.server";
 import { json } from "@/lib/api.server";
 import { audit } from "@/lib/audit.server";
 import { folderFits, spaceInWorkspace } from "@/lib/library.server";
@@ -57,6 +59,7 @@ export const Route = createFileRoute("/api/recordings/$id")({
           if (input.cuts !== undefined) {
             const cuts = normalizeCuts(input.cuts, upload.duration);
             changes.cuts = cuts.length ? JSON.stringify(cuts) : null;
+            if (cuts.length) await countAppEvent({ key: EDITOR_COUNTER_KEY, event: "cuts_saved" });
           }
           if (input.downloadsEnabled !== undefined) changes.downloadsEnabled = input.downloadsEnabled;
           if (input.requireEmail !== undefined) changes.requireEmail = input.requireEmail;
@@ -117,6 +120,8 @@ export const Route = createFileRoute("/api/recordings/$id")({
           }
           if (Object.keys(changes).length === 0) return json({ id: upload.id });
           await db.update(uploads).set(changes).where(eq(uploads.id, upload.id));
+          // The designed cover shows the title.
+          if (input.title !== undefined && input.title !== upload.title) await queuePoster(upload.id, 3, "refresh");
           if (upload.workspaceId) {
             const notable: Array<string> = [];
             if (input.visibility !== undefined) notable.push(`visibility ${input.visibility}`);

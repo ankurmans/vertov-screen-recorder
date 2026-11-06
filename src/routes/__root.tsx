@@ -1,3 +1,4 @@
+import { AppDialogHost } from "@/components/app-dialog"
 import { CommandPalette } from "@/components/command-palette"
 import { ConsentBanner } from "@/components/consent-banner"
 import { Toasty } from "@cloudflare/kumo"
@@ -6,7 +7,7 @@ import { createServerFn } from "@tanstack/react-start"
 import { analyticsConfig } from "@/lib/analytics-config.server"
 import { analyticsScript } from "@/lib/posthog"
 import appCss from "../styles.css?url"
-import { APP_NAME } from "@/lib/brand"
+import { APP_NAME, ogImageMeta } from "@/lib/brand"
 
 const loadAnalytics = createServerFn({ method: "GET" }).handler(() => analyticsConfig())
 
@@ -24,6 +25,8 @@ export const Route = createRootRoute({
         name: "description",
         content: "Record your screen and share it with a link.",
       },
+      // Default preview for pages that do not set their own; a page's own og:image wins.
+      ...ogImageMeta(),
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -40,7 +43,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <Toasty>{children}<CommandPalette /><AnalyticsConsent /></Toasty>
+        <Toasty>{children}<CommandPalette /><AppDialogHost /><AnalyticsConsent /></Toasty>
         <Scripts />
       </body>
     </html>

@@ -7,7 +7,11 @@ import { uploads } from "@/db/schema";
 import { buildAss } from "@/lib/ass";
 import { isCaptionStyle } from "@/lib/caption-styles";
 import { mapToExport, parseCuts } from "@/lib/cuts";
+import { CURSOR_ART, cursorAt, cursorIdle, cursorPx } from "@/lib/cursor";
+import type { CursorTrack } from "@/lib/cursor";
 import { parseOverlays } from "@/lib/overlays";
+import { zoomAt } from "@/lib/zooms";
+import { cursorTrack } from "@/lib/zooms.server";
 import { BACKGROUNDS, parseStyle, stageGeometry } from "@/lib/stage";
 import { getTranscript, getUploadById } from "@/lib/uploads.server";
 import { HOSTED_EDITION } from "@/lib/edition";
@@ -18,7 +22,51 @@ const exportWidth = (upload: Upload) => ((upload.width ?? 0) >= 2560 ? 3840 : 19
 /** What the export depends on; when this changes, the old export is stale. */
 export function exportSignature(upload: Upload): string {
   const style = upload.cameraKey ? parseStyle(upload.style) : { ...parseStyle(upload.style), layout: "screen" };
-  return JSON.stringify([style, upload.trimStart ?? 0, upload.trimEnd ?? null, Boolean(upload.cameraKey), parseCuts(upload.cuts), upload.overlays, upload.captionStyle, upload.transcriptKey, upload.width]);
+  return JSON.stringify([style, upload.trimStart ?? 0, upload.trimEnd ?? null, Boolean(upload.cameraKey), parseCuts(upload.cuts), upload.overlays, upload.captionStyle, upload.transcriptKey, upload.width, upload.voiceKey, upload.voiceOffset]);
+}
+
+/** The pointer's path on the export timeline, in output pixels (zoom applied), for the exporter's sprite overlay. */
+function cursorJob(
+  upload: Upload,
+  style: ReturnType<typeof parseStyle>,
+  track: CursorTrack,
+  screen: { x: number; y: number; w: number; h: number },
+  timing: { trimStart: number | null; trimEnd: number | null; cuts: string | null },
+) {
+  const settings = style.cursor!;
+  const size = cursorPx(settings.size, screen.w);
+  const art = CURSOR_ART[settings.style];
+  const hot = { x: (art.hot[0] * size) / 128, y: (art.hot[1] * size) / 128 };
+  const place = (t: number, fx: number, fy: number) => {
+    const zoom = zoomAt(style.zooms ?? [], t);
+    return [screen.x + screen.w * (zoom.x + fx * zoom.scale), screen.y + screen.h * (zoom.y + fy * zoom.scale)] as const;
+  };
+  const start = upload.trimStart ?? 0;
+  const last = track.points[track.points.length - 1][0];
+  const end = Math.min(upload.trimEnd ?? last, last);
+  const frames: Array<[number, number, number]> = [];
+  const visible: Array<[number, number]> = [];
+  for (let t = start; t <= end && frames.length < 30000; t += 0.05) {
+    const at = cursorAt(track, t, settings.smooth);
+    const out = mapToExport(timing, t);
+    if (!at || out == null) continue;
+    const [x, y] = place(t, at.x, at.y);
+    frames.push([Number(out.toFixed(3)), Math.round(x - hot.x), Math.round(y - hot.y)]);
+    if (settings.idle && cursorIdle(track, t)) continue;
+    const open = visible[visible.length - 1];
+    if (open && out - open[1] < 0.12) open[1] = out + 0.05;
+    else visible.push([out, out + 0.05]);
+  }
+  const clicks: Array<[number, number, number]> = [];
+  const pressed: Array<[number, number]> = [];
+  for (const [t, fx, fy] of track.clicks.slice(0, 2000)) {
+    const out = mapToExport(timing, t);
+    if (out == null) continue;
+    pressed.push([out, out + 0.3]);
+    const [x, y] = place(t, fx, fy);
+    if (clicks.length < 30) clicks.push([Number(out.toFixed(3)), Math.round(x), Math.round(y)]);
+  }
+  return { style: settings.style, size: Math.round(size), fx: settings.fx, frames, visible, pressed, clicks };
 }
 
 /** Pixel geometry for the ffmpeg container, from the same math the player uses. */
@@ -37,7 +85,7 @@ export async function exportJob(upload: Upload) {
     w: Math.round((box.width / 100) * width),
     h: Math.round((box.height / 100) * height),
   });
-  const framed = style.background !== "none" || style.layout === "side";
+  const framed = style.background !== "none" || style.layout === "side" || style.layout === "split";
   const layout = hasCamera ? style.layout : "screen";
   const captionStyle = isCaptionStyle(upload.captionStyle) ? upload.captionStyle : "off";
   const overlays = parseOverlays(upload.overlays);
@@ -64,7 +112,10 @@ export async function exportJob(upload: Upload) {
     const h = Math.max(2, Math.min(height - y, Math.round((overlay.h / 100) * height)));
     return [{ overlay, start: Number(start.toFixed(3)), end: Number(end.toFixed(3)), x, y, w, h }];
   });
+  const track = HOSTED_EDITION && style.cursor && geometry.screen ? await cursorTrack(upload) : null;
+  const cursor = track && geometry.screen ? cursorJob(upload, style, track, px(geometry.screen), timing) : null;
   return {
+    cursor,
     blur_boxes: placed.filter((item) => item.overlay.type === "blur").map(({ start, end, x, y, w, h }) => ({ start, end, x, y, w, h })),
     images: placed
       .filter((item) => item.overlay.type === "image" && item.overlay.src)
@@ -75,6 +126,8 @@ export async function exportJob(upload: Upload) {
     // Served from R2 by the Exporter's outbound handler.
     screen_url: `http://media.internal/${upload.r2Key}`,
     camera_url: hasCamera && upload.cameraKey ? `http://media.internal/${upload.cameraKey}` : null,
+    voice_url: upload.voiceKey ? `http://media.internal/${upload.voiceKey}` : null,
+    voice_offset: upload.voiceOffset ?? 0,
     width,
     height,
     background: (BACKGROUNDS[style.background] ?? BACKGROUNDS.none).colors,
@@ -84,7 +137,8 @@ export async function exportJob(upload: Upload) {
           ...px(geometry.camera),
           circle: layout === "bubble" && style.shape === "circle",
           radius: Math.round(width / 70),
-          full: layout === "camera",
+          // Camera only and split fill their box edge to edge, so no mask.
+          full: layout === "camera" || layout === "split",
         }
       : null,
     trim_start: upload.trimStart ?? 0,

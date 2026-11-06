@@ -1,3 +1,4 @@
+import { refreshWorkspaceCovers } from "@/lib/poster.server"
 import { createFileRoute } from "@tanstack/react-router"
 import { eq } from "drizzle-orm"
 import { z } from "zod"
@@ -17,6 +18,7 @@ const updateSchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
   defaultVisibility: z.enum(["link", "workspace"]).optional(),
   brandColor: z.string().regex(HEX_COLOR).transform((value) => value.toLowerCase()).nullable().optional(),
+  coverStyle: z.enum(["designed", "frame"]).optional(),
 })
 
 const createSchema = z.object({ name: z.string().trim().min(1).max(80) })
@@ -50,6 +52,8 @@ export const Route = createFileRoute("/api/workspace")({
             if (!parsed.success) return json({ error: "Invalid settings" }, 400)
             if (Object.keys(parsed.data).length === 0) return json({ ok: true })
             await db.update(workspaces).set(parsed.data).where(eq(workspaces.id, workspace.id))
+            // A new look or brand colour re-renders the automatic covers; owners' own thumbnails stay.
+            if (parsed.data.coverStyle !== undefined || parsed.data.brandColor !== undefined) await refreshWorkspaceCovers(workspace.id)
             await audit(workspace.id, user.sub, "workspace.updated", Object.keys(parsed.data).join(", "))
             return json({ ok: true })
           },

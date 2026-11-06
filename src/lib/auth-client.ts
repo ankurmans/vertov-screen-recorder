@@ -19,6 +19,14 @@ export async function signUpWithPasskey(name: string) {
   if (added.error) throw new Error(added.error.message ?? "The passkey wasn't saved.")
 }
 
+/** Sends a link that attaches this email to the signed-in passkey account. */
+export async function linkEmail(email: string) {
+  const response = await fetch("/api/account/email", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email }) }).catch(() => null)
+  if (response?.ok) return
+  const body = (await response?.json().catch(() => null)) as { error?: string } | null
+  throw new Error(body?.error ?? "Couldn't send the link.")
+}
+
 export async function signInWithPasskey() {
   const res = await authClient.signIn.passkey()
   if (res.error) throw new Error(res.error.message ?? "That passkey didn't work.")

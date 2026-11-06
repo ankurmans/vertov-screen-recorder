@@ -1,5 +1,7 @@
 import { env } from "cloudflare:workers"
+import { seal, unseal } from "@/lib/secret-box.server"
 import type { SessionUser } from "@/lib/auth.server"
+import { AGENT_COUNTER_KEY, countAppEvent } from "@/lib/activation-events.server"
 
 /**
  * OAuth 2.1 authorization server for the MCP endpoint, so Claude, ChatGPT and Codex can connect with a sign-in instead of
@@ -17,6 +19,8 @@ const CODE_TTL_MS = 10 * 60 * 1000
 const ACCESS_TTL_S = 60 * 60
 const REFRESH_TTL_MS = 90 * 86_400_000
 const CIMD_TTL_MS = 86_400_000
+/** How long a refresh token that was just rotated still gets the same answer, so duplicate refreshes don't break a connection. */
+const REFRESH_GRACE_MS = 2 * 60 * 1000
 
 export const resourceUrl = (origin: string) => `${origin}/mcp`
 export const resourceMetadataUrl = (origin: string) => `${origin}/.well-known/oauth-protected-resource/mcp`
@@ -314,25 +318,48 @@ export async function token(form: URLSearchParams, request: Request) {
     )
       .bind(issued.id, issued.accessHash, issued.refreshHash, client.id, client.name, row.user_id, row.workspace_id, row.scope, row.resource, issued.accessExpiresAt, issued.refreshExpiresAt, new Date().toISOString())
       .run()
+    await countAppEvent({ key: AGENT_COUNTER_KEY, event: "mcp_connected" })
     return issued.body
   }
   if (grant === "refresh_token") {
     const hash = await sha256(form.get("refresh_token") ?? "")
-    const row = await env.DB.prepare("SELECT id, client_id, scope, resource, refresh_expires_at, revoked_at FROM oauth_tokens WHERE refresh_hash = ?")
-      .bind(hash)
-      .first<{ id: string; client_id: string; scope: string; resource: string; refresh_expires_at: string; revoked_at: string | null }>()
+    type Row = { id: string; client_id: string; scope: string; resource: string; refresh_expires_at: string; revoked_at: string | null; refresh_hash: string; prev_refresh_hash: string | null; last_response: string | null; rotated_at: string | null }
+    const find = () =>
+      env.DB.prepare(
+        "SELECT id, client_id, scope, resource, refresh_expires_at, revoked_at, refresh_hash, prev_refresh_hash, last_response, rotated_at FROM oauth_tokens WHERE refresh_hash = ? OR prev_refresh_hash = ?",
+      )
+        .bind(hash, hash)
+        .first<Row>()
+    /** The refresh token was rotated moments ago: answer with the same tokens the first caller got. */
+    const replay = async (row: Row) => {
+      if (row.prev_refresh_hash !== hash || !row.last_response || !row.rotated_at || Date.now() - Date.parse(row.rotated_at) > REFRESH_GRACE_MS) return null
+      const text = await unseal(row.last_response)
+      return text ? (JSON.parse(text) as Record<string, unknown>) : null
+    }
+    const row = await find()
     if (!row || row.revoked_at || Date.parse(row.refresh_expires_at) <= Date.now() || row.client_id !== client.id) {
       throw new OAuthError("invalid_grant", "The refresh token is invalid, revoked or expired.")
     }
     const resource = form.get("resource")
     if (resource && resource !== row.resource) throw new OAuthError("invalid_target", "resource doesn't match this connection.")
+    if (row.refresh_hash !== hash) {
+      const again = await replay(row)
+      if (again) return again
+      throw new OAuthError("invalid_grant", "The refresh token was already used.")
+    }
     const issued = await tokenResponse(row.id, row.scope)
     const updated = await env.DB.prepare(
-      "UPDATE oauth_tokens SET access_hash = ?, refresh_hash = ?, access_expires_at = ?, refresh_expires_at = ? WHERE id = ? AND refresh_hash = ?",
+      "UPDATE oauth_tokens SET access_hash = ?, refresh_hash = ?, access_expires_at = ?, refresh_expires_at = ?, prev_refresh_hash = ?, last_response = ?, rotated_at = ? WHERE id = ? AND refresh_hash = ?",
     )
-      .bind(issued.accessHash, issued.refreshHash, issued.accessExpiresAt, issued.refreshExpiresAt, row.id, hash)
+      .bind(issued.accessHash, issued.refreshHash, issued.accessExpiresAt, issued.refreshExpiresAt, hash, await seal(JSON.stringify(issued.body)), new Date().toISOString(), row.id, hash)
       .run()
-    if (!updated.meta.changes) throw new OAuthError("invalid_grant", "The refresh token was already used.")
+    if (!updated.meta.changes) {
+      // Lost a simultaneous race: the winner's response is the answer.
+      const winner = await find()
+      const again = winner && !winner.revoked_at ? await replay(winner) : null
+      if (again) return again
+      throw new OAuthError("invalid_grant", "The refresh token was already used.")
+    }
     return issued.body
   }
   throw new OAuthError("unsupported_grant_type", "grant_type must be authorization_code or refresh_token.")

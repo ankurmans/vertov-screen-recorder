@@ -51,6 +51,22 @@
       viewportWidth: innerWidth, viewportHeight: innerHeight })
   }
 
+  // Where the mouse goes, for cursor styles in the finished video: positions and nothing about what is under them.
+  let lastMove = 0
+  let lastX = -1
+  let lastY = -1
+  function onMove(event) {
+    const now = performance.now()
+    if (now - lastMove < 50) return
+    const x = Math.round((event.clientX / innerWidth) * 1000) / 1000
+    const y = Math.round((event.clientY / innerHeight) * 1000) / 1000
+    if (x === lastX && y === lastY) return
+    lastMove = now
+    lastX = x
+    lastY = y
+    send({ type: "pointer", x, y, viewportWidth: innerWidth, viewportHeight: innerHeight })
+  }
+
   let lastField = null
   function onInput(event) {
     const target = event.target
@@ -62,11 +78,13 @@
   function stop() {
     document.removeEventListener("click", onClick, true)
     document.removeEventListener("input", onInput, true)
+    document.removeEventListener("pointermove", onMove, true)
     window.__vertovCapture = false
   }
 
   document.addEventListener("click", onClick, true)
   document.addEventListener("input", onInput, true)
+  document.addEventListener("pointermove", onMove, true)
   chrome.runtime.onMessage.addListener((message) => {
     if (message?.type === "capture-off") stop()
   })

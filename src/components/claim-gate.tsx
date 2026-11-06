@@ -96,7 +96,7 @@ export function ClaimGate({ id, title, providers }: { id: string; title: string 
           </>
         )}
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-        <p className="mt-5 text-xs text-neutral-500">Free during early access. No card needed.</p>
+        <p className="mt-5 text-xs text-neutral-500">Free plan available. No card needed.</p>
       </div>
     </div>
   )

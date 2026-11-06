@@ -5,6 +5,8 @@ import { Video, VideoSkin, videoFeatures } from "@videojs/react/video"
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { CSSProperties, ReactNode } from "react"
 import type { Box } from "@/lib/stage"
+import { CursorLayer, useCursorTrack } from "@/components/cursor-layer"
+import type { CursorSettings } from "@/lib/cursor"
 import { zoomAt } from "@/lib/zooms"
 import type { ZoomPoint } from "@/lib/zooms"
 
@@ -26,6 +28,9 @@ interface VideoPlayerProps {
   stageBackground?: string
   screenBox?: Box | null
   zooms?: ZoomPoint[]
+  /** Pointer style drawn from the recording's saved mouse path at `cursorUrl`. */
+  cursor?: CursorSettings
+  cursorUrl?: string
   onPickZoomFocus?: (x: number, y: number) => void
   /** Layers drawn over the video inside the player, so they go fullscreen with it. */
   children?: ReactNode
@@ -56,6 +61,8 @@ export function VideoPlayer({
   stageBackground,
   screenBox,
   zooms,
+  cursor,
+  cursorUrl,
   onPickZoomFocus,
   children,
 }: VideoPlayerProps) {
@@ -68,10 +75,15 @@ export function VideoPlayer({
     return () => { cancelled = true }
   }, [subtitlesUrl])
   const videoRef = useRef<HTMLVideoElement>(null)
+  const cursorTrack = useCursorTrack(cursor ? cursorUrl : undefined)
+  const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null)
+  useEffect(() => setVideoEl(videoRef.current), [src])
   const [startingTime] = useState(initialTime)
   const [aspectRatio, setAspectRatio] = useState<string>()
   const [captionText, setCaptionText] = useState("")
   const hasAppliedInitialTimeRef = useRef(false)
+  // True while finding the length of a file that doesn't state it; time callbacks are held back meanwhile.
+  const probingRef = useRef(false)
   const hasZooms = Boolean(zooms?.length)
   const pickingFocus = Boolean(onPickZoomFocus)
 
@@ -175,6 +187,24 @@ export function VideoPlayer({
       if (element.videoWidth > 0 && element.videoHeight > 0) {
         setAspectRatio(`${element.videoWidth} / ${element.videoHeight}`)
       }
+      // Browser recordings (MediaRecorder WebM) carry no length, so duration reads Infinity and the player can't
+      // show the end time or move its progress bar. Seeking far past the end makes the browser work it out.
+      if (element.duration === Infinity && !probingRef.current) {
+        probingRef.current = true
+        const settle = () => {
+          if (!Number.isFinite(element.duration)) return
+          element.removeEventListener("durationchange", settle)
+          element.removeEventListener("timeupdate", settle)
+          probingRef.current = false
+          element.currentTime = 0
+          handleLoadedMetadata()
+        }
+        element.addEventListener("durationchange", settle)
+        element.addEventListener("timeupdate", settle)
+        element.currentTime = Number.MAX_SAFE_INTEGER
+        return
+      }
+      if (probingRef.current) return
       if (!hasAppliedInitialTimeRef.current && startingTime > 0) {
         try {
           element.currentTime = startingTime
@@ -215,8 +245,9 @@ export function VideoPlayer({
           preload="metadata"
           crossOrigin="anonymous"
           style={{ width: "100%", height: "100%", objectFit: "contain", transformOrigin: "0 0" }}
-          onEnded={(event) => onEnded?.(event.currentTarget)}
+          onEnded={(event) => { if (!probingRef.current) onEnded?.(event.currentTarget) }}
           onTimeUpdate={(event) => {
+            if (probingRef.current) return
             const element = event.currentTarget
             onActivate?.(element)
             onTimeUpdate?.(element.currentTime, element)
@@ -242,6 +273,7 @@ export function VideoPlayer({
             />
           )}
         </Video>
+        {cursor && cursorTrack && <CursorLayer video={videoEl} track={cursorTrack} settings={cursor} zooms={zooms} />}
         {hasZooms && captionText && <div className="pointer-events-none absolute inset-x-4 bottom-12 z-10 text-center"><span className="whitespace-pre-line rounded bg-black/80 px-2 py-1 text-sm text-white sm:text-base">{captionText}</span></div>}
         {onPickZoomFocus && <button type="button" aria-label="Pick zoom focus on the screen" className="absolute inset-0 z-20 cursor-crosshair border-2 border-dashed border-white/70 bg-black/10" onClick={(event) => {
           const rect = event.currentTarget.getBoundingClientRect()

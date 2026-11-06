@@ -6,7 +6,7 @@ import type { PublicUpload } from "@/db/schema";
 import type { Transcript } from "@/lib/transcript";
 import { CaptionLayer } from "@/components/caption-layer";
 import { OverlayLayer } from "@/components/overlay-layer";
-import { CameraTrack, EndCard } from "@/components/stage-layer";
+import { CameraTrack, EndCard, VoiceTrack } from "@/components/stage-layer";
 import { VideoPlayer } from "@/components/video-player-lazy";
 import { VertovIcon } from "@/components/vertov-icon";
 import { APP_NAME } from "@/lib/brand";
@@ -72,6 +72,7 @@ function EmbedPlayer({ upload, transcript, origin, brand }: { upload: PublicUplo
 
   const style = parseStyle(upload.style);
   const cameraSource = upload.cameraKey ? `${origin}/api/camera/${upload.id}` : null;
+  const voiceSource = upload.voiceKey ? `${origin}/api/voiceover/${upload.id}?v=${encodeURIComponent(upload.voiceKey)}` : null;
   const aspect = upload.width && upload.height ? upload.width / upload.height : 16 / 9;
   const geometry = useMemo(() => stageGeometry(style, aspect, Boolean(cameraSource)), [style, aspect, cameraSource]);
   const cuts = useMemo(() => parseCuts(upload.cuts), [upload.cuts]);
@@ -99,6 +100,8 @@ function EmbedPlayer({ upload, transcript, origin, brand }: { upload: PublicUplo
         {mounted && (
           <VideoPlayer
             zooms={style.zooms}
+            cursor={style.cursor}
+            cursorUrl={`${origin}/api/cursor/${upload.id}`}
             src={`${origin}/api/media/${upload.id}`}
             poster={upload.posterKey ? `${origin}/api/poster/${upload.id}` : undefined}
             initialTime={trimStart}
@@ -110,13 +113,15 @@ function EmbedPlayer({ upload, transcript, origin, brand }: { upload: PublicUplo
             stageBackground={(BACKGROUNDS[style.background] ?? BACKGROUNDS.none).css}
             screenBox={geometry.screen}
           >
+            {voiceSource && <VoiceTrack src={voiceSource} main={main} offset={upload.voiceOffset ?? 0} />}
             {cameraSource && geometry.camera && (
               <CameraTrack
                 src={cameraSource}
                 main={main}
                 box={geometry.camera}
-                shape={style.layout === "side" ? "rounded" : style.shape}
-                full={style.layout === "camera"}
+                layout={style.layout}
+                shape={style.shape}
+                stageAspect={geometry.stageAspect}
                 editable={false}
               />
             )}

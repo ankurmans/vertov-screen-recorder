@@ -1,13 +1,17 @@
 import { CaptionTranslations } from "@/components/caption-translations"
+import { WatchHow } from "@/components/tutorial-row"
+import { VoiceoverPanel } from "@/components/voiceover"
+import { useCursorTrack } from "@/components/cursor-layer"
 import { ZoomEditor } from "@/components/zoom-editor"
+import { CURSOR_ART, CURSOR_FX, CURSOR_STYLES, DEFAULT_CURSOR } from "@/lib/cursor"
 import type { ZoomFocusPicker } from "@/components/zoom-editor"
 import { VertovIcon } from "@/components/vertov-icon"
 import { useEffect, useRef, useState } from "react"
-import type { BubbleShape, BubbleSize, StageLayout, StageStyle } from "@/lib/stage"
+import type { BubbleShape, CameraSide, StageLayout, StageStyle } from "@/lib/stage"
 import type { CaptionStyle } from "@/lib/caption-styles"
 import { CAPTION_STYLES } from "@/lib/caption-styles"
 import { makeAnimatedThumbnail } from "@/lib/gif"
-import { BACKGROUNDS } from "@/lib/stage"
+import { BACKGROUNDS, BUBBLE_SIZES, SCALE_RANGE, SPLIT_RANGE } from "@/lib/stage"
 import { formatDuration } from "@/lib/format"
 import { HOSTED_EDITION } from "@/lib/edition"
 
@@ -38,8 +42,15 @@ const EXPIRY_OPTIONS = [
 const LAYOUTS: Array<{ value: StageLayout; label: string; needsCamera: boolean }> = [
   { value: "bubble", label: "Bubble", needsCamera: true },
   { value: "side", label: "Side by side", needsCamera: true },
+  { value: "split", label: "Split", needsCamera: true },
   { value: "screen", label: "Screen only", needsCamera: false },
   { value: "camera", label: "Camera only", needsCamera: true },
+]
+
+const SHAPES: Array<{ value: BubbleShape; label: string }> = [
+  { value: "circle", label: "Circle" },
+  { value: "rounded", label: "Rounded" },
+  { value: "portrait", label: "Portrait" },
 ]
 
 /**
@@ -56,6 +67,7 @@ export function StudioPanel({
   getFrame,
   mediaSource,
   hasTranscript,
+  hasVoiceover,
   onNotify,
   onSeek,
   onPickZoomFocus,
@@ -71,6 +83,7 @@ export function StudioPanel({
   /** The video file's URL, sampled for the animated thumbnail. */
   mediaSource: string
   hasTranscript: boolean
+  hasVoiceover: boolean
   onNotify: (message: string, variant?: "error") => void
   onSeek: (time: number) => void
   onPickZoomFocus: (picker: ZoomFocusPicker) => void
@@ -111,6 +124,11 @@ export function StudioPanel({
     styleWrites.current = styleWrites.current.then(() => save({ style }))
   }
 
+  // Sliders preview every step and save once, when let go.
+  function previewStyle(patch: Partial<StageStyle>) {
+    onChange({ ...state, style: { ...state.style, ...patch } })
+  }
+
   async function setTrim(patch: { trimStart?: number | null; trimEnd?: number | null }) {
     const next = { ...state, ...patch }
     if (await save(patch)) onChange(next)
@@ -119,12 +137,29 @@ export function StudioPanel({
   async function useFrameAsThumbnail() {
     const frame = await getFrame()
     if (!frame) return onNotify("Couldn't grab this frame", "error")
-    const response = await fetch(`/api/recordings/${uploadId}/sidecar?kind=poster`, {
+    const response = await fetch(`/api/recordings/${uploadId}/sidecar?kind=poster&source=custom`, {
       method: "PUT",
       headers: { "content-type": "image/jpeg" },
       body: frame,
     }).catch(() => null)
     onNotify(response?.ok ? "Thumbnail updated" : "Couldn't save the thumbnail", response?.ok ? undefined : "error")
+  }
+
+  const [makingAiCover, setMakingAiCover] = useState(false)
+  async function makeAiCover() {
+    setMakingAiCover(true)
+    const response = await fetch(`/api/recordings/${uploadId}/ai-cover`, { method: "POST" }).catch(() => null)
+    setMakingAiCover(false)
+    const body = (await response?.json().catch(() => null)) as { error?: string } | null
+    onNotify(response?.ok ? "AI cover made. It shows in your library and link previews" : (body?.error ?? "Couldn't make the cover"), response?.ok ? undefined : "error")
+  }
+
+  const [pickingPoster, setPickingPoster] = useState(false)
+  async function pickThumbnail() {
+    setPickingPoster(true)
+    const response = await fetch(`/api/recordings/${uploadId}/poster`, { method: "POST" }).catch(() => null)
+    setPickingPoster(false)
+    onNotify(response?.ok ? "Thumbnail picked. It shows in your library and link previews" : "Couldn't pick a thumbnail", response?.ok ? undefined : "error")
   }
 
   const [makingGif, setMakingGif] = useState(false)
@@ -147,6 +182,8 @@ export function StudioPanel({
   }
 
   const at = Math.round(currentTime * 10) / 10
+  const cursorTrack = useCursorTrack(HOSTED_EDITION ? `/api/cursor/${uploadId}` : undefined)
+  const cursor = state.style.cursor
 
   return (
     <section className="pop-in mt-4 rounded-xl border border-neutral-200 bg-white p-4">
@@ -159,7 +196,37 @@ export function StudioPanel({
       </div>
 
       {HOSTED_EDITION && <label className="mt-4 flex gap-2 text-sm"><input type="checkbox" checked={Boolean(state.style.denoise)} onChange={(event) => setStyle({ denoise: event.target.checked })} /> Reduce background noise in MP4 exports</label>}
+      {HOSTED_EDITION && <VoiceoverPanel uploadId={uploadId} currentTime={currentTime} hasVoiceover={hasVoiceover} />}
       {HOSTED_EDITION && <ZoomEditor uploadId={uploadId} points={state.style.zooms ?? []} currentTime={currentTime} duration={duration} onChange={(zooms) => setStyle({ zooms })} onSeek={onSeek} onPickFocus={onPickZoomFocus} screenVisible={!hasCamera || state.style.layout !== "camera"} />}
+      {HOSTED_EDITION && cursorTrack && (
+        <div className="mt-4 rounded-lg border border-neutral-200 p-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-neutral-900">Cursor</span>
+            <label className="flex items-center gap-2 text-xs text-neutral-600"><input type="checkbox" checked={Boolean(cursor)} onChange={(event) => setStyle({ cursor: event.target.checked ? DEFAULT_CURSOR : undefined })} /> Show in video</label>
+          </div>
+          {cursor && (
+            <div className="mt-3 grid gap-3">
+              <div className="flex flex-wrap gap-1.5">
+                {CURSOR_STYLES.map((name) => (
+                  <button key={name} type="button" aria-label={CURSOR_ART[name].label} title={CURSOR_ART[name].label} onClick={() => setStyle({ cursor: { ...cursor, style: name } })} className={`grid size-11 place-items-center rounded-lg border bg-neutral-800 ${cursor.style === name ? "border-red-600 ring-2 ring-red-600/30" : "border-neutral-200"}`}>
+                    <svg viewBox="0 0 128 128" width="30" height="30" dangerouslySetInnerHTML={{ __html: CURSOR_ART[name].idle }} />
+                  </button>
+                ))}
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                {(["S", "M", "L", "XL"] as const).map((label, index) => <Chip key={label} active={cursor.size === index} onClick={() => setStyle({ cursor: { ...cursor, size: index as 0 | 1 | 2 | 3 } })}>{label}</Chip>)}
+                <span className="mx-1 text-neutral-300">|</span>
+                {CURSOR_FX.map((name) => <Chip key={name} active={cursor.fx === name} onClick={() => setStyle({ cursor: { ...cursor, fx: name } })}>{name === "none" ? "No click effect" : name === "ring" ? "Ring" : "Pulse"}</Chip>)}
+              </div>
+              <div className="flex flex-wrap gap-4 text-xs text-neutral-700">
+                <label className="flex gap-1.5"><input type="checkbox" checked={cursor.smooth} onChange={(event) => setStyle({ cursor: { ...cursor, smooth: event.target.checked } })} /> Smooth motion</label>
+                <label className="flex gap-1.5"><input type="checkbox" checked={cursor.idle} onChange={(event) => setStyle({ cursor: { ...cursor, idle: event.target.checked } })} /> Hide when idle</label>
+                <label className="flex gap-1.5"><input type="checkbox" checked={cursor.spot} onChange={(event) => setStyle({ cursor: { ...cursor, spot: event.target.checked } })} /> Spotlight</label>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
       <div className="mt-4 grid gap-5 md:grid-cols-2">
         <Field label="Layout">
           <div className="flex flex-wrap gap-1.5">
@@ -174,7 +241,10 @@ export function StudioPanel({
             ))}
           </div>
           {hasCamera && state.style.layout === "bubble" && (
-            <p className="mt-1.5 text-xs text-neutral-500">Drag the bubble on the video to move it.</p>
+            <p className="mt-1.5 text-xs text-neutral-500">Drag the camera anywhere on the video, and drag its corner handle to resize it.</p>
+          )}
+          {hasCamera && (state.style.layout === "side" || state.style.layout === "split") && (
+            <p className="mt-1.5 text-xs text-neutral-500">Drag the camera on the video to move it to the other side.</p>
           )}
           {!hasCamera && (
             <p className="mt-1.5 text-xs text-neutral-500">Record with your camera on to get bubble and side-by-side layouts.</p>
@@ -184,17 +254,65 @@ export function StudioPanel({
         {hasCamera && state.style.layout === "bubble" && (
           <Field label="Camera">
             <div className="flex flex-wrap gap-1.5">
-              {(["s", "m", "l"] as Array<BubbleSize>).map((size) => (
-                  <Chip key={size} active={state.style.size === size} onClick={() => setStyle({ size })}>
-                    {size.toUpperCase()}
-                  </Chip>
-                ))}
-              {(["circle", "rounded"] as Array<BubbleShape>).map((shape) => (
-                <Chip key={shape} active={state.style.shape === shape} onClick={() => setStyle({ shape })}>
-                    <VertovIcon name={shape} size={14} /> {shape === "circle" ? "Circle" : "Rounded"}
+              {SHAPES.map(({ value, label }) => (
+                <Chip key={value} active={state.style.shape === value} onClick={() => setStyle({ shape: value })}>
+                  <ShapeIcon shape={value} /> {label}
                 </Chip>
               ))}
             </div>
+            <label className="mt-3 flex items-center gap-3 text-xs text-neutral-600">
+              Size
+              <input
+                type="range"
+                min={SCALE_RANGE.min}
+                max={SCALE_RANGE.max}
+                step={0.005}
+                value={state.style.scale ?? BUBBLE_SIZES[state.style.size]}
+                onChange={(event) => previewStyle({ scale: Number(event.target.value) })}
+                onPointerUp={(event) => setStyle({ scale: Number(event.currentTarget.value) })}
+                onKeyUp={(event) => setStyle({ scale: Number(event.currentTarget.value) })}
+                className="flex-1"
+                aria-label="Camera size"
+              />
+            </label>
+            {(state.style.x !== undefined || state.style.scale !== undefined) && (
+              <button
+                type="button"
+                onClick={() => setStyle({ x: undefined, y: undefined, scale: undefined })}
+                className="mt-2 text-xs font-medium text-neutral-500 underline-offset-2 hover:text-neutral-900 hover:underline"
+              >
+                Reset size and position
+              </button>
+            )}
+          </Field>
+        )}
+
+        {hasCamera && (state.style.layout === "side" || state.style.layout === "split") && (
+          <Field label="Camera">
+            <div className="flex flex-wrap gap-1.5">
+              {(["left", "right"] as Array<CameraSide>).map((side) => (
+                <Chip key={side} active={(state.style.side ?? "right") === side} onClick={() => setStyle({ side })}>
+                  {side === "left" ? "On the left" : "On the right"}
+                </Chip>
+              ))}
+            </div>
+            {state.style.layout === "split" && (
+              <label className="mt-3 flex items-center gap-3 text-xs text-neutral-600">
+                Width
+                <input
+                  type="range"
+                  min={SPLIT_RANGE.min}
+                  max={SPLIT_RANGE.max}
+                  step={0.01}
+                  value={state.style.split ?? SPLIT_RANGE.default}
+                  onChange={(event) => previewStyle({ split: Number(event.target.value) })}
+                  onPointerUp={(event) => setStyle({ split: Number(event.currentTarget.value) })}
+                  onKeyUp={(event) => setStyle({ split: Number(event.currentTarget.value) })}
+                  className="flex-1"
+                  aria-label="Camera width"
+                />
+              </label>
+            )}
           </Field>
         )}
 
@@ -234,7 +352,7 @@ export function StudioPanel({
           </p>
         </Field>
 
-        <Field label="Button at the end">
+        <Field label="Button at the end" tutorial="cta">
           <form
             className="flex flex-wrap gap-1.5"
             onSubmit={(event) => {
@@ -368,7 +486,7 @@ export function StudioPanel({
           </div>
         </Field>
 
-        <Field label="Subtitles & captions">
+        <Field label="Subtitles & captions" tutorial="captions">
           {hasTranscript ? <>
             <div className="flex flex-wrap gap-1.5">
               {CAPTION_STYLES.map((option) => (
@@ -393,6 +511,8 @@ export function StudioPanel({
         <Field label="More">
           <div className="flex flex-wrap gap-1.5">
             <Chip onClick={() => void useFrameAsThumbnail()}><VertovIcon name="image" size={14} /> Use this frame as thumbnail</Chip>
+            <Chip onClick={() => void pickThumbnail()}><VertovIcon name="image" size={14} /> {pickingPoster ? "Picking…" : "Pick a thumbnail for me"}</Chip>
+            {HOSTED_EDITION && <Chip onClick={() => void makeAiCover()}><VertovIcon name="image" size={14} /> {makingAiCover ? "Making the cover…" : "Make an AI cover"}</Chip>}
             {HOSTED_EDITION && <Chip onClick={() => void makeGif()}><VertovIcon name="film" size={14} /> {makingGif ? "Making GIF…" : "Animated thumbnail for email"}</Chip>}
             <Chip
               active={state.socialEnabled}
@@ -449,10 +569,13 @@ function BookendPicker({ uploadId, intro, outro, onPick }: { uploadId: string; i
   )
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, tutorial, children }: { label: string; tutorial?: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="mb-1.5 text-xs font-medium tracking-wide text-neutral-500 uppercase">{label}</p>
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <p className="text-xs font-medium tracking-wide text-neutral-500 uppercase">{label}</p>
+        {tutorial && <WatchHow slug={tutorial} />}
+      </div>
       {children}
     </div>
   )
@@ -485,20 +608,24 @@ function Chip({
 function LayoutIcon({ layout }: { layout: StageLayout }) {
   return (
     <svg viewBox="0 0 20 14" className="h-3 w-4" aria-hidden>
-      {layout !== "camera" && (
-        <rect
-          x={layout === "side" ? 1 : 1}
-          y="1"
-          width={layout === "side" ? 12 : 18}
-          height="12"
-          rx="1.5"
-          fill="currentColor"
-          opacity="0.35"
-        />
-      )}
+      {layout === "bubble" && <rect x="1" y="1" width="18" height="12" rx="1.5" fill="currentColor" opacity="0.35" />}
+      {layout === "screen" && <rect x="1" y="1" width="18" height="12" rx="1.5" fill="currentColor" opacity="0.35" />}
+      {layout === "side" && <rect x="1" y="1" width="12" height="12" rx="1.5" fill="currentColor" opacity="0.35" />}
+      {layout === "split" && <rect x="1" y="2.5" width="11" height="9" rx="1.2" fill="currentColor" opacity="0.35" />}
       {layout === "bubble" && <circle cx="5" cy="9.5" r="2.6" fill="currentColor" />}
       {layout === "side" && <rect x="14" y="3" width="5" height="8" rx="1.2" fill="currentColor" />}
+      {layout === "split" && <rect x="13" y="0" width="7" height="14" fill="currentColor" />}
       {layout === "camera" && <rect x="1" y="1" width="18" height="12" rx="1.5" fill="currentColor" />}
+    </svg>
+  )
+}
+
+function ShapeIcon({ shape }: { shape: BubbleShape }) {
+  return (
+    <svg viewBox="0 0 14 14" className="size-3.5" aria-hidden>
+      {shape === "circle" && <circle cx="7" cy="7" r="5.5" fill="currentColor" />}
+      {shape === "rounded" && <rect x="1.5" y="1.5" width="11" height="11" rx="3" fill="currentColor" />}
+      {shape === "portrait" && <rect x="3" y="0.5" width="8" height="13" rx="2.2" fill="currentColor" />}
     </svg>
   )
 }

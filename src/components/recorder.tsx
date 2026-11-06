@@ -9,8 +9,10 @@ import {
 } from "@/lib/camera-background"
 import { BrandMark } from "@/components/brand-mark"
 import { VertovIcon } from "@/components/vertov-icon"
+import { askConfirm } from "@/components/app-dialog"
 import { APP_NAME } from "@/lib/brand"
 import { formatDuration } from "@/lib/format"
+import { MAX_RECORDING_SECONDS, crossedWarning, limitState, reportedDuration, warningText } from "@/lib/recording-limit"
 import {
   backupChunk,
   readTake,
@@ -102,6 +104,12 @@ interface Session {
   height: number | null
 }
 
+/** Seconds recorded so far, not counting time spent paused. */
+function secondsRecorded(current: Session): number {
+  const pausedNow = current.pausedAt ? performance.now() - current.pausedAt : 0
+  return (performance.now() - current.startedAt - current.pausedTotal - pausedNow) / 1000
+}
+
 declare global {
   interface Window {
     documentPictureInPicture?: {
@@ -125,6 +133,18 @@ function browserMediaDevices():
 function stopStreams(streams: Array<MediaStream>) {
   for (const stream of streams)
     for (const track of stream.getTracks()) track.stop()
+}
+
+/** A plain explanation for a microphone the browser won't open; the browser's own message is just "Permission denied". */
+function micProblem(err: unknown): string | null {
+  const name = err instanceof DOMException ? err.name : ""
+  if (name === "NotAllowedError" || name === "SecurityError")
+    return "The browser isn't letting this page use your microphone. Click the icon at the left of the address bar, set Microphone to Allow and reload. If it's already allowed, check System Settings, Privacy and Security, Microphone. Or turn the microphone off to record without sound."
+  if (name === "NotFoundError") return "No microphone was found. Plug one in, or turn the microphone off to record without sound."
+  if (name === "NotReadableError" || name === "AbortError")
+    return "Your microphone couldn't be started. Another app may be using it; close it and try again, or turn the microphone off."
+  if (name === "OverconstrainedError") return "The chosen microphone isn't available any more. Pick another one."
+  return null
 }
 
 /** 0–1 loudness from an analyser, for the mic meter. */
@@ -167,7 +187,12 @@ export function Recorder({
   const [countdown, setCountdown] = useState(3)
   const [elapsed, setElapsed] = useState(0)
   const [paused, setPaused] = useState(false)
+  // Delete asks twice in place: the controls also live in the floating window, where a page dialog can't be seen.
+  const [deleteArmed, setDeleteArmed] = useState(false)
+  const deleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [level, setLevel] = useState(0)
+  // Why the mic can't be opened, kept apart from `error` so a camera that opens fine doesn't clear it.
+  const [micError, setMicError] = useState<string | null>(null)
   const [pending, setPending] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [pipWindow, setPipWindow] = useState<Window | null>(null)
@@ -176,6 +201,23 @@ export function Recorder({
   const [failedId, setFailedId] = useState<string | null>(null)
   const session = useRef<Session | null>(null)
   const finishing = useRef(false)
+  // Set when the recorder finishes itself at the six-hour limit, so the share page can say why.
+  const stoppedAtLimit = useRef(false)
+  const stopRef = useRef<(() => Promise<void>) | null>(null)
+  const lastElapsed = useRef(0)
+  // Called from the one-second timer and from the recorder's own data events, which a hidden tab does not throttle.
+  const checkLimit = useRef((current: Session, seconds: number) => {
+    const warned = crossedWarning(lastElapsed.current, seconds)
+    lastElapsed.current = seconds
+    if (warned !== null) setLimitNote(warningText(warned))
+    const parts = Math.max(current.uploader.partCount, current.cameraUploader?.partCount ?? 0)
+    if (limitState(seconds, parts).stop && !finishing.current) {
+      stoppedAtLimit.current = true
+      setLimitNote("Reached the six-hour limit. Saving your recording.")
+      void stopRef.current?.()
+    }
+  })
+  const [limitNote, setLimitNote] = useState<string | null>(null)
   const safeToLeave = useRef(false)
   const skipCountdown = useRef<(() => void) | null>(null)
   const pipRef = useRef<Window | null>(null)
@@ -263,7 +305,8 @@ export function Recorder({
         stopEffect = effect.stop
         setCameraStream(effect.stream)
         void refreshDevices().catch(() => {})
-        setError(null)
+        // Only a camera problem is cleared here: the preview restarts after a failed upload, and wiping that error left a blank page.
+        setError((current) => (current?.startsWith("Couldn't open the camera") ? null : current))
       })
       .catch(() =>
         setError(
@@ -295,8 +338,11 @@ export function Recorder({
       .then((next) => {
         if (cancelled) return stopStreams([next])
         stream = next
+        setMicError(null)
         void refreshDevices().catch(() => {})
         context = new AudioContext()
+        // A context made outside a click can start suspended, and a suspended analyser reads silence.
+        void context.resume().catch(() => {})
         const analyser = context.createAnalyser()
         analyser.fftSize = 512
         context.createMediaStreamSource(next).connect(analyser)
@@ -307,13 +353,17 @@ export function Recorder({
         }
         tick()
       })
-      .catch(() => setLevel(0))
+      .catch((err: unknown) => {
+        setLevel(0)
+        if (!cancelled) setMicError(micProblem(err))
+      })
     return () => {
       cancelled = true
       cancelAnimationFrame(frame)
       if (stream) stopStreams([stream])
       void context?.close()
       setLevel(0)
+      setMicError(null)
     }
   }, [micOn, micId, phase, devicesEnabled, refreshDevices])
 
@@ -326,16 +376,9 @@ export function Recorder({
     const timer = host.setInterval(() => {
       const current = session.current
       if (!current) return
-      const pausedNow = current.pausedAt
-        ? performance.now() - current.pausedAt
-        : 0
-      setElapsed(
-        (performance.now() -
-          current.startedAt -
-          current.pausedTotal -
-          pausedNow) /
-          1000,
-      )
+      const seconds = secondsRecorded(current)
+      setElapsed(seconds)
+      checkLimit.current(current, seconds)
       if (current.analyser) setLevel(readLevel(current.analyser, buffer))
       setPending(
         current.uploader.pendingBytes +
@@ -629,7 +672,14 @@ export function Recorder({
         width: settings.width ?? null,
         height: settings.height ?? null,
       }
+      recorder.addEventListener("dataavailable", () => {
+        const live = session.current
+        if (live && live.recorder === recorder) checkLimit.current(live, secondsRecorded(live))
+      })
       setElapsed(0)
+      lastElapsed.current = 0
+      stoppedAtLimit.current = false
+      setLimitNote(null)
       setPhase("recording")
       // The first second is usually this page; by 4s you've switched to what you're showing,
       // and 20s in is a more typical frame still.
@@ -638,7 +688,8 @@ export function Recorder({
     } catch (err) {
       pipRef.current?.close()
       setError(
-        err instanceof Error ? err.message : "Recording failed to start.",
+        micProblem(err) ??
+          (err instanceof Error ? err.message : "Recording failed to start."),
       )
       setPhase(mode === "screen" && screenRef.current ? "ready" : "setup")
     }
@@ -712,15 +763,7 @@ export function Recorder({
     const current = session.current
     if (!current || finishing.current) return
     finishing.current = true
-    const pausedNow = current.pausedAt
-      ? performance.now() - current.pausedAt
-      : 0
-    const duration =
-      (performance.now() -
-        current.startedAt -
-        current.pausedTotal -
-        pausedNow) /
-      1000
+    const duration = reportedDuration(secondsRecorded(current))
     // Copy while the click that stopped us still counts as a user gesture.
     void (copyFrom ?? window).navigator.clipboard
       .writeText(current.url)
@@ -731,9 +774,9 @@ export function Recorder({
     pipRef.current?.close()
     try {
       const [partCount, cameraPartCount] = await Promise.all([
-        current.uploader.finish(),
+        current.uploader.finish(duration),
         current.cameraUploader
-          ? current.cameraUploader.finish().catch(() => 0)
+          ? current.cameraUploader.finish(duration).catch(() => 0)
           : Promise.resolve(0),
       ])
       if (current.audioChunks.length > 0) {
@@ -757,7 +800,10 @@ export function Recorder({
           height: current.height,
         }),
       })
-      if (!response.ok) throw new Error("The upload couldn't be finished.")
+      if (!response.ok) {
+        const reason = (await response.json().catch(() => null)) as { error?: string } | null
+        throw new Error(response.status === 422 && reason?.error ? reason.error : "The upload couldn't be finished.")
+      }
       if (requestId) {
         await submitToRequest(current.id)
         await removeBackup(current.id)
@@ -768,7 +814,7 @@ export function Recorder({
       await removeBackup(current.id)
       safeToLeave.current = true
       if (embed && handBack(current.id)) return
-      window.location.href = `/${current.id}?new=1`
+      window.location.href = `/${current.id}?new=1${stoppedAtLimit.current ? "&limit=1" : ""}`
     } catch (err) {
       setError(
         `${err instanceof Error ? err.message : "Upload failed."} Your recording is safe in this browser, so you can upload it again.`,
@@ -781,11 +827,19 @@ export function Recorder({
     }
   }
 
+  stopRef.current = () => stop()
+
   /** Throws the take away. With `again`, starts a fresh one on the same screen. */
   async function discard(again = false) {
     const current = session.current
     if (!current) return
-    if (!again && !confirm("Delete this recording?")) return
+    if (!again && !deleteArmed) {
+      setDeleteArmed(true)
+      if (deleteTimer.current) clearTimeout(deleteTimer.current)
+      deleteTimer.current = setTimeout(() => setDeleteArmed(false), 3000)
+      return
+    }
+    setDeleteArmed(false)
     session.current = null
     await stopRecorders(current)
     releaseDevices(current, again)
@@ -808,6 +862,10 @@ export function Recorder({
       if (beforeStart && !(await beforeStart()))
         throw new Error(
           "Couldn’t open your recording session. Try again, or sign in to continue.",
+        )
+      if (take.seconds > MAX_RECORDING_SECONDS)
+        throw new Error(
+          "That recording is longer than six hours, which Vertov can't hold as one video. Download it to keep it.",
         )
       const tracks = await readTake(take.id)
       if (!tracks.screen) throw new Error("That recording has nothing in it.")
@@ -833,7 +891,7 @@ export function Recorder({
       const send = (track: "screen" | "camera", blob: Blob) => {
         const uploader = new PartUploader(id, track)
         uploader.push(blob)
-        return uploader.finish()
+        return uploader.finish(take.seconds)
       }
       const [partCount, cameraPartCount] = await Promise.all([
         send("screen", tracks.screen),
@@ -895,7 +953,7 @@ export function Recorder({
   }
 
   async function discardTake(take: BackupTake) {
-    if (!confirm("Delete this saved recording from this browser?")) return
+    if (!(await askConfirm({ title: "Delete this saved recording?", body: "It's only stored in this browser, so it can't be recovered.", confirmLabel: "Delete", danger: true }))) return
     await removeBackup(take.id)
     setSavedTakes((takes) => takes.filter((item) => item.id !== take.id))
   }
@@ -904,6 +962,8 @@ export function Recorder({
     pending > 6 * 1024 * 1024
       ? `Catching up · ${Math.round(pending / 1024 / 1024)} MB to send`
       : "Uploading live"
+
+  const limitLevel = phase === "recording" ? limitState(elapsed).level : "ok"
 
   const controls = (where: "page" | "bubble") => (
     <div className="flex items-center gap-1.5">
@@ -919,7 +979,10 @@ export function Recorder({
       >
         <span className="size-3 rounded-[3px] bg-white" />
       </button>
-      <span className="min-w-11 font-mono text-sm text-white tabular-nums">
+      <span
+        className={`min-w-11 font-mono text-sm tabular-nums ${limitLevel === "soon" ? "text-red-400" : limitLevel === "notice" ? "text-amber-300" : "text-white"}`}
+        title={limitLevel === "ok" ? undefined : "Recordings stop and save by themselves just before six hours"}
+      >
         {formatDuration(elapsed)}
       </span>
       <LevelBars level={paused ? 0 : level} />
@@ -932,9 +995,19 @@ export function Recorder({
       <IconButton title="Restart" onClick={() => void discard(true)}>
         <VertovIcon name="restart" size={18} />
       </IconButton>
-      <IconButton title="Delete" onClick={() => void discard()}>
-        <VertovIcon name="trash" size={18} />
-      </IconButton>
+      {deleteArmed ? (
+        <button
+          type="button"
+          onClick={() => void discard()}
+          className="h-9 shrink-0 rounded-full bg-red-600 px-3 text-xs font-semibold text-white hover:bg-red-500"
+        >
+          Delete?
+        </button>
+      ) : (
+        <IconButton title="Delete" onClick={() => void discard()}>
+          <VertovIcon name="trash" size={18} />
+        </IconButton>
+      )}
     </div>
   )
 
@@ -1052,25 +1125,32 @@ export function Recorder({
           ))}
         {(phase === "setup" || phase === "ready") && (
           <>
-            <div className="v-recorder-modes flex gap-2">
-              {(["screen", "camera"] as const).map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => {
-                    update({ mode: option })
-                    if (option === "camera") setDevicesEnabled(true)
-                  }}
-                  aria-pressed={mode === option}
-                  className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                    mode === option
-                      ? "bg-white text-neutral-900"
-                      : "bg-white/10 hover:bg-white/20"
-                  }`}
-                >
-                  {option === "screen" ? "Screen recording" : "Camera only"}
-                </button>
-              ))}
+            <div className="v-recorder-modes flex flex-wrap gap-2">
+              {(
+                [
+                  { label: "Screen and camera", mode: "screen", cameraOn: true },
+                  { label: "Screen only", mode: "screen", cameraOn: false },
+                  { label: "Camera only", mode: "camera", cameraOn: cameraOn },
+                ] as const
+              ).map((option) => {
+                const active = option.mode === "camera" ? mode === "camera" : mode === "screen" && cameraOn === option.cameraOn
+                return (
+                  <button
+                    key={option.label}
+                    type="button"
+                    onClick={() => {
+                      update({ mode: option.mode, cameraOn: option.cameraOn })
+                      if (option.mode === "camera" || option.cameraOn) setDevicesEnabled(true)
+                    }}
+                    aria-pressed={active}
+                    className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                      active ? "bg-white text-neutral-900" : "bg-white/10 hover:bg-white/20"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                )
+              })}
             </div>
 
             {embedded && setupActions}
@@ -1182,6 +1262,16 @@ export function Recorder({
             {mode === "camera" && (
               <StagePreview screen={null} camera={cameraStream} cameraOnly />
             )}
+            {limitNote && (
+              <>
+                <p aria-hidden="true" className="max-w-md rounded-xl bg-amber-400/15 px-4 py-2 text-center text-sm text-amber-200">
+                  {limitLevel === "now" ? limitNote : warningText(limitState(elapsed).remaining)}
+                </p>
+                <p role="status" aria-live="polite" className="sr-only">
+                  {limitNote}
+                </p>
+              </>
+            )}
             <div className="rounded-full bg-white/10 px-3 py-2">
               {controls("page")}
             </div>
@@ -1209,6 +1299,14 @@ export function Recorder({
           <p className="text-sm text-neutral-400">
             Screen recording needs a desktop browser. You can record a camera
             video here.
+          </p>
+        )}
+        {micError && micOn && micError !== error && (
+          <p
+            role="alert"
+            className="rounded-lg bg-red-950 px-4 py-3 text-sm text-red-200"
+          >
+            {micError}
           </p>
         )}
         {error && (

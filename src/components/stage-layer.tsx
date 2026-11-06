@@ -1,34 +1,112 @@
 import { useEffect, useRef, useState } from "react"
-import type { Box, BubbleCorner, BubbleShape } from "@/lib/stage"
+import type { Box, BubbleShape, StageLayout, StageStyle } from "@/lib/stage"
+import { SCALE_RANGE } from "@/lib/stage"
 import { VertovIcon } from "@/components/vertov-icon"
 import { ReactionIcon } from "@/components/reaction-icon"
+
+/**
+ * Generated narration, kept in lockstep with the screen video like the camera track. It starts `offset` seconds
+ * into the recording, follows volume and mute, and the recording's cuts apply to it because it follows the video.
+ */
+export function VoiceTrack({ src, main, offset }: { src: string; main: HTMLVideoElement | null; offset: number }) {
+  const ref = useRef<HTMLAudioElement>(null)
+
+  useEffect(() => {
+    const voice = ref.current
+    if (!main || !voice) return
+    const target = () => main.currentTime - offset
+    const sync = (force = false) => {
+      const wanted = target()
+      if (wanted < 0) {
+        voice.pause()
+        return
+      }
+      if (force || Math.abs(voice.currentTime - wanted) > 0.25) {
+        try {
+          voice.currentTime = wanted
+        } catch {
+          // Not seekable yet.
+        }
+      }
+      if (!main.paused && voice.paused && !voice.ended) void voice.play().catch(() => {})
+    }
+    const onPlay = () => sync(true)
+    const onPause = () => {
+      voice.pause()
+      sync(true)
+    }
+    const onVolume = () => {
+      voice.volume = main.volume
+      voice.muted = main.muted
+    }
+    const onRate = () => {
+      voice.playbackRate = main.playbackRate
+    }
+    const onWaiting = () => voice.pause()
+    const onSeeked = () => sync(true)
+    const onTime = () => sync()
+    main.addEventListener("play", onPlay)
+    main.addEventListener("playing", onPlay)
+    main.addEventListener("pause", onPause)
+    main.addEventListener("seeked", onSeeked)
+    main.addEventListener("timeupdate", onTime)
+    main.addEventListener("volumechange", onVolume)
+    main.addEventListener("ratechange", onRate)
+    main.addEventListener("waiting", onWaiting)
+    onVolume()
+    onRate()
+    sync(true)
+    return () => {
+      voice.pause()
+      main.removeEventListener("play", onPlay)
+      main.removeEventListener("playing", onPlay)
+      main.removeEventListener("pause", onPause)
+      main.removeEventListener("seeked", onSeeked)
+      main.removeEventListener("timeupdate", onTime)
+      main.removeEventListener("volumechange", onVolume)
+      main.removeEventListener("ratechange", onRate)
+      main.removeEventListener("waiting", onWaiting)
+    }
+  }, [main, src, offset])
+
+  return <audio ref={ref} src={src} preload="auto" className="hidden" />
+}
 
 /**
  * The camera track, kept in lockstep with the screen video. The screen
  * element owns time and audio; this one follows play, pause, seeks and
  * speed, and nudges itself back when it drifts.
+ *
+ * When editable, the owner drags the bubble anywhere and resizes it from its
+ * corner handle; in the side and split layouts, dragging moves the camera to
+ * the other edge.
  */
 export function CameraTrack({
   src,
   main,
   box,
+  layout,
   shape,
-  full,
+  stageAspect,
   editable,
-  onCornerChange,
+  onStyleChange,
 }: {
   src: string
   main: HTMLVideoElement | null
   box: Box
+  layout: StageLayout
   shape: BubbleShape
-  /** Camera-only layout: fill the stage instead of floating. */
-  full: boolean
+  /** Stage width / height, to keep card corners round on a non-square box. */
+  stageAspect: number
   editable: boolean
-  onCornerChange?: (corner: BubbleCorner) => void
+  onStyleChange?: (patch: Partial<StageStyle>) => void
 }) {
   const ref = useRef<HTMLVideoElement>(null)
   const [drag, setDrag] = useState<{ dx: number; dy: number } | null>(null)
-  const dragStart = useRef<{ x: number; y: number } | null>(null)
+  const dragStart = useRef<{ x: number; y: number; cx: number; cy: number } | null>(null)
+  // Resizing previews as a scale from the bottom-left corner, so the card follows the top-right handle.
+  const [resize, setResize] = useState<number | null>(null)
+  const resizeStart = useRef<{ x: number; y: number; left: number; bottom: number; width: number; height: number; max: number } | null>(null)
 
   useEffect(() => {
     const camera = ref.current
@@ -77,11 +155,26 @@ export function CameraTrack({
     }
   }, [main, src])
 
-  const radius = full ? 0 : shape === "circle" ? "9999px" : "14%"
+  const full = layout === "camera" || layout === "split"
+  const movable = editable && (layout === "bubble" || layout === "side" || layout === "split")
+  // Percent radii are per axis, so scale the vertical one to keep corners circular on a card.
+  const pxRatio = (box.width / box.height) * stageAspect
+  const radius = full
+    ? 0
+    : layout === "bubble" && shape === "circle"
+      ? "9999px"
+      : `${layout === "bubble" && shape === "rounded" ? 14 : 10}% / ${(layout === "bubble" && shape === "rounded" ? 14 : 10) * pxRatio}%`
+
+  const stageOf = (element: HTMLElement) => element.parentElement?.getBoundingClientRect()
+  // Up and to the right grows it; whichever way moved further wins.
+  const resizeFactor = (event: React.PointerEvent, start: NonNullable<typeof resizeStart.current>) => {
+    const grow = Math.max(event.clientX - start.x, (start.y - event.clientY) * (start.width / start.height))
+    return Math.min(start.max, Math.max(24 / start.width, (start.width + grow) / start.width))
+  }
   return (
     <div
       className={`absolute overflow-hidden ${full ? "" : "shadow-[0_12px_32px_-8px_rgb(0_0_0/0.55)] ring-2 ring-white/80"} ${
-        editable && !full ? "cursor-grab touch-none active:cursor-grabbing" : "pointer-events-none"
+        movable ? "cursor-grab touch-none active:cursor-grabbing" : "pointer-events-none"
       }`}
       style={{
         left: `${box.left}%`,
@@ -89,15 +182,17 @@ export function CameraTrack({
         width: `${box.width}%`,
         height: `${box.height}%`,
         borderRadius: radius,
-        transform: drag ? `translate(${drag.dx}px, ${drag.dy}px) scale(1.04)` : undefined,
-        transition: drag ? "none" : "left 300ms cubic-bezier(.2,.8,.2,1), top 300ms cubic-bezier(.2,.8,.2,1), width 300ms, height 300ms, border-radius 300ms",
+        transform: drag ? `translate(${drag.dx}px, ${drag.dy}px) scale(1.03)` : resize ? `scale(${resize})` : undefined,
+        transformOrigin: resize ? "bottom left" : undefined,
+        transition: drag || resize ? "none" : "left 300ms cubic-bezier(.2,.8,.2,1), top 300ms cubic-bezier(.2,.8,.2,1), width 300ms, height 300ms, border-radius 300ms",
         zIndex: 5,
       }}
       onPointerDown={(event) => {
-        if (!editable || full) return
+        if (!movable) return
         event.stopPropagation()
         event.currentTarget.setPointerCapture(event.pointerId)
-        dragStart.current = { x: event.clientX, y: event.clientY }
+        const rect = event.currentTarget.getBoundingClientRect()
+        dragStart.current = { x: event.clientX, y: event.clientY, cx: rect.left + rect.width / 2, cy: rect.top + rect.height / 2 }
         setDrag({ dx: 0, dy: 0 })
       }}
       onPointerMove={(event) => {
@@ -105,17 +200,19 @@ export function CameraTrack({
         setDrag({ dx: event.clientX - dragStart.current.x, dy: event.clientY - dragStart.current.y })
       }}
       onPointerUp={(event) => {
-        if (!dragStart.current) return
-        const stage = event.currentTarget.parentElement?.getBoundingClientRect()
-        const bubble = event.currentTarget.getBoundingClientRect()
+        const start = dragStart.current
+        if (!start) return
+        const stage = stageOf(event.currentTarget)
+        // From the drop point, not the last move event, which can lag behind it.
+        const dx = event.clientX - start.x
+        const dy = event.clientY - start.y
         dragStart.current = null
         setDrag(null)
-        if (!stage) return
-        // Snap to whichever corner the bubble's center was dropped nearest.
-        const cx = bubble.left + bubble.width / 2 - stage.left
-        const cy = bubble.top + bubble.height / 2 - stage.top
-        const corner = `${cy < stage.height / 2 ? "t" : "b"}${cx < stage.width / 2 ? "l" : "r"}` as BubbleCorner
-        onCornerChange?.(corner)
+        if (!stage || Math.hypot(dx, dy) < 3) return
+        const x = ((start.cx + dx - stage.left) / stage.width) * 100
+        const y = ((start.cy + dy - stage.top) / stage.height) * 100
+        if (layout === "bubble") onStyleChange?.({ x: round(x), y: round(y) })
+        else onStyleChange?.({ side: x < 50 ? "left" : "right" })
       }}
       onClick={(event) => editable && event.stopPropagation()}
     >
@@ -126,11 +223,68 @@ export function CameraTrack({
         playsInline
         preload="auto"
         crossOrigin="anonymous"
-        className="pointer-events-none size-full object-cover"
+        className="pointer-events-none size-full"
+        // Inline, because the player skin sets object-fit: contain on every video inside it.
+        style={{ objectFit: "cover" }}
       />
+      {editable && layout === "bubble" && (
+        <div
+          role="slider"
+          aria-label="Camera size"
+          aria-valuenow={Math.round(box.width)}
+          title="Drag to resize"
+          className="absolute top-[6%] right-[6%] size-5 cursor-nesw-resize touch-none rounded-full border-2 border-white bg-neutral-900/70 shadow"
+          onPointerDown={(event) => {
+            event.stopPropagation()
+            const bubbleElement = event.currentTarget.parentElement
+            const bubble = bubbleElement?.getBoundingClientRect()
+            const stage = bubbleElement ? stageOf(bubbleElement) : undefined
+            if (!bubble || !stage) return
+            event.currentTarget.setPointerCapture(event.pointerId)
+            resizeStart.current = {
+              x: event.clientX,
+              y: event.clientY,
+              left: bubble.left,
+              bottom: bubble.bottom,
+              width: bubble.width,
+              height: bubble.height,
+              max: (SCALE_RANGE.max * stage.width) / bubble.width,
+            }
+            setResize(1)
+          }}
+          onPointerMove={(event) => {
+            const start = resizeStart.current
+            if (!start) return
+            event.stopPropagation()
+            setResize(resizeFactor(event, start))
+          }}
+          onPointerUp={(event) => {
+            const start = resizeStart.current
+            if (!start) return
+            event.stopPropagation()
+            const bubbleElement = event.currentTarget.parentElement
+            const stage = bubbleElement ? stageOf(bubbleElement) : undefined
+            const factor = resizeFactor(event, start)
+            resizeStart.current = null
+            setResize(null)
+            if (!stage) return
+            const width = start.width * factor
+            const height = start.height * factor
+            const scale = Math.min(SCALE_RANGE.max, Math.max(SCALE_RANGE.min, width / stage.width))
+            // Bottom-left stays put, as in the preview.
+            onStyleChange?.({
+              scale: Math.round(scale * 1000) / 1000,
+              x: round(((start.left + width / 2 - stage.left) / stage.width) * 100),
+              y: round(((start.bottom - height / 2 - stage.top) / stage.height) * 100),
+            })
+          }}
+        />
+      )}
     </div>
   )
 }
+
+const round = (value: number) => Math.round(value * 10) / 10
 
 export interface FloatingReaction {
   key: string

@@ -1,5 +1,6 @@
 import { NAME } from "./brand.js"
 import { BACKGROUNDS } from "./lib/effects.js"
+import { limitState, warningText } from "./lib/recording-limit.js"
 import { disconnect, getConnection, setServer } from "./lib/settings.js"
 
 const app = document.getElementById("app")
@@ -72,6 +73,12 @@ function renderConnect(connection) {
 
 function renderRecording(recording) {
   const timer = h("div", { class: "timer" }, clock(recording.elapsed ?? 0))
+  const limitHint = h("p", { class: "hint", role: "status" })
+  const showLimit = (elapsed) => {
+    const limit = limitState(elapsed ?? 0)
+    limitHint.textContent = limit.level === "ok" ? "" : warningText(limit.remaining)
+  }
+  showLimit(recording.elapsed)
   let paused = Boolean(recording.paused)
   const pauseButton = h("button", { class: "secondary", onclick: togglePause }, paused ? "Resume" : "Pause")
   async function togglePause() {
@@ -82,6 +89,7 @@ function renderRecording(recording) {
   put(
     timer,
     h("div", { class: "status" }, recording.capture ? "Recording · capturing clicks" : "Recording"),
+    limitHint,
     h(
       "button",
       {
@@ -122,6 +130,7 @@ function renderRecording(recording) {
     const status = await ask("status").catch(() => null)
     if (!status?.recording) return render()
     timer.textContent = clock(status.recording.elapsed ?? 0)
+    showLimit(status.recording.elapsed)
   }, 1000)
 }
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { authClient, signInWithGoogle } from "@/lib/auth-client"
+import { authClient, linkEmail, signInWithGoogle } from "@/lib/auth-client"
 
 /**
  * Visitors who pressed "Start recording" are signed in as guests. This asks them to attach a passkey so the
@@ -17,6 +17,7 @@ export function SaveAccountBanner({ google = false }: { google?: boolean }) {
     void authClient.passkey.listUserPasskeys().then((res) => setHasPasskey((res.data?.length ?? 0) > 0)).catch(() => setHasPasskey(false))
   }, [guest])
 
+  if (guest && hasPasskey) return <AddEmailBanner />
   if (!guest || hasPasskey !== false) return null
 
   async function save() {
@@ -64,5 +65,55 @@ export function SaveAccountBanner({ google = false }: { google?: boolean }) {
         </button>
       )}
     </div>
+  )
+}
+
+/** A passkey account with no email yet: one link and it can use Google, email links, and recovery. */
+function AddEmailBanner() {
+  const [email, setEmail] = useState("")
+  const [busy, setBusy] = useState(false)
+  const [sent, setSent] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  async function send(event: React.FormEvent) {
+    event.preventDefault()
+    setBusy(true)
+    setError(null)
+    try {
+      await linkEmail(email)
+      setSent(email)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't send the link.")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form onSubmit={(event) => void send(event)} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-950">
+      <span className="min-w-0 flex-1">
+        {sent
+          ? `Check ${sent} and open the link to confirm it.`
+          : "Add your email so you can sign in with Google or by email too, and get back in if you lose your passkey."}
+      </span>
+      {error && <span className="text-red-700">{error}</span>}
+      {!sent && (
+        <>
+          <input
+            type="email"
+            required
+            autoComplete="email"
+            aria-label="Email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="you@company.com"
+            className="w-56 rounded-lg border border-amber-900/30 bg-white px-3 py-1.5 text-amber-950"
+          />
+          <button type="submit" disabled={busy} className="rounded-lg bg-amber-900 px-3 py-1.5 font-semibold text-white hover:bg-amber-800 disabled:opacity-50">
+            Send link
+          </button>
+        </>
+      )}
+    </form>
   )
 }

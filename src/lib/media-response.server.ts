@@ -10,7 +10,7 @@ interface ByteRange {
 
 /** Parses a single-range `Range: bytes=...` header against a known size.
  *  Multi-range requests fall back to the full body. */
-function parseRange(header: string, size: number): ByteRange | null {
+export function parseRange(header: string, size: number): ByteRange | null {
   const match = /^bytes=(\d*)-(\d*)$/.exec(header.trim())
   if (!match) return null
   const [, startRaw, endRaw] = match
@@ -39,12 +39,14 @@ function parseRange(header: string, size: number): ByteRange | null {
 export async function serveMedia(
   id: string,
   request?: Request,
-  track: "screen" | "camera" = "screen",
+  track: "screen" | "camera" | "voice" = "screen",
 ): Promise<Response> {
   const row = await env.DB.prepare(
     track === "camera"
       ? "SELECT camera_key AS r2_key, camera_content_type AS content_type FROM uploads WHERE id = ? AND status = 'ready'"
-      : "SELECT r2_key, content_type FROM uploads WHERE id = ?",
+      : track === "voice"
+        ? "SELECT voice_key AS r2_key, 'audio/mpeg' AS content_type FROM uploads WHERE id = ? AND status = 'ready'"
+        : "SELECT r2_key, content_type FROM uploads WHERE id = ?",
   )
     .bind(id)
     .first<{ r2_key: string | null; content_type: string | null }>()

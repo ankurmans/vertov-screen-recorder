@@ -148,6 +148,6 @@ export async function denyUnlessViewable(upload: Upload | null, request: Request
 
 /** The upload as the page may see it: never ship the password hash to the browser. */
 export function publicUpload(upload: Upload): PublicUpload {
-  const { passwordHash, ...rest } = upload
+  const { passwordHash, voiceText, voiceVoiceId, voiceModel, ...rest } = upload
   return { ...rest, hasPassword: Boolean(passwordHash) }
 }

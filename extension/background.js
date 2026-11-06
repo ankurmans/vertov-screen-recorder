@@ -93,7 +93,7 @@ async function deliver(state, result) {
       // The tab or compose is gone: fall through to the share page.
     }
   }
-  await chrome.tabs.create({ url: `${result.url}?new=1` })
+  await chrome.tabs.create({ url: `${result.url}?new=1${result.limit ? "&limit=1" : ""}` })
 }
 
 async function stopRecording() {
@@ -247,6 +247,8 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
         if (!state) return
         await setState({ ...state, elapsed: message.elapsed, paused: message.paused })
         await chrome.action.setBadgeText({ text: message.paused ? "❚❚" : clock(message.elapsed) })
+        // Amber in the last half hour before the automatic stop, dark red in the last five minutes.
+        await chrome.action.setBadgeBackgroundColor({ color: message.level === "soon" || message.level === "now" ? "#7f1d1d" : message.level === "notice" ? "#d97706" : "#dc2626" })
       } else if (message.type === "finished") {
         const state = await getState()
         await finishUi()

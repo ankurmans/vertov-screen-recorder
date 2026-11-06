@@ -18,6 +18,7 @@ interface PostHogLike {
   opt_in_capturing: () => void
   opt_out_capturing: () => void
   identify: (id: string) => void
+  capture: (event: string, properties?: Record<string, unknown>) => void
 }
 
 declare global {
@@ -55,4 +56,9 @@ export const declineAnalytics = () => window.posthog?.opt_out_capturing()
 /** Ties events to a signed-in account, only after the visitor accepted cookies. */
 export function identifyUser(id: string) {
   if (consentStatus() === "granted") window.posthog?.identify(id)
+}
+
+/** A named product event; PostHog applies the visitor's consent choice (cookieless until they accept). */
+export function captureEvent(event: string, properties?: Record<string, unknown>) {
+  window.posthog?.capture(event, properties)
 }

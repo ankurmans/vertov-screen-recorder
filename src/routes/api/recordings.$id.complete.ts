@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { env } from "cloudflare:workers";
 import { and, asc, eq } from "drizzle-orm";
-import { z } from "zod";
 import { db } from "@/db";
 import { uploadParts, uploads } from "@/db/schema";
 import { json } from "@/lib/api.server";
@@ -10,15 +9,8 @@ import { notify } from "@/lib/slack.server";
 import { emitWebhook } from "@/lib/webhooks";
 import { countRecorderActivation } from "@/lib/activation-events.server";
 import { ownedUpload, userApi } from "@/lib/recordings.server";
-
-const completeSchema = z.object({
-  duration: z.number().finite().nonnegative().max(60 * 60 * 6),
-  width: z.number().int().positive().max(16384).nullable().optional(),
-  height: z.number().int().positive().max(16384).nullable().optional(),
-  partCount: z.number().int().min(1).max(10_000),
-  // 0 or missing: the camera track was dropped and its upload is abandoned.
-  cameraPartCount: z.number().int().min(0).max(10_000).optional(),
-});
+import { queuePoster } from "@/lib/poster.server";
+import { MAX_RECORDING_SECONDS, completeSchema } from "@/lib/recording-limit";
 
 async function finishTrack(
   uploadId: string,
@@ -55,10 +47,19 @@ export const Route = createFileRoute("/api/recordings/$id/complete")({
           if (!upload.multipartUploadId) {
             return json({ error: "Recording has no upload" }, 409);
           }
-          const parsed = completeSchema.safeParse(
-            await request.json().catch(() => null),
-          );
-          if (!parsed.success) return json({ error: "Invalid completion" }, 400);
+          const body: unknown = await request.json().catch(() => null);
+          const parsed = completeSchema.safeParse(body);
+          if (!parsed.success) {
+            // The uploaded parts are kept, so the client can finish again with a valid length.
+            const reported = (body as { duration?: unknown } | null)?.duration;
+            if (typeof reported === "number" && reported > MAX_RECORDING_SECONDS) {
+              return json(
+                { error: "Recordings can run up to six hours, so this one can't be finished as it is.", code: "too_long", maxSeconds: MAX_RECORDING_SECONDS },
+                422,
+              );
+            }
+            return json({ error: "Invalid completion" }, 400);
+          }
 
           const screen = await finishTrack(
             upload.id,
@@ -114,6 +115,7 @@ export const Route = createFileRoute("/api/recordings/$id/complete")({
           await deleteLive(upload.id).catch(() => {});
           if (upload.ownerId) await countRecorderActivation(upload.ownerId, upload.id, upload.createdAt);
           if (willProcess) await env.PROCESS_QUEUE.send({ id: upload.id });
+          await queuePoster(upload.id);
           await notify(upload.workspaceId, `New video: ${upload.title || "Untitled"}\n${url}`);
           emitWebhook(upload.workspaceId, "video.ready", { id: upload.id, url, title: upload.title, duration: parsed.data.duration });
           return json({ id: upload.id, url, camera: cameraKept });

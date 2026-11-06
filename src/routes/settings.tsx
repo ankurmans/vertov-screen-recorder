@@ -3,6 +3,7 @@ import { NotificationSettings } from "@/components/notification-settings"
 import { createFileRoute, redirect, useNavigate, useRouter } from "@tanstack/react-router"
 import { SecuritySettings } from "@/components/security-settings"
 import { SlackSettings } from "@/components/slack-settings"
+import { ElevenLabsSettings } from "@/components/voiceover"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
 import { ArrowLeftIcon, CheckIcon, CopyIcon, LinkSimpleIcon, PuzzlePieceIcon } from "@phosphor-icons/react"
@@ -19,6 +20,8 @@ import { listConnections } from "@/lib/oauth.server"
 import { listWebhookEndpoints } from "@/lib/webhooks"
 import { listInvites, listMembers } from "@/lib/workspace-api.server"
 import { getWorkspaceContext, isHosted, toPublicWorkspace, usageOf } from "@/lib/workspace.server"
+import { askConfirm, showNotice } from "@/components/app-dialog"
+import { WatchHow } from "@/components/tutorial-row"
 
 type Tab = "general" | "members" | "agents" | "security" | "billing"
 
@@ -78,7 +81,6 @@ function SettingsPage() {
         <span className="truncate text-sm font-semibold text-neutral-900">{data.workspace.name}</span>
       </header>
       <div className="mx-auto max-w-3xl px-4 py-8">
-        <NotificationSettings />
         <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">Settings</h1>
         <div role="tablist" className="mt-5 flex gap-1 border-b border-neutral-200">
           {tabs.map(([value, label]) => (
@@ -116,14 +118,17 @@ async function send(path: string, method: string, body?: unknown): Promise<{ ok:
     body: body === undefined ? undefined : JSON.stringify(body),
   }).catch(() => null)
   const data = ((await response?.json().catch(() => ({}))) ?? {}) as Record<string, unknown>
-  if (!response?.ok) alert(typeof data.error === "string" ? data.error : "Something went wrong. Try again.")
+  if (!response?.ok) void showNotice("That didn't work", typeof data.error === "string" ? data.error : "Something went wrong. Try again.")
   return { ok: Boolean(response?.ok), data }
 }
 
-function Card({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+function Card({ title, description, tutorial, children }: { title: string; description?: string; tutorial?: string; children: React.ReactNode }) {
   return (
     <section className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
-      <h2 className="font-semibold text-neutral-900">{title}</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-semibold text-neutral-900">{title}</h2>
+        {tutorial && <WatchHow slug={tutorial} />}
+      </div>
       {description && <p className="mt-0.5 text-sm text-neutral-500">{description}</p>}
       <div className="mt-4">{children}</div>
     </section>
@@ -138,7 +143,7 @@ function GeneralTab() {
   const me = data.members.find((member) => member.userId === data.me)
 
   async function leave() {
-    if (!confirm(`Leave ${data.workspace.name}? Your videos stay in it.`)) return
+    if (!(await askConfirm({ title: `Leave ${data.workspace.name}?`, body: "Your videos stay in it.", confirmLabel: "Leave workspace", danger: true }))) return
     const { ok } = await send(`/api/workspace/members/${data.me}`, "DELETE")
     if (ok) window.location.href = "/home"
   }
@@ -146,6 +151,7 @@ function GeneralTab() {
   return (
     <div className="space-y-5">
       <ProfilePictureCard avatar={me?.avatar} name={me?.name ?? ""} />
+      <NotificationSettings />
       <Card title="Workspace name">
         <form
           className="flex gap-2"
@@ -194,7 +200,35 @@ function GeneralTab() {
         </div>
       </Card>
       {manage && <SlackSettings />}
+      {HOSTED_EDITION && manage && <ElevenLabsSettings />}
       {HOSTED_EDITION && manage && <BrandingCard />}
+      {HOSTED_EDITION && (
+        <Card title="Video covers" description="The thumbnail Vertov makes for each video, in your library, link previews and embeds. A thumbnail you pick yourself always stays.">
+          <div className="space-y-2">
+            {(
+              [
+                ["designed", "Designed", "The title, the length and the clearest moment of the video, with your camera in a circle when you recorded one."],
+                ["frame", "Plain frame", "Just the clearest moment of the video."],
+              ] as const
+            ).map(([value, label, hint]) => (
+              <label key={value} className={`flex items-start gap-3 rounded-lg border px-3 py-2.5 ${manage ? "cursor-pointer" : ""} ${data.workspace.coverStyle === value ? "border-neutral-900" : "border-neutral-200"}`}>
+                <input
+                  type="radio"
+                  name="cover-style"
+                  className="mt-1"
+                  disabled={!manage}
+                  checked={data.workspace.coverStyle === value}
+                  onChange={() => void send("/api/workspace", "PATCH", { coverStyle: value }).then(() => router.invalidate())}
+                />
+                <span>
+                  <span className="block text-sm font-medium text-neutral-900">{label}</span>
+                  <span className="block text-xs text-neutral-500">{hint}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </Card>
+      )}
       {HOSTED_EDITION && manage && <WorkspaceInsightsCard />}
       {me && !(me.role === "owner" && data.members.filter((member) => member.role === "owner").length === 1) && (
         <button type="button" onClick={() => void leave()} className="text-sm text-red-600 hover:underline">
@@ -228,7 +262,7 @@ function MembersTab() {
   return (
     <div className="space-y-5">
       {manage && (
-        <Card title="Invite people" description="Anyone with the link can join for 14 days. Members never cost anything.">
+        <Card title="Invite people" tutorial="invite" description="Anyone with the link can join for 14 days. Members never cost anything.">
           <div className="flex flex-wrap items-center gap-2">
             <select
               value={inviteRole}
@@ -294,8 +328,8 @@ function MembersTab() {
                   </select>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (!confirm(`Remove ${member.name}? Their videos stay in the workspace.`)) return
+                    onClick={async () => {
+                      if (!(await askConfirm({ title: `Remove ${member.name}?`, body: "Their videos stay in the workspace.", confirmLabel: "Remove", danger: true }))) return
                       void send(`/api/workspace/members/${member.userId}`, "DELETE").then(() => router.invalidate())
                     }}
                     className="rounded-md px-2 py-1 text-xs text-red-600 hover:bg-red-50"
@@ -397,8 +431,8 @@ function AgentsTab() {
                   </span>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (!confirm(`Disconnect “${connection.clientName}”? It has to sign in again to use ${APP_NAME}.`)) return
+                    onClick={async () => {
+                      if (!(await askConfirm({ title: `Disconnect “${connection.clientName}”?`, body: `It has to sign in again to use ${APP_NAME}.`, confirmLabel: "Disconnect", danger: true }))) return
                       void send("/api/oauth/connections", "DELETE", { id: connection.id }).then(() => router.invalidate())
                     }}
                     className="rounded-md px-2 py-1 text-xs text-red-600 hover:bg-red-50"
@@ -413,6 +447,7 @@ function AgentsTab() {
       )}
       <Card
         title="Let agents record and read videos"
+        tutorial="connect-agent"
         description="An API key lets an agent or script act as you in this workspace: upload a recording and get a share link back, or read any video it can see as a transcript and brief. No computer use needed: browser agents already have video from Playwright or a screencast."
       >
         <form
@@ -456,8 +491,8 @@ function AgentsTab() {
                 </span>
                 <button
                   type="button"
-                  onClick={() => {
-                    if (!confirm(`Revoke “${apiKey.name}”? Anything using it stops working.`)) return
+                  onClick={async () => {
+                    if (!(await askConfirm({ title: `Revoke “${apiKey.name}”?`, body: "Anything using it stops working.", confirmLabel: "Revoke key", danger: true }))) return
                     void send("/api/keys", "DELETE", { id: apiKey.id }).then(() => router.invalidate())
                   }}
                   className="rounded-md px-2 py-1 text-xs text-red-600 hover:bg-red-50"
@@ -484,7 +519,7 @@ function AgentsTab() {
             </div>
           ))}
           <p className="text-xs text-neutral-500">
-            {HOSTED_EDITION && "MCP tools: upload_video, create_video_from_url, list_videos, get_video, get_video_prompt, get_ai_doc, generate_ai_doc, add_comment, list_spaces and the tutorial tools. "}
+            {HOSTED_EDITION && "MCP tools: upload_video, create_video_from_url, list_videos, get_video, get_video_prompt, get_ai_doc, generate_ai_doc, add_comment, list_spaces, inspect_app_page, record_tutorial and the tutorial tools. "}
             Anyone watching a video can also use Share → Copy for an AI agent.
           </p>
         </div>
@@ -718,7 +753,7 @@ function BrandingCard() {
     const response = await fetch("/api/workspace/brand", { method: "POST", headers: { "content-type": file.type }, body: file }).catch(() => null)
     setBusy(false)
     if (response?.ok) await router.invalidate()
-    else alert("Use a PNG, JPEG or WebP logo under 512 KB.")
+    else void showNotice("That logo didn't upload", "Use a PNG, JPEG or WebP image under 512 KB.")
   }
 
   return (
@@ -857,8 +892,8 @@ function WebhooksCard() {
               </span>
               <button
                 type="button"
-                onClick={() => {
-                  if (!confirm("Delete this webhook? It stops receiving events.")) return
+                onClick={async () => {
+                  if (!(await askConfirm({ title: "Delete this webhook?", body: "It stops receiving events.", confirmLabel: "Delete webhook", danger: true }))) return
                   void send("/api/webhooks", "DELETE", { id: hook.id }).then(() => router.invalidate())
                 }}
                 className="rounded-md px-2 py-1 text-xs text-red-600 hover:bg-red-50"

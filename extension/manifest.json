@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "Vertov: screen recorder",
   "short_name": "Vertov",
-  "version": "0.4.1",
-  "description": "Record a tab, your screen or your camera and get a share link the moment you stop. No video length limit on any plan.",
+  "version": "0.5.0",
+  "description": "Record a tab, your screen or your camera and get a share link the moment you stop. One recording can run up to six hours.",
   "minimum_chrome_version": "116",
   "action": {
     "default_popup": "popup.html",

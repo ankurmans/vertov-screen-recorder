@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import type { AuditEntry } from "@/lib/audit.server"
 import { HOSTED_EDITION } from "@/lib/edition"
+import { askConfirm, showNotice } from "@/components/app-dialog"
 
 interface Overview {
   retentionDays: number | null
@@ -25,7 +26,7 @@ async function call(path: string, method: string, body?: unknown): Promise<{ ok:
     body: body === undefined ? undefined : JSON.stringify(body),
   }).catch(() => null)
   const data = ((await response?.json().catch(() => ({}))) ?? {}) as Record<string, unknown>
-  if (!response?.ok) alert(typeof data.error === "string" ? data.error : "Something went wrong. Try again.")
+  if (!response?.ok) void showNotice("That didn't work", typeof data.error === "string" ? data.error : "Something went wrong. Try again.")
   return { ok: Boolean(response?.ok), data }
 }
 
@@ -128,7 +129,10 @@ export function SecuritySettings({ isOwner, me }: { isOwner: boolean; me: string
           </button>
           <button
             className={button}
-            onClick={() => confirm(`Turn downloads ${downloads ? "on" : "off"} for every video in this workspace?`) && void save({ downloadsDefault: downloads, applyDownloadsToAll: true })}
+            onClick={async () => {
+              if (await askConfirm({ title: `Turn downloads ${downloads ? "on" : "off"} for every video?`, body: "This changes every existing video in this workspace, not just new ones.", confirmLabel: downloads ? "Turn on for all" : "Turn off for all" }))
+                void save({ downloadsDefault: downloads, applyDownloadsToAll: true })
+            }}
           >
             Apply to every existing video
           </button>
@@ -170,7 +174,7 @@ export function SecuritySettings({ isOwner, me }: { isOwner: boolean; me: string
             <button
               className={button}
               onClick={async () => {
-                if (!confirm("Revoke the SCIM token? Your identity provider will stop syncing.")) return
+                if (!(await askConfirm({ title: "Revoke the SCIM token?", body: "Your identity provider will stop syncing people.", confirmLabel: "Revoke token", danger: true }))) return
                 const { ok } = await call("/api/workspace/scim", "DELETE")
                 if (ok) {
                   setToken(null)
@@ -201,7 +205,7 @@ export function SecuritySettings({ isOwner, me }: { isOwner: boolean; me: string
               className={primary}
               disabled={!heir}
               onClick={async () => {
-                if (!confirm("Transfer ownership of this workspace? You will become an admin.")) return
+                if (!(await askConfirm({ title: "Transfer ownership?", body: "You will become an admin of this workspace.", confirmLabel: "Transfer ownership", danger: true }))) return
                 const { ok } = await call("/api/workspace/transfer", "POST", { userId: heir })
                 if (ok) window.location.reload()
               }}

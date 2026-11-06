@@ -9,6 +9,7 @@ import { processExport } from "@/lib/export.server"
 import { processImport } from "@/lib/import.server"
 import { processRecording } from "@/lib/process.server"
 import { processStitch } from "@/lib/stitch.server"
+import { processPoster, sweepPosters } from "@/lib/poster.server"
 import { runRetention } from "@/lib/retention.server"
 import { sweepOAuth } from "@/lib/oauth.server"
 
@@ -19,6 +20,7 @@ export type ProcessMessage =
   | { id: string; kind: "import"; loomId: string }
   | { id: string; kind: "fetch"; url: string }
   | { id: string; kind: "stitch"; sources: Array<string> }
+  | { id: string; kind: "poster"; force?: boolean; mode?: "fill" | "refresh" | "force" }
 
 // Required for the container's outbound requests to reach the handlers below.
 export { ContainerProxy } from "@cloudflare/containers"
@@ -64,6 +66,7 @@ export default {
       else if (body.kind === "import") await processImport(body.id, body.loomId)
       else if (body.kind === "fetch") await processFetch(body.id, body.url)
       else if (body.kind === "stitch") await processStitch(body.id, body.sources)
+      else if (body.kind === "poster") await processPoster(body.id, body.mode ?? (body.force ? "force" : "fill"))
       else await processRecording(body.id)
       message.ack()
     }
@@ -75,6 +78,7 @@ export default {
     }
     console.log(JSON.stringify({ message: "Retention run", ...(await runRetention()) }))
     console.log(JSON.stringify({ message: "Guest sweep", ...(await sweepGuests()) }))
+    console.log(JSON.stringify({ message: "Poster sweep", ...(await sweepPosters()) }))
     await sweepOAuth()
   },
 } satisfies ExportedHandler<Env, ProcessMessage>

@@ -76,7 +76,7 @@ const LOCKED_TITLES = {
 
 export const Route = createFileRoute("/$id")({
   validateSearch: (search: Record<string, unknown>) => ({
-    panel: search.panel === "insights" ? "insights" as const : undefined,
+    panel: search.panel === "insights" ? ("insights" as const) : search.panel === "customize" ? ("customize" as const) : undefined,
     t: Number.isFinite(Number(search.t)) && Number(search.t) > 0 ? Number(search.t) : undefined,
   }),
   loader: async ({ params }) => {

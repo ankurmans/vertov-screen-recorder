@@ -4,6 +4,8 @@
  * same size, so chunks are buffered and cut into fixed 5 MiB parts; the
  * remainder goes up as the final part on stop.
  */
+import { withWebmDuration } from "@/lib/webm-duration"
+
 export const PART_BYTES = 5 * 1024 * 1024
 
 const MAX_ATTEMPTS = 6
@@ -15,6 +17,8 @@ export class PartUploader {
   private nextPart = 1
   private running: Promise<void> | null = null
   private failure: Error | null = null
+  // Kept so the length can be written into the file's header once recording ends (see webm-duration.ts).
+  private firstPart: Blob | null = null
   uploadedBytes = 0
   totalBytes = 0
 
@@ -51,19 +55,32 @@ export class PartUploader {
     }
   }
 
-  /** Sends whatever is buffered as the last part and waits for every part to land. */
-  async finish(): Promise<number> {
+  /**
+   * Sends whatever is buffered as the last part and waits for every part to land. With the recording's length,
+   * a WebM file gets it written into its header: in the last part if it's the only one, otherwise by sending the
+   * first part again (same size, so R2's equal-part rule still holds).
+   */
+  async finish(seconds?: number): Promise<number> {
     if (this.buffered > 0 || this.nextPart === 1) {
-      this.enqueue(new Blob(this.chunks))
+      let last = new Blob(this.chunks)
+      if (this.nextPart === 1 && seconds) last = await withWebmDuration(last, seconds).catch(() => last)
+      this.enqueue(last)
       this.chunks = []
       this.buffered = 0
     }
     while (this.running) await this.running
     if (this.failure) throw this.failure
+    const first = this.firstPart
+    if (seconds && first && this.partCount > 1) {
+      const patched = await withWebmDuration(first, seconds).catch(() => first)
+      // Best effort: the original first part is already in place, and the player copes without a length.
+      if (patched !== first) await this.send(1, patched).catch(() => {})
+    }
     return this.partCount
   }
 
   private enqueue(blob: Blob): void {
+    if (this.nextPart === 1) this.firstPart = blob
     this.queue.push({ partNumber: this.nextPart++, blob })
     if (!this.running) {
       this.running = this.drain().finally(() => {

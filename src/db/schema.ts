@@ -54,6 +54,13 @@ export const uploads = sqliteTable(
     cameraKey: text("camera_key"),
     cameraContentType: text("camera_content_type"),
     cameraMultipartUploadId: text("camera_multipart_upload_id"),
+    // Generated narration (ElevenLabs, the workspace's own key): an audio file synced to the source timeline.
+    voiceKey: text("voice_key"),
+    voiceText: text("voice_text"),
+    voiceVoiceId: text("voice_voice_id"),
+    voiceVoiceName: text("voice_voice_name"),
+    voiceModel: text("voice_model"),
+    voiceOffset: real("voice_offset").notNull().default(0),
     // monitor, window, browser or camera: what the main track captured.
     captureSurface: text("capture_surface"),
     // JSON StageStyle; see src/lib/stage.ts.
@@ -128,6 +135,11 @@ export const workspaces = sqliteTable("workspaces", {
   defaultVisibility: text("default_visibility").notNull().default("link"),
   // Share-page branding: hex accent color and an R2 key for the logo.
   brandColor: text("brand_color"),
+  /** Automatic thumbnails: "designed" covers or the plain best "frame". */
+  coverStyle: text("cover_style").notNull().default("designed"),
+  /** The workspace's ElevenLabs API key, AES-GCM encrypted (src/lib/secret-box.server.ts). */
+  elevenKey: text("eleven_key"),
+  voiceCredits: integer("voice_credits").notNull().default(0),
   brandLogoKey: text("brand_logo_key"),
   // Slack incoming-webhook URL for new-video and comment notices.
   slackWebhook: text("slack_webhook"),
@@ -387,7 +399,7 @@ export type Space = typeof spaces.$inferSelect;
 export type Folder = typeof folders.$inferSelect;
 
 /** An upload as the browser sees it; the password hash never leaves the server. */
-export type PublicUpload = Omit<Upload, "passwordHash"> & { hasPassword: boolean };
+export type PublicUpload = Omit<Upload, "passwordHash" | "voiceText" | "voiceVoiceId" | "voiceModel"> & { hasPassword: boolean };
 
 export type VideoRequest = typeof videoRequests.$inferSelect;
 
@@ -512,6 +524,48 @@ export const tutorialJobs = sqliteTable(
   (table) => [index("idx_tutorial_jobs_workspace").on(table.workspaceId, table.createdAt)],
 );
 
+/** The app a workspace lets Vertov's hosted recorder open, with its demo login (sealed). One per workspace. */
+export const recorderApps = sqliteTable("recorder_apps", {
+  workspaceId: text("workspace_id").primaryKey(),
+  origin: text("origin").notNull(),
+  verifyToken: text("verify_token").notNull(),
+  verifiedAt: text("verified_at"),
+  loginUrl: text("login_url"),
+  loginUser: text("login_user"),
+  loginSecret: text("login_secret"),
+  updatedBy: text("updated_by").notNull(),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+});
+
+/** A tutorial an agent asked the hosted recorder to make: its own steps (a recipe), run once in a Cloudflare container. */
+export const recorderJobs = sqliteTable(
+  "recorder_jobs",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    createdBy: text("created_by").notNull(),
+    origin: text("origin").notNull(),
+    title: text("title").notNull(),
+    recipe: text("recipe").notNull(),
+    voiceId: text("voice_id"),
+    // queued | running | completed | failed
+    state: text("state").notNull().default("queued"),
+    stage: text("stage"),
+    error: text("error"),
+    failedStep: text("failed_step"),
+    note: text("note"),
+    screenshotKey: text("screenshot_key"),
+    videoId: text("video_id"),
+    verified: text("verified"),
+    credits: integer("credits").notNull().default(0),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+    completedAt: text("completed_at"),
+  },
+  (table) => [index("idx_recorder_jobs_workspace").on(table.workspaceId, table.createdAt)],
+);
+
 export const tutorialRunners = sqliteTable(
   "tutorial_runners",
   {
@@ -521,3 +575,13 @@ export const tutorialRunners = sqliteTable(
   },
   (table) => [primaryKey({ columns: [table.workspaceId, table.runnerId] })],
 );
+
+/** Every change to a workspace's Vertov-voices balance: grants (positive), narrations (negative), refunds (positive). */
+export const voiceCreditLedger = sqliteTable("voice_credit_ledger", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull(),
+  delta: integer("delta").notNull(),
+  reason: text("reason").notNull(),
+  uploadId: text("upload_id"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+})

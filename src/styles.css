@@ -61,6 +61,16 @@ select:not([multiple])[size="1"] {
   background-image: linear-gradient(to top, rgb(0 0 0 / 0.45), transparent 6rem);
 }
 
+/* The skin's glass is 10% white, which leaves white text unreadable over light footage, and most screen recordings
+   are of light apps. Dark glass reads on any video: menus nearly opaque, the control bar lighter. */
+.video-player.media-default-skin .media-popover,
+.video-player.media-default-skin .media-menu {
+  background-color: rgb(20 20 18 / 0.86) !important;
+}
+.video-player.media-default-skin .media-controls {
+  background-color: rgb(20 20 18 / 0.42) !important;
+}
+
 /* ─── Transcript frame-preview popover ───
    Springy-but-snappy open/close: fade + cross-blur + slight scale,
    sliding out from the anchor side. Open uses the slower clock, the
@@ -336,7 +346,8 @@ select:not([multiple])[size="1"] {
   background: #e9ece3;
   color: #a82919;
 }
-.create-space-dialog::backdrop {
+.create-space-dialog::backdrop,
+.app-dialog::backdrop {
   background: rgb(0 0 0 / 0.35);
 }
 .library-controls {
@@ -579,6 +590,64 @@ select:not([multiple])[size="1"] {
   border: 1px solid #e1e4d9;
   border-radius: 12px;
   background: #eef0e7;
+}
+.library-guide {
+  margin-top: 1.25rem;
+  padding: 1rem 1.25rem 0.75rem;
+  border: 1px solid #e1e4d9;
+  border-radius: 12px;
+  background: #eef0e7;
+}
+.library-guide-head {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+}
+.library-guide-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.25rem 1rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.library-guide-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding: 0.5rem 0.5rem;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+a.library-guide-step:hover {
+  background: #fafbf6;
+}
+.library-guide-step strong {
+  display: block;
+  font-weight: 600;
+}
+.library-guide-step small {
+  display: block;
+  margin-top: 0.125rem;
+  font-size: 0.75rem;
+  color: #6c7462;
+}
+.library-guide-tick {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  border: 1.5px solid #b9bfae;
+  border-radius: 999px;
+  color: #fff;
+}
+.library-guide-tick.is-done {
+  border-color: #6c7462;
+  background: #6c7462;
 }
 .library-next-eye {
   display: flex;

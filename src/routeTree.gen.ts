@@ -36,12 +36,14 @@ import { Route as ApiOembedRouteImport } from './routes/api/oembed'
 import { Route as ApiNotificationsRouteImport } from './routes/api/notifications'
 import { Route as ApiKeysRouteImport } from './routes/api/keys'
 import { Route as ApiFoldersRouteImport } from './routes/api/folders'
+import { Route as ApiElevenlabsRouteImport } from './routes/api/elevenlabs'
 import { Route as ApiCommandsRouteImport } from './routes/api/commands'
 import { Route as ApiWorkspaceTransferRouteImport } from './routes/api/workspace.transfer'
 import { Route as ApiWorkspaceSwitchRouteImport } from './routes/api/workspace.switch'
 import { Route as ApiWorkspaceSecurityRouteImport } from './routes/api/workspace.security'
 import { Route as ApiWorkspaceInvitesRouteImport } from './routes/api/workspace.invites'
 import { Route as ApiWatchLaterIdRouteImport } from './routes/api/watch-later.$id'
+import { Route as ApiVoiceoverIdRouteImport } from './routes/api/voiceover.$id'
 import { Route as ApiViewIdRouteImport } from './routes/api/view.$id'
 import { Route as ApiV1VideosRouteImport } from './routes/api/v1.videos'
 import { Route as ApiUploadMultipartRouteImport } from './routes/api/upload.multipart'
@@ -75,15 +77,19 @@ import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiAssetsIdRouteImport } from './routes/api/assets.$id'
 import { Route as ApiAdminReviewAccountRouteImport } from './routes/api/admin/review-account'
 import { Route as ApiAdminAiConfigRouteImport } from './routes/api/admin/ai-config'
+import { Route as ApiAccountEmailRouteImport } from './routes/api/account.email'
 import { Route as ApiWorkspaceMembersUserIdRouteImport } from './routes/api/workspace.members.$userId'
 import { Route as ApiV1VideosIdRouteImport } from './routes/api/v1.videos.$id'
 import { Route as ApiUploadMultipartIdRouteImport } from './routes/api/upload.multipart.$id'
 import { Route as ApiRequestsIdSubmitRouteImport } from './routes/api/requests.$id.submit'
+import { Route as ApiRecordingsIdVoiceoverRouteImport } from './routes/api/recordings.$id.voiceover'
 import { Route as ApiRecordingsIdSidecarRouteImport } from './routes/api/recordings.$id.sidecar'
+import { Route as ApiRecordingsIdPosterRouteImport } from './routes/api/recordings.$id.poster'
 import { Route as ApiRecordingsIdPartsRouteImport } from './routes/api/recordings.$id.parts'
 import { Route as ApiRecordingsIdLiveRouteImport } from './routes/api/recordings.$id.live'
 import { Route as ApiRecordingsIdExportRouteImport } from './routes/api/recordings.$id.export'
 import { Route as ApiRecordingsIdCompleteRouteImport } from './routes/api/recordings.$id.complete'
+import { Route as ApiRecordingsIdAiCoverRouteImport } from './routes/api/recordings.$id.ai-cover'
 import { Route as ApiLiveIdNRouteImport } from './routes/api/live.$id.$n'
 import { Route as ApiAdminExportIdRouteImport } from './routes/api/admin/export.$id'
 
@@ -222,6 +228,11 @@ const ApiFoldersRoute = ApiFoldersRouteImport.update({
   path: '/api/folders',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiElevenlabsRoute = ApiElevenlabsRouteImport.update({
+  id: '/api/elevenlabs',
+  path: '/api/elevenlabs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCommandsRoute = ApiCommandsRouteImport.update({
   id: '/api/commands',
   path: '/api/commands',
@@ -250,6 +261,11 @@ const ApiWorkspaceInvitesRoute = ApiWorkspaceInvitesRouteImport.update({
 const ApiWatchLaterIdRoute = ApiWatchLaterIdRouteImport.update({
   id: '/api/watch-later/$id',
   path: '/api/watch-later/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiVoiceoverIdRoute = ApiVoiceoverIdRouteImport.update({
+  id: '/api/voiceover/$id',
+  path: '/api/voiceover/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiViewIdRoute = ApiViewIdRouteImport.update({
@@ -417,6 +433,11 @@ const ApiAdminAiConfigRoute = ApiAdminAiConfigRouteImport.update({
   path: '/api/admin/ai-config',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAccountEmailRoute = ApiAccountEmailRouteImport.update({
+  id: '/api/account/email',
+  path: '/api/account/email',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiWorkspaceMembersUserIdRoute =
   ApiWorkspaceMembersUserIdRouteImport.update({
     id: '/members/$userId',
@@ -438,9 +459,20 @@ const ApiRequestsIdSubmitRoute = ApiRequestsIdSubmitRouteImport.update({
   path: '/submit',
   getParentRoute: () => ApiRequestsIdRoute,
 } as any)
+const ApiRecordingsIdVoiceoverRoute =
+  ApiRecordingsIdVoiceoverRouteImport.update({
+    id: '/voiceover',
+    path: '/voiceover',
+    getParentRoute: () => ApiRecordingsIdRoute,
+  } as any)
 const ApiRecordingsIdSidecarRoute = ApiRecordingsIdSidecarRouteImport.update({
   id: '/sidecar',
   path: '/sidecar',
+  getParentRoute: () => ApiRecordingsIdRoute,
+} as any)
+const ApiRecordingsIdPosterRoute = ApiRecordingsIdPosterRouteImport.update({
+  id: '/poster',
+  path: '/poster',
   getParentRoute: () => ApiRecordingsIdRoute,
 } as any)
 const ApiRecordingsIdPartsRoute = ApiRecordingsIdPartsRouteImport.update({
@@ -461,6 +493,11 @@ const ApiRecordingsIdExportRoute = ApiRecordingsIdExportRouteImport.update({
 const ApiRecordingsIdCompleteRoute = ApiRecordingsIdCompleteRouteImport.update({
   id: '/complete',
   path: '/complete',
+  getParentRoute: () => ApiRecordingsIdRoute,
+} as any)
+const ApiRecordingsIdAiCoverRoute = ApiRecordingsIdAiCoverRouteImport.update({
+  id: '/ai-cover',
+  path: '/ai-cover',
   getParentRoute: () => ApiRecordingsIdRoute,
 } as any)
 const ApiLiveIdNRoute = ApiLiveIdNRouteImport.update({
@@ -485,6 +522,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/signin': typeof SigninRoute
   '/api/commands': typeof ApiCommandsRoute
+  '/api/elevenlabs': typeof ApiElevenlabsRoute
   '/api/folders': typeof ApiFoldersRouteWithChildren
   '/api/keys': typeof ApiKeysRoute
   '/api/notifications': typeof ApiNotificationsRoute
@@ -503,6 +541,7 @@ export interface FileRoutesByFullPath {
   '/embed/$id': typeof EmbedIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/request/$id': typeof RequestIdRoute
+  '/api/account/email': typeof ApiAccountEmailRoute
   '/api/admin/ai-config': typeof ApiAdminAiConfigRoute
   '/api/admin/review-account': typeof ApiAdminReviewAccountRoute
   '/api/assets/$id': typeof ApiAssetsIdRoute
@@ -536,6 +575,7 @@ export interface FileRoutesByFullPath {
   '/api/upload/multipart': typeof ApiUploadMultipartRouteWithChildren
   '/api/v1/videos': typeof ApiV1VideosRouteWithChildren
   '/api/view/$id': typeof ApiViewIdRoute
+  '/api/voiceover/$id': typeof ApiVoiceoverIdRoute
   '/api/watch-later/$id': typeof ApiWatchLaterIdRoute
   '/api/workspace/invites': typeof ApiWorkspaceInvitesRoute
   '/api/workspace/security': typeof ApiWorkspaceSecurityRoute
@@ -543,11 +583,14 @@ export interface FileRoutesByFullPath {
   '/api/workspace/transfer': typeof ApiWorkspaceTransferRoute
   '/api/admin/export/$id': typeof ApiAdminExportIdRoute
   '/api/live/$id/$n': typeof ApiLiveIdNRoute
+  '/api/recordings/$id/ai-cover': typeof ApiRecordingsIdAiCoverRoute
   '/api/recordings/$id/complete': typeof ApiRecordingsIdCompleteRoute
   '/api/recordings/$id/export': typeof ApiRecordingsIdExportRoute
   '/api/recordings/$id/live': typeof ApiRecordingsIdLiveRoute
   '/api/recordings/$id/parts': typeof ApiRecordingsIdPartsRoute
+  '/api/recordings/$id/poster': typeof ApiRecordingsIdPosterRoute
   '/api/recordings/$id/sidecar': typeof ApiRecordingsIdSidecarRoute
+  '/api/recordings/$id/voiceover': typeof ApiRecordingsIdVoiceoverRoute
   '/api/requests/$id/submit': typeof ApiRequestsIdSubmitRoute
   '/api/upload/multipart/$id': typeof ApiUploadMultipartIdRoute
   '/api/v1/videos/$id': typeof ApiV1VideosIdRoute
@@ -564,6 +607,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/signin': typeof SigninRoute
   '/api/commands': typeof ApiCommandsRoute
+  '/api/elevenlabs': typeof ApiElevenlabsRoute
   '/api/folders': typeof ApiFoldersRouteWithChildren
   '/api/keys': typeof ApiKeysRoute
   '/api/notifications': typeof ApiNotificationsRoute
@@ -582,6 +626,7 @@ export interface FileRoutesByTo {
   '/embed/$id': typeof EmbedIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/request/$id': typeof RequestIdRoute
+  '/api/account/email': typeof ApiAccountEmailRoute
   '/api/admin/ai-config': typeof ApiAdminAiConfigRoute
   '/api/admin/review-account': typeof ApiAdminReviewAccountRoute
   '/api/assets/$id': typeof ApiAssetsIdRoute
@@ -615,6 +660,7 @@ export interface FileRoutesByTo {
   '/api/upload/multipart': typeof ApiUploadMultipartRouteWithChildren
   '/api/v1/videos': typeof ApiV1VideosRouteWithChildren
   '/api/view/$id': typeof ApiViewIdRoute
+  '/api/voiceover/$id': typeof ApiVoiceoverIdRoute
   '/api/watch-later/$id': typeof ApiWatchLaterIdRoute
   '/api/workspace/invites': typeof ApiWorkspaceInvitesRoute
   '/api/workspace/security': typeof ApiWorkspaceSecurityRoute
@@ -622,11 +668,14 @@ export interface FileRoutesByTo {
   '/api/workspace/transfer': typeof ApiWorkspaceTransferRoute
   '/api/admin/export/$id': typeof ApiAdminExportIdRoute
   '/api/live/$id/$n': typeof ApiLiveIdNRoute
+  '/api/recordings/$id/ai-cover': typeof ApiRecordingsIdAiCoverRoute
   '/api/recordings/$id/complete': typeof ApiRecordingsIdCompleteRoute
   '/api/recordings/$id/export': typeof ApiRecordingsIdExportRoute
   '/api/recordings/$id/live': typeof ApiRecordingsIdLiveRoute
   '/api/recordings/$id/parts': typeof ApiRecordingsIdPartsRoute
+  '/api/recordings/$id/poster': typeof ApiRecordingsIdPosterRoute
   '/api/recordings/$id/sidecar': typeof ApiRecordingsIdSidecarRoute
+  '/api/recordings/$id/voiceover': typeof ApiRecordingsIdVoiceoverRoute
   '/api/requests/$id/submit': typeof ApiRequestsIdSubmitRoute
   '/api/upload/multipart/$id': typeof ApiUploadMultipartIdRoute
   '/api/v1/videos/$id': typeof ApiV1VideosIdRoute
@@ -644,6 +693,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/signin': typeof SigninRoute
   '/api/commands': typeof ApiCommandsRoute
+  '/api/elevenlabs': typeof ApiElevenlabsRoute
   '/api/folders': typeof ApiFoldersRouteWithChildren
   '/api/keys': typeof ApiKeysRoute
   '/api/notifications': typeof ApiNotificationsRoute
@@ -662,6 +712,7 @@ export interface FileRoutesById {
   '/embed/$id': typeof EmbedIdRoute
   '/join/$token': typeof JoinTokenRoute
   '/request/$id': typeof RequestIdRoute
+  '/api/account/email': typeof ApiAccountEmailRoute
   '/api/admin/ai-config': typeof ApiAdminAiConfigRoute
   '/api/admin/review-account': typeof ApiAdminReviewAccountRoute
   '/api/assets/$id': typeof ApiAssetsIdRoute
@@ -695,6 +746,7 @@ export interface FileRoutesById {
   '/api/upload/multipart': typeof ApiUploadMultipartRouteWithChildren
   '/api/v1/videos': typeof ApiV1VideosRouteWithChildren
   '/api/view/$id': typeof ApiViewIdRoute
+  '/api/voiceover/$id': typeof ApiVoiceoverIdRoute
   '/api/watch-later/$id': typeof ApiWatchLaterIdRoute
   '/api/workspace/invites': typeof ApiWorkspaceInvitesRoute
   '/api/workspace/security': typeof ApiWorkspaceSecurityRoute
@@ -702,11 +754,14 @@ export interface FileRoutesById {
   '/api/workspace/transfer': typeof ApiWorkspaceTransferRoute
   '/api/admin/export/$id': typeof ApiAdminExportIdRoute
   '/api/live/$id/$n': typeof ApiLiveIdNRoute
+  '/api/recordings/$id/ai-cover': typeof ApiRecordingsIdAiCoverRoute
   '/api/recordings/$id/complete': typeof ApiRecordingsIdCompleteRoute
   '/api/recordings/$id/export': typeof ApiRecordingsIdExportRoute
   '/api/recordings/$id/live': typeof ApiRecordingsIdLiveRoute
   '/api/recordings/$id/parts': typeof ApiRecordingsIdPartsRoute
+  '/api/recordings/$id/poster': typeof ApiRecordingsIdPosterRoute
   '/api/recordings/$id/sidecar': typeof ApiRecordingsIdSidecarRoute
+  '/api/recordings/$id/voiceover': typeof ApiRecordingsIdVoiceoverRoute
   '/api/requests/$id/submit': typeof ApiRequestsIdSubmitRoute
   '/api/upload/multipart/$id': typeof ApiUploadMultipartIdRoute
   '/api/v1/videos/$id': typeof ApiV1VideosIdRoute
@@ -725,6 +780,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signin'
     | '/api/commands'
+    | '/api/elevenlabs'
     | '/api/folders'
     | '/api/keys'
     | '/api/notifications'
@@ -743,6 +799,7 @@ export interface FileRouteTypes {
     | '/embed/$id'
     | '/join/$token'
     | '/request/$id'
+    | '/api/account/email'
     | '/api/admin/ai-config'
     | '/api/admin/review-account'
     | '/api/assets/$id'
@@ -776,6 +833,7 @@ export interface FileRouteTypes {
     | '/api/upload/multipart'
     | '/api/v1/videos'
     | '/api/view/$id'
+    | '/api/voiceover/$id'
     | '/api/watch-later/$id'
     | '/api/workspace/invites'
     | '/api/workspace/security'
@@ -783,11 +841,14 @@ export interface FileRouteTypes {
     | '/api/workspace/transfer'
     | '/api/admin/export/$id'
     | '/api/live/$id/$n'
+    | '/api/recordings/$id/ai-cover'
     | '/api/recordings/$id/complete'
     | '/api/recordings/$id/export'
     | '/api/recordings/$id/live'
     | '/api/recordings/$id/parts'
+    | '/api/recordings/$id/poster'
     | '/api/recordings/$id/sidecar'
+    | '/api/recordings/$id/voiceover'
     | '/api/requests/$id/submit'
     | '/api/upload/multipart/$id'
     | '/api/v1/videos/$id'
@@ -804,6 +865,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signin'
     | '/api/commands'
+    | '/api/elevenlabs'
     | '/api/folders'
     | '/api/keys'
     | '/api/notifications'
@@ -822,6 +884,7 @@ export interface FileRouteTypes {
     | '/embed/$id'
     | '/join/$token'
     | '/request/$id'
+    | '/api/account/email'
     | '/api/admin/ai-config'
     | '/api/admin/review-account'
     | '/api/assets/$id'
@@ -855,6 +918,7 @@ export interface FileRouteTypes {
     | '/api/upload/multipart'
     | '/api/v1/videos'
     | '/api/view/$id'
+    | '/api/voiceover/$id'
     | '/api/watch-later/$id'
     | '/api/workspace/invites'
     | '/api/workspace/security'
@@ -862,11 +926,14 @@ export interface FileRouteTypes {
     | '/api/workspace/transfer'
     | '/api/admin/export/$id'
     | '/api/live/$id/$n'
+    | '/api/recordings/$id/ai-cover'
     | '/api/recordings/$id/complete'
     | '/api/recordings/$id/export'
     | '/api/recordings/$id/live'
     | '/api/recordings/$id/parts'
+    | '/api/recordings/$id/poster'
     | '/api/recordings/$id/sidecar'
+    | '/api/recordings/$id/voiceover'
     | '/api/requests/$id/submit'
     | '/api/upload/multipart/$id'
     | '/api/v1/videos/$id'
@@ -883,6 +950,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signin'
     | '/api/commands'
+    | '/api/elevenlabs'
     | '/api/folders'
     | '/api/keys'
     | '/api/notifications'
@@ -901,6 +969,7 @@ export interface FileRouteTypes {
     | '/embed/$id'
     | '/join/$token'
     | '/request/$id'
+    | '/api/account/email'
     | '/api/admin/ai-config'
     | '/api/admin/review-account'
     | '/api/assets/$id'
@@ -934,6 +1003,7 @@ export interface FileRouteTypes {
     | '/api/upload/multipart'
     | '/api/v1/videos'
     | '/api/view/$id'
+    | '/api/voiceover/$id'
     | '/api/watch-later/$id'
     | '/api/workspace/invites'
     | '/api/workspace/security'
@@ -941,11 +1011,14 @@ export interface FileRouteTypes {
     | '/api/workspace/transfer'
     | '/api/admin/export/$id'
     | '/api/live/$id/$n'
+    | '/api/recordings/$id/ai-cover'
     | '/api/recordings/$id/complete'
     | '/api/recordings/$id/export'
     | '/api/recordings/$id/live'
     | '/api/recordings/$id/parts'
+    | '/api/recordings/$id/poster'
     | '/api/recordings/$id/sidecar'
+    | '/api/recordings/$id/voiceover'
     | '/api/requests/$id/submit'
     | '/api/upload/multipart/$id'
     | '/api/v1/videos/$id'
@@ -963,6 +1036,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SigninRoute: typeof SigninRoute
   ApiCommandsRoute: typeof ApiCommandsRoute
+  ApiElevenlabsRoute: typeof ApiElevenlabsRoute
   ApiFoldersRoute: typeof ApiFoldersRouteWithChildren
   ApiKeysRoute: typeof ApiKeysRoute
   ApiNotificationsRoute: typeof ApiNotificationsRoute
@@ -981,6 +1055,7 @@ export interface RootRouteChildren {
   EmbedIdRoute: typeof EmbedIdRoute
   JoinTokenRoute: typeof JoinTokenRoute
   RequestIdRoute: typeof RequestIdRoute
+  ApiAccountEmailRoute: typeof ApiAccountEmailRoute
   ApiAdminAiConfigRoute: typeof ApiAdminAiConfigRoute
   ApiAdminReviewAccountRoute: typeof ApiAdminReviewAccountRoute
   ApiAssetsIdRoute: typeof ApiAssetsIdRoute
@@ -1008,6 +1083,7 @@ export interface RootRouteChildren {
   ApiUnlockIdRoute: typeof ApiUnlockIdRoute
   ApiV1VideosRoute: typeof ApiV1VideosRouteWithChildren
   ApiViewIdRoute: typeof ApiViewIdRoute
+  ApiVoiceoverIdRoute: typeof ApiVoiceoverIdRoute
   ApiWatchLaterIdRoute: typeof ApiWatchLaterIdRoute
   ApiAdminExportIdRoute: typeof ApiAdminExportIdRoute
 }
@@ -1203,6 +1279,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiFoldersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/elevenlabs': {
+      id: '/api/elevenlabs'
+      path: '/api/elevenlabs'
+      fullPath: '/api/elevenlabs'
+      preLoaderRoute: typeof ApiElevenlabsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/commands': {
       id: '/api/commands'
       path: '/api/commands'
@@ -1243,6 +1326,13 @@ declare module '@tanstack/react-router' {
       path: '/api/watch-later/$id'
       fullPath: '/api/watch-later/$id'
       preLoaderRoute: typeof ApiWatchLaterIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/voiceover/$id': {
+      id: '/api/voiceover/$id'
+      path: '/api/voiceover/$id'
+      fullPath: '/api/voiceover/$id'
+      preLoaderRoute: typeof ApiVoiceoverIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/view/$id': {
@@ -1476,6 +1566,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminAiConfigRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/account/email': {
+      id: '/api/account/email'
+      path: '/api/account/email'
+      fullPath: '/api/account/email'
+      preLoaderRoute: typeof ApiAccountEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/workspace/members/$userId': {
       id: '/api/workspace/members/$userId'
       path: '/members/$userId'
@@ -1504,11 +1601,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiRequestsIdSubmitRouteImport
       parentRoute: typeof ApiRequestsIdRoute
     }
+    '/api/recordings/$id/voiceover': {
+      id: '/api/recordings/$id/voiceover'
+      path: '/voiceover'
+      fullPath: '/api/recordings/$id/voiceover'
+      preLoaderRoute: typeof ApiRecordingsIdVoiceoverRouteImport
+      parentRoute: typeof ApiRecordingsIdRoute
+    }
     '/api/recordings/$id/sidecar': {
       id: '/api/recordings/$id/sidecar'
       path: '/sidecar'
       fullPath: '/api/recordings/$id/sidecar'
       preLoaderRoute: typeof ApiRecordingsIdSidecarRouteImport
+      parentRoute: typeof ApiRecordingsIdRoute
+    }
+    '/api/recordings/$id/poster': {
+      id: '/api/recordings/$id/poster'
+      path: '/poster'
+      fullPath: '/api/recordings/$id/poster'
+      preLoaderRoute: typeof ApiRecordingsIdPosterRouteImport
       parentRoute: typeof ApiRecordingsIdRoute
     }
     '/api/recordings/$id/parts': {
@@ -1537,6 +1648,13 @@ declare module '@tanstack/react-router' {
       path: '/complete'
       fullPath: '/api/recordings/$id/complete'
       preLoaderRoute: typeof ApiRecordingsIdCompleteRouteImport
+      parentRoute: typeof ApiRecordingsIdRoute
+    }
+    '/api/recordings/$id/ai-cover': {
+      id: '/api/recordings/$id/ai-cover'
+      path: '/ai-cover'
+      fullPath: '/api/recordings/$id/ai-cover'
+      preLoaderRoute: typeof ApiRecordingsIdAiCoverRouteImport
       parentRoute: typeof ApiRecordingsIdRoute
     }
     '/api/live/$id/$n': {
@@ -1569,19 +1687,25 @@ const ApiFoldersRouteWithChildren = ApiFoldersRoute._addFileChildren(
 )
 
 interface ApiRecordingsIdRouteChildren {
+  ApiRecordingsIdAiCoverRoute: typeof ApiRecordingsIdAiCoverRoute
   ApiRecordingsIdCompleteRoute: typeof ApiRecordingsIdCompleteRoute
   ApiRecordingsIdExportRoute: typeof ApiRecordingsIdExportRoute
   ApiRecordingsIdLiveRoute: typeof ApiRecordingsIdLiveRoute
   ApiRecordingsIdPartsRoute: typeof ApiRecordingsIdPartsRoute
+  ApiRecordingsIdPosterRoute: typeof ApiRecordingsIdPosterRoute
   ApiRecordingsIdSidecarRoute: typeof ApiRecordingsIdSidecarRoute
+  ApiRecordingsIdVoiceoverRoute: typeof ApiRecordingsIdVoiceoverRoute
 }
 
 const ApiRecordingsIdRouteChildren: ApiRecordingsIdRouteChildren = {
+  ApiRecordingsIdAiCoverRoute: ApiRecordingsIdAiCoverRoute,
   ApiRecordingsIdCompleteRoute: ApiRecordingsIdCompleteRoute,
   ApiRecordingsIdExportRoute: ApiRecordingsIdExportRoute,
   ApiRecordingsIdLiveRoute: ApiRecordingsIdLiveRoute,
   ApiRecordingsIdPartsRoute: ApiRecordingsIdPartsRoute,
+  ApiRecordingsIdPosterRoute: ApiRecordingsIdPosterRoute,
   ApiRecordingsIdSidecarRoute: ApiRecordingsIdSidecarRoute,
+  ApiRecordingsIdVoiceoverRoute: ApiRecordingsIdVoiceoverRoute,
 }
 
 const ApiRecordingsIdRouteWithChildren = ApiRecordingsIdRoute._addFileChildren(
@@ -1716,6 +1840,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SigninRoute: SigninRoute,
   ApiCommandsRoute: ApiCommandsRoute,
+  ApiElevenlabsRoute: ApiElevenlabsRoute,
   ApiFoldersRoute: ApiFoldersRouteWithChildren,
   ApiKeysRoute: ApiKeysRoute,
   ApiNotificationsRoute: ApiNotificationsRoute,
@@ -1734,6 +1859,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmbedIdRoute: EmbedIdRoute,
   JoinTokenRoute: JoinTokenRoute,
   RequestIdRoute: RequestIdRoute,
+  ApiAccountEmailRoute: ApiAccountEmailRoute,
   ApiAdminAiConfigRoute: ApiAdminAiConfigRoute,
   ApiAdminReviewAccountRoute: ApiAdminReviewAccountRoute,
   ApiAssetsIdRoute: ApiAssetsIdRoute,
@@ -1761,6 +1887,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiUnlockIdRoute: ApiUnlockIdRoute,
   ApiV1VideosRoute: ApiV1VideosRouteWithChildren,
   ApiViewIdRoute: ApiViewIdRoute,
+  ApiVoiceoverIdRoute: ApiVoiceoverIdRoute,
   ApiWatchLaterIdRoute: ApiWatchLaterIdRoute,
   ApiAdminExportIdRoute: ApiAdminExportIdRoute,
 }

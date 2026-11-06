@@ -39,6 +39,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
     "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
+    "local": "wrangler dev -c dist/server/wrangler.json --env-file .dev.vars --persist-to .wrangler/local --local-upstream localhost:8787 --port 8787 --enable-containers=false",
+    "local:migrate": "wrangler d1 migrations apply DB --local --persist-to .wrangler/local -c dist/server/wrangler.json",
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx}\"",
     "typecheck": "tsc --noEmit"

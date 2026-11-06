@@ -11,6 +11,12 @@ import tempfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from media import circle_mask, download, even, has_audio, probe_duration, rounded_mask
+from poster import poster
+
+try:
+    from cover import ai_cover, cover  # Needs Pillow; the public edition's image may not have it.
+except ImportError:
+    cover = ai_cover = None
 
 try:
     import effects  # Hosted only; the public edition's image has no effects module.
@@ -37,8 +43,24 @@ def render(job, workdir):
         inputs += [*trim, "-i", camera_path]
         camera_index = 1
 
+    # Narration (the workspace's own ElevenLabs track) rides the source timeline like the screen audio:
+    # trimmed with the same in-point, then mixed in before the cuts so the cuts hit both.
+    voice_index = None
+    voice_delay_ms = 0
+    if job.get("voice_url"):
+        voice_path = os.path.join(workdir, "voice")
+        download(job["voice_url"], voice_path)
+        start = float(job.get("trim_start") or 0)
+        offset = float(job.get("voice_offset") or 0)
+        if offset >= start:
+            voice_delay_ms = int(round((offset - start) * 1000))
+            inputs += ["-i", voice_path]
+        else:
+            inputs += ["-ss", f"{start - offset:.3f}", "-i", voice_path]
+        voice_index = 2 if camera_index else 1
+
     colors = job["background"] or ["#000000"]
-    next_index = 2 if camera_index else 1
+    next_index = 1 + (1 if camera_index else 0) + (1 if voice_index else 0)
     if len(colors) == 1:
         inputs += ["-f", "lavfi", "-i", f"color=c={colors[0]}:s={width}x{height}:r={fps}"]
     else:
@@ -96,10 +118,24 @@ def render(job, workdir):
         filters.append(f"[{last}][c1]overlay={int(camera['x'])}:{int(camera['y'])}{end}[v_c]")
         last = "v_c"
 
+    main_audio = has_audio(screen_path)
+    mixed = None
+    if voice_index is not None:
+        main_label = "[0:a]"
+        if effects and job.get("denoise") and main_audio:
+            filters.append("[0:a]highpass=f=80,afftdn=nf=-25[a0d]")
+            main_label = "[a0d]"
+        filters.append(f"[{voice_index}:a]aresample=48000,adelay={voice_delay_ms}|{voice_delay_ms}[va]")
+        if main_audio:
+            filters.append(f"{main_label}aresample=48000[ma];[ma][va]amix=inputs=2:duration=longest:normalize=0,apad[amix]")
+        else:
+            filters.append("[va]apad[amix]")
+        mixed = "[amix]"
+
     # Cuts arrive in source seconds; the composed timeline starts at the trim-in point.
     offset = job.get("trim_start") or 0
     cuts = [(max(0.0, a - offset), b - offset) for a, b in job.get("cuts") or [] if b - offset > 0]
-    audio_map = ["-map", "0:a?"]
+    audio_map = ["-map", mixed] if mixed else ["-map", "0:a?"]
     if cuts:
         # Keep-ranges spliced with trim + concat (aselect doesn't reliably drop audio).
         end = probe_duration(screen_path) - offset
@@ -112,12 +148,12 @@ def render(job, workdir):
             cursor = max(cursor, b)
         if end - cursor > 0.04:
             keeps.append((cursor, end))
-        audio = has_audio(screen_path)
+        audio = bool(mixed) or main_audio
         n = len(keeps)
         if n:
             filters.append(f"[{last}]split={n}" + "".join(f"[vs{i}]" for i in range(n)))
             if audio:
-                filters.append(f"[0:a]asplit={n}" + "".join(f"[as{i}]" for i in range(n)))
+                filters.append(f"{mixed or '[0:a]'}asplit={n}" + "".join(f"[as{i}]" for i in range(n)))
             pairs = ""
             for i, (a, b) in enumerate(keeps):
                 filters.append(f"[vs{i}]trim=start={a:.3f}:end={b:.3f},setpts=PTS-STARTPTS[vk{i}]")
@@ -131,6 +167,7 @@ def render(job, workdir):
     # Blurred regions (redaction) and placed images sit on the composed, cut timeline, under the ASS layer.
     if effects:
         last, next_index = effects.overlays(job, workdir, filters, inputs, last, next_index)
+        last, next_index = effects.cursor_overlay(job, workdir, filters, inputs, last, next_index)
 
     if job.get("ass"):
         # Annotations and styled captions, burned in last so they sit over the composed frame.
@@ -140,17 +177,25 @@ def render(job, workdir):
         filters.append(f"[{last}]ass={ass_path}[v_ass]")
         last = "v_ass"
 
-    if effects:
+    if effects and not mixed:
         audio_map = effects.denoise(job, screen_path, filters, audio_map)
 
     output = os.path.join(workdir, "export.mp4")
+    limit = []
+    if mixed:
+        # The padded narration mix never ends by itself and this ffmpeg's -shortest doesn't stop it, so cap the
+        # output at the composed length: the trimmed source minus the cuts.
+        start = job.get("trim_start") or 0
+        stop = min(probe_duration(screen_path), job["trim_end"]) if job.get("trim_end") else probe_duration(screen_path)
+        removed = sum(max(0.0, min(b, stop) - max(a, start)) for a, b in job.get("cuts") or [])
+        limit = ["-t", f"{max(0.1, stop - start - removed):.3f}"]
     command = [
         "ffmpeg", "-v", "error", "-y", *inputs,
         "-filter_complex", ";".join(filters),
         "-map", f"[{last}]", *audio_map,
         "-c:v", "libx264", "-preset", "veryfast", "-crf", "21", "-pix_fmt", "yuv420p",
         "-c:a", "aac", "-b:a", "160k",
-        "-movflags", "+faststart", "-shortest", output,
+        "-movflags", "+faststart", "-shortest", *limit, output,
     ]
     result = subprocess.run(command, capture_output=True, text=True)
     if result.returncode != 0:
@@ -165,7 +210,7 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(b"ok")
 
     def do_POST(self):
-        if self.path not in ("/render", "/concat") or (self.path == "/concat" and not effects):
+        if self.path not in ("/render", "/concat", "/poster", "/cover") or (self.path == "/concat" and not effects) or (self.path == "/cover" and not cover):
             self.send_response(404)
             self.end_headers()
             return
@@ -173,14 +218,21 @@ class Handler(BaseHTTPRequestHandler):
         workdir = tempfile.mkdtemp()
         try:
             extra = {}
+            content_type = "video/mp4"
             if self.path == "/concat":
                 output, durations, (width, height) = effects.concat(job, workdir)
                 extra = {"x-durations": ",".join(f"{d:.3f}" for d in durations), "x-size": f"{width}x{height}"}
+            elif self.path == "/poster":
+                output = poster(job, workdir)
+                content_type = "image/jpeg"
+            elif self.path == "/cover":
+                output = ai_cover(job, workdir) if job.get("background_url") else cover(job, workdir)
+                content_type = "image/jpeg"
             else:
                 output = render(job, workdir)
             size = os.path.getsize(output)
             self.send_response(200)
-            self.send_header("content-type", "video/mp4")
+            self.send_header("content-type", content_type)
             self.send_header("content-length", str(size))
             for name, value in extra.items():
                 self.send_header(name, value)

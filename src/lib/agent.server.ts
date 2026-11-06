@@ -1,3 +1,4 @@
+import { queuePoster } from "@/lib/poster.server"
 import { parseAiDocs } from "@/lib/ai-docs.server"
 import { eq } from "drizzle-orm"
 import { env } from "cloudflare:workers"
@@ -61,6 +62,7 @@ export async function createVideoFromBody(
     aiStatus: transcribe ? "pending" : null,
   })
   if (transcribe) await env.PROCESS_QUEUE.send({ id })
+  await queuePoster(id, 5)
   const upload = await getUploadById(id)
   if (!upload) throw new Error("upload vanished")
   emitWebhook(workspace.id, "video.ready", { id, url: `/${id}`, title: meta.title, duration: meta.duration })
@@ -122,6 +124,7 @@ export async function processFetch(id: string, url: string): Promise<void> {
       })
       .where(eq(uploads.id, id))
     if (transcribe) await env.PROCESS_QUEUE.send({ id })
+    await queuePoster(id, 5)
   } catch (error) {
     console.error(JSON.stringify({ message: "Fetch failed", id, error: error instanceof Error ? error.message : String(error) }))
     await db.update(uploads).set({ status: "failed" }).where(eq(uploads.id, id))

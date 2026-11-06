@@ -1,3 +1,5 @@
+import { LibraryGuide, markGuide } from "@/components/library-guide"
+import { TutorialsRow } from "@/components/tutorial-row"
 import { FirstVideo, LibraryNextStep, LibraryControls, sortLibraryVideos, useLibraryPresentation } from "@/components/library-controls"
 import type { LibraryLayout } from "@/components/library-controls"
 import { CommandPaletteButton } from "@/components/command-palette"
@@ -5,14 +7,13 @@ import { libraryUrl, validateLibrarySearch } from "@/lib/library-search"
 import type { LibrarySearch } from "@/lib/library-search"
 import { BrandMark } from "@/components/brand-mark"
 import { VertovIcon } from "@/components/vertov-icon"
+import { LibrarySidebar } from "@/components/library-sidebar"
+import { askConfirm, askText, showNotice } from "@/components/app-dialog"
 import { ANALYTICS_LOADED, identifyUser } from "@/lib/posthog"
 import { createFileRoute, redirect, useNavigate, useRouter } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
 import {
-  ChartBarIcon,
-  ArchiveIcon,
-  ClockIcon,
   CaretDownIcon,
   CheckIcon,
   FilmStripIcon,
@@ -41,7 +42,7 @@ import { HOSTED_EDITION } from "@/lib/edition"
 import { formatDuration, formatTimeAgo, formatViews } from "@/lib/format"
 import { flaggedVideos, listFolders, listLibrary, listSpaces } from "@/lib/library.server"
 import { SaveAccountBanner } from "@/components/save-account"
-import { canManage, formatHours } from "@/lib/plans"
+import { canManage } from "@/lib/plans"
 import { getWorkspaceContext, isHosted, toPublicWorkspace, usageOf } from "@/lib/workspace.server"
 
 type LibraryDeps = LibrarySearch
@@ -182,7 +183,7 @@ function Library({ data }: { data: LoadedLibrary }) {
   }
 
   async function newFolder() {
-    const name = prompt("Folder name")?.trim()
+    const name = await askText({ title: "New folder", label: "Folder name", placeholder: "e.g. Onboarding", confirmLabel: "Create folder", maxLength: 80 })
     if (!name) return
     const response = await fetch("/api/folders", {
       method: "POST",
@@ -193,14 +194,14 @@ function Library({ data }: { data: LoadedLibrary }) {
   }
 
   async function renameFolder(folder: Folder) {
-    const name = prompt("Rename folder", folder.name)?.trim()
+    const name = await askText({ title: "Rename folder", label: "Folder name", initial: folder.name, confirmLabel: "Rename", maxLength: 80 })
     if (!name || name === folder.name) return
     await fetch(`/api/folders/${folder.id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ name }) })
     refresh()
   }
 
   async function deleteFolder(folder: Folder) {
-    if (!confirm(`Delete the folder “${folder.name}”? The videos in it stay where they are.`)) return
+    if (!(await askConfirm({ title: `Delete the folder “${folder.name}”?`, body: "The videos in it stay where they are.", confirmLabel: "Delete folder", danger: true }))) return
     await fetch(`/api/folders/${folder.id}`, { method: "DELETE" })
     void navigate({ search: (prev) => ({ ...prev, folder: undefined }) })
   }
@@ -219,7 +220,7 @@ function Library({ data }: { data: LoadedLibrary }) {
     setCombineBusy(false)
     if (!response?.ok) {
       const body = (await response?.json().catch(() => null)) as { error?: string } | null
-      alert(body?.error ?? "Couldn't start combining. Try again.")
+      void showNotice("Couldn't combine these videos", body?.error ?? "Try again.")
       return
     }
     setCombining(false)
@@ -292,52 +293,11 @@ function Library({ data }: { data: LoadedLibrary }) {
       )}
 
       <div className="mx-auto flex max-w-[1480px] gap-8 px-4 py-8 lg:gap-12 lg:px-8">
-        <nav aria-label="Library" className="hidden w-48 shrink-0 md:block">
-          <div className="sticky top-20 space-y-6">
-            <div className="space-y-0.5">
-              <NavLink active={view.kind === "mine" && !folderId} icon={<UserIcon size={16} />} onClick={() => void navigate({ search: {} })}>
-                My videos
-              </NavLink>
-              <NavLink active={view.kind === "later"} icon={<ClockIcon size={16} />} onClick={() => void navigate({ search: { view: "later" } })}>
-                Watch later
-              </NavLink>
-              <NavLink active={view.kind === "archive"} icon={<ArchiveIcon size={16} />} onClick={() => void navigate({ search: { view: "archive" } })}>
-                Archive
-              </NavLink>
-              {HOSTED_EDITION && <a href="/playlists" className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-neutral-600 hover:bg-neutral-200/60"><VertovIcon name="playlist" size={16} /> Playlists</a>}
-              {HOSTED_EDITION && canManage(role) && <a href="/analytics" className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-neutral-600 hover:bg-neutral-200/60"><ChartBarIcon size={16} /> Analytics</a>}
-              {HOSTED_EDITION && canManage(role) && <a href="/tutorials" className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-neutral-600 hover:bg-neutral-200/60"><VertovIcon name="tutorial" size={16} /> Tutorials</a>}
-            </div>
-            <div>
-              <div className="flex items-center justify-between px-2.5 text-xs font-semibold tracking-wide text-neutral-500 uppercase">
-                Spaces
-                {canManage(role) && (
-                  <button type="button" aria-label="New space" onClick={() => setCreatingSpace(true)} className="rounded p-0.5 hover:bg-neutral-200">
-                    <PlusIcon size={14} />
-                  </button>
-                )}
-              </div>
-              <div className="mt-1 space-y-0.5">
-                {spaces.map((space) => (
-                  <NavLink
-                    key={space.id}
-                    active={spaceId === space.id && !folderId}
-                    icon={<UsersThreeIcon size={16} />}
-                    onClick={() => void navigate({ search: { view: "space", space: space.id } })}
-                  >
-                    {space.name}
-                  </NavLink>
-                ))}
-                {spaces.length === 0 && (
-                  <p className="px-2.5 py-1 text-xs text-neutral-500">
-                    {canManage(role) ? "Make a space to share videos with everyone here." : "No spaces yet."}
-                  </p>
-                )}
-              </div>
-            </div>
-            <UsageMeter usedHours={usage.usedHours} limitHours={usage.limitHours} hosted={hosted} plan={workspace.plan} manage={canManage(role)} />
-          </div>
-        </nav>
+        <LibrarySidebar
+          data={{ spaces, manage: canManage(role), hosted, plan: workspace.plan, usage }}
+          active={view.kind === "mine" && !folderId ? "mine" : view.kind === "later" ? "later" : view.kind === "archive" ? "archive" : spaceId && !folderId ? spaceId : null}
+          onNewSpace={() => setCreatingSpace(true)}
+        />
 
         <section className="min-w-0 flex-1">
           <MobileNav
@@ -452,9 +412,16 @@ function Library({ data }: { data: LoadedLibrary }) {
           )}
 
           {videos.length === 0 ? (
+            <>
+            {view.kind === "mine" && !folderId && !combining && <TutorialsRow />}
             <EmptyState view={view} spaceId={spaceId} onUpload={() => setAdding(true)} onRequest={() => setRequesting(true)} onBrowse={() => void navigate({ search: {} })} />
+            </>
           ) : (
             <>
+            {view.kind === "mine" && !folderId && !combining && (
+              <LibraryGuide videoCount={videos.length} firstReadyId={videos.find((video) => video.status === "ready" && !video.deletedAt && video.ownerId === user.sub)?.id ?? null} />
+            )}
+            {view.kind === "mine" && !folderId && !combining && <TutorialsRow />}
             <LibraryControls {...presentation} />
             <ul aria-label="Recordings" className={presentation.layout === "grid" ? "mt-5 grid gap-5 sm:grid-cols-2 xl:grid-cols-3" : "mt-5 flex flex-col gap-3"}>
               {orderedVideos.map((video) => (
@@ -497,22 +464,6 @@ function Library({ data }: { data: LoadedLibrary }) {
   )
 }
 
-function NavLink({ active, icon, onClick, children }: { active: boolean; icon: React.ReactNode; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-current={active ? "page" : undefined}
-      className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm ${
-        active ? "bg-neutral-200/70 font-medium text-neutral-900" : "text-neutral-600 hover:bg-neutral-200/60"
-      }`}
-    >
-      <span className="shrink-0 text-neutral-500">{icon}</span>
-      <span className="truncate">{children}</span>
-    </button>
-  )
-}
-
 function MobileNav({ spaces, active, onPick, manage }: { manage: boolean; spaces: Array<Space>; active: string; onPick: (target: string) => void }) {
   const items = [{ id: "mine", name: "My videos" }, { id: "later", name: "Watch later" }, ...spaces.map((space) => ({ id: space.id, name: space.name })), { id: "archive", name: "Archive" }]
   return (
@@ -532,30 +483,6 @@ function MobileNav({ spaces, active, onPick, manage }: { manage: boolean; spaces
   )
 }
 
-function UsageMeter({ usedHours, limitHours, hosted, plan, manage }: { usedHours: number; limitHours: number | null; hosted: boolean; plan: string; manage: boolean }) {
-  if (!hosted || limitHours === null) return null
-  const fraction = Math.min(1, usedHours / limitHours)
-  const full = fraction >= 1
-  return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-3">
-      <div className="flex items-baseline justify-between text-xs">
-        <span className="font-medium text-neutral-800">Library</span>
-        <span className="text-neutral-500 tabular-nums">
-          {formatHours(usedHours)} of {formatHours(limitHours)}
-        </span>
-      </div>
-      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-neutral-100">
-        <div className={`h-full rounded-full ${full ? "bg-red-600" : fraction > 0.8 ? "bg-amber-500" : "bg-neutral-800"}`} style={{ width: `${Math.max(2, fraction * 100)}%` }} />
-      </div>
-      {manage && (full || fraction > 0.8 || plan === "free") && (
-        <a href="/settings?tab=billing" className="mt-2 block text-xs font-medium text-red-600 hover:underline">
-          {full ? "Library full. Add hours" : plan === "free" ? "Upgrade for more hours" : "Add hours"}
-        </a>
-      )}
-    </div>
-  )
-}
-
 function WorkspaceSwitcher({ current, name, memberships }: { current: string; name: string; memberships: Array<{ id: string; name: string }> }) {
   const [open, setOpen] = useState(false)
   const ref = useOutsideClose(open, () => setOpen(false))
@@ -565,7 +492,7 @@ function WorkspaceSwitcher({ current, name, memberships }: { current: string; na
     window.location.href = "/home"
   }
   async function create() {
-    const workspaceName = prompt("Name the new workspace")?.trim()
+    const workspaceName = await askText({ title: "New workspace", body: "A separate library with its own members and plan.", label: "Workspace name", placeholder: "e.g. Acme", confirmLabel: "Create workspace", maxLength: 60 })
     if (!workspaceName) return
     const response = await fetch("/api/workspace", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: workspaceName }) })
     if (response.ok) window.location.href = "/settings?tab=members"
@@ -838,11 +765,30 @@ function VideoCard({
   }, [])
   const [hovering, setHovering] = useState(false)
   const [menu, setMenu] = useState(false)
+  const [download, setDownload] = useState<"idle" | "rendering" | "failed">("idle")
   const menuRef = useOutsideClose(menu, () => setMenu(false))
   const title =
     video.title ||
     (video.aiStatus === "pending" ? "Naming your video…" : "Untitled video")
   const ready = video.status === "ready" && !video.deletedAt
+  // The same MP4 the owner gets on the video page, with the layout rendered in; long renders are polled for.
+  async function downloadVideo() {
+    setDownload("rendering")
+    try {
+      let body = await (await fetch(`/api/recordings/${video.id}/export`, { method: "POST" })).json<{ status?: string }>()
+      const started = Date.now()
+      while (body.status === "pending" && Date.now() - started < 20 * 60 * 1000) {
+        await new Promise((resolve) => setTimeout(resolve, 4000))
+        body = await (await fetch(`/api/recordings/${video.id}/export`)).json<{ status?: string }>()
+      }
+      if (body.status !== "done") throw new Error("render did not finish")
+      window.location.href = `/api/export/${video.id}`
+      setDownload("idle")
+      setMenu(false)
+    } catch {
+      setDownload("failed")
+    }
+  }
   const item = "block w-full rounded-lg px-3 py-2 text-left text-sm text-neutral-700 hover:bg-neutral-100"
   return (
     <li className={`library-video-card group relative ${layout === "list" ? "is-list" : ""}`}>
@@ -923,6 +869,7 @@ function VideoCard({
               setCopyError(false)
               try {
                 await navigator.clipboard.writeText(`${window.location.origin}/${video.id}`)
+                markGuide("copied")
                 setCopied(true)
                 setTimeout(() => setCopied(false), 1800)
               } catch { setCopyError(true) }
@@ -954,6 +901,12 @@ function VideoCard({
               {!video.deletedAt && (
                 <>
                   <a href={`/${video.id}?panel=insights`} className={item}>View analytics</a>
+                  {ready && <a href={`/${video.id}?panel=customize`} className={item}>Customize</a>}
+                  {ready && (
+                    <button type="button" className={item} disabled={download === "rendering"} onClick={() => void downloadVideo()}>
+                      {download === "rendering" ? "Rendering…" : download === "failed" ? "Couldn’t render. Try again" : "Download"}
+                    </button>
+                  )}
                   <button type="button" className={item} onClick={() => (setMenu(false), onMove())}>
                     Move…
                   </button>
@@ -976,9 +929,9 @@ function VideoCard({
               )}
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   setMenu(false)
-                  if (!confirm(`Delete “${title}”? This can't be undone.`)) return
+                  if (!(await askConfirm({ title: `Delete “${title}”?`, body: "This can't be undone. Its link stops working.", confirmLabel: "Delete video", danger: true }))) return
                   void fetch(`/api/recordings/${video.id}`, { method: "DELETE" }).then((response) => {
                     if (response.ok) onDeleted()
                   })
