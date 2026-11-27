@@ -1,0 +1,1691 @@
+import { useCallback, useEffect, useRef, useState } from "react"
+import { createPortal } from "react-dom"
+import type { BackupTake } from "@/lib/local-backup"
+import type { WebBackground } from "@/lib/camera-background"
+import {
+  WEB_BACKGROUNDS,
+  applyBackground,
+  backgroundSupported,
+} from "@/lib/camera-background"
+import { BrandMark } from "@/components/brand-mark"
+import { VertovIcon } from "@/components/vertov-icon"
+import { askConfirm } from "@/components/app-dialog"
+import { APP_NAME } from "@/lib/brand"
+import { formatDuration } from "@/lib/format"
+import { LibraryFullCard } from "@/components/library-full"
+import type { LibraryFull } from "@/lib/library-full"
+import { LibraryFullError, libraryFromBody } from "@/lib/library-full"
+import { MAX_RECORDING_SECONDS, capClock, courtesyText, crossedWarning, enforcedCap, limitState, passedCap, reachedCap, reportedDuration, warningText } from "@/lib/recording-limit"
+import {
+  backupChunk,
+  readTake,
+  removeBackup,
+  startBackup,
+  unfinishedTakes,
+} from "@/lib/local-backup"
+import {
+  PartUploader,
+  pickAudioMimeType,
+  pickCameraMimeType,
+  pickVideoMimeType,
+} from "@/lib/part-uploader"
+
+const EMBED_ORIGINS = ["https://donezoinbox.com", "https://www.donezoinbox.com"]
+
+/** Tells the app that opened this window which video was just recorded, then closes. False when nobody is listening. */
+function handBack(id: string): boolean {
+  if (!window.opener) return false
+  const origin = location.origin
+  const message = {
+    type: "vertov:recorded",
+    id,
+    url: `${origin}/${id}`,
+    title: `${APP_NAME} recording`,
+    gif: `${origin}/api/gif/${id}`,
+    poster: `${origin}/api/poster/${id}`,
+  }
+  for (const target of EMBED_ORIGINS) window.opener.postMessage(message, target)
+  window.close()
+  return true
+}
+
+type Phase =
+  "setup" | "ready" | "countdown" | "recording" | "finishing" | "error"
+type Mode = "screen" | "camera"
+type Surface = "monitor" | "window" | "browser"
+
+interface Prefs {
+  mode: Mode
+  cameraOn: boolean
+  micOn: boolean
+  cameraId: string
+  micId: string
+  notes: string
+  background: WebBackground
+}
+
+const DEFAULT_PREFS: Prefs = {
+  mode: "screen",
+  cameraOn: true,
+  micOn: true,
+  cameraId: "",
+  micId: "",
+  notes: "",
+  background: "none",
+}
+const PREFS_KEY = "reelay_recorder"
+
+function loadPrefs(): Prefs {
+  try {
+    return {
+      ...DEFAULT_PREFS,
+      ...(JSON.parse(
+        localStorage.getItem(PREFS_KEY) ?? "{}",
+      ) as Partial<Prefs>),
+    }
+  } catch {
+    return DEFAULT_PREFS
+  }
+}
+
+interface Session {
+  id: string
+  url: string
+  recorder: MediaRecorder
+  cameraRecorder: MediaRecorder | null
+  audioRecorder: MediaRecorder | null
+  audioChunks: Array<Blob>
+  uploader: PartUploader
+  cameraUploader: PartUploader | null
+  streams: Array<MediaStream>
+  audioContext: AudioContext | null
+  analyser: AnalyserNode | null
+  startedAt: number
+  pausedAt: number | null
+  pausedTotal: number
+  width: number | null
+  height: number | null
+}
+
+/** Seconds recorded so far, not counting time spent paused. */
+function secondsRecorded(current: Session): number {
+  const pausedNow = current.pausedAt ? performance.now() - current.pausedAt : 0
+  return (performance.now() - current.startedAt - current.pausedTotal - pausedNow) / 1000
+}
+
+declare global {
+  interface Window {
+    documentPictureInPicture?: {
+      requestWindow: (options: {
+        width: number
+        height: number
+      }) => Promise<Window>
+    }
+  }
+}
+
+// Browser support is narrower than lib.dom's required MediaDevices shape.
+function browserMediaDevices():
+  | (Omit<MediaDevices, "getDisplayMedia"> & {
+      getDisplayMedia?: MediaDevices["getDisplayMedia"]
+    })
+  | undefined {
+  return Reflect.get(navigator, "mediaDevices")
+}
+
+function stopStreams(streams: Array<MediaStream>) {
+  for (const stream of streams)
+    for (const track of stream.getTracks()) track.stop()
+}
+
+/** A plain explanation for a microphone the browser won't open; the browser's own message is just "Permission denied". */
+function micProblem(err: unknown): string | null {
+  const name = err instanceof DOMException ? err.name : ""
+  if (name === "NotAllowedError" || name === "SecurityError")
+    return "The browser isn't letting this page use your microphone. Click the icon at the left of the address bar, set Microphone to Allow and reload. If it's already allowed, check System Settings, Privacy and Security, Microphone. Or turn the microphone off to record without sound."
+  if (name === "NotFoundError") return "No microphone was found. Plug one in, or turn the microphone off to record without sound."
+  if (name === "NotReadableError" || name === "AbortError")
+    return "Your microphone couldn't be started. Another app may be using it; close it and try again, or turn the microphone off."
+  if (name === "OverconstrainedError") return "The chosen microphone isn't available any more. Pick another one."
+  return null
+}
+
+/** 0–1 loudness from an analyser, for the mic meter. */
+function readLevel(
+  analyser: AnalyserNode,
+  buffer: Uint8Array<ArrayBuffer>,
+): number {
+  analyser.getByteTimeDomainData(buffer)
+  let peak = 0
+  for (const value of buffer) peak = Math.max(peak, Math.abs(value - 128))
+  return Math.min(1, peak / 64)
+}
+
+export function Recorder({
+  spaceId,
+  requestId,
+  embed,
+  embedded = false,
+  panel = false,
+  panelAnchor = "rail",
+  onClose,
+  beforeStart,
+}: {
+  spaceId?: string
+  requestId?: string
+  embed?: boolean
+  embedded?: boolean
+  /** A compact card over the library (Loom-style) that shrinks to a small control bar while recording. */
+  panel?: boolean
+  /** Where the setup card opens: beside the rail's Hit record pill, or under the top bar's New video button. */
+  panelAnchor?: "rail" | "top"
+  onClose?: () => void
+  beforeStart?: () => Promise<boolean>
+}) {
+  const [prefs, setPrefs] = useState<Prefs>(() =>
+    embedded ? { ...DEFAULT_PREFS, cameraOn: false } : DEFAULT_PREFS,
+  )
+  const [devicesEnabled, setDevicesEnabled] = useState(!embedded)
+  const [screenSupported, setScreenSupported] = useState(true)
+  // Browser capability, so it is only known after mount; reading it while rendering made the server and client HTML differ.
+  const [canBlurBackground, setCanBlurBackground] = useState(false)
+  const [phase, setPhase] = useState<Phase>("setup")
+  const [cameras, setCameras] = useState<Array<MediaDeviceInfo>>([])
+  const [mics, setMics] = useState<Array<MediaDeviceInfo>>([])
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null)
+  const [surface, setSurface] = useState<Surface | null>(null)
+  const [countdown, setCountdown] = useState(3)
+  const [elapsed, setElapsed] = useState(0)
+  const [paused, setPaused] = useState(false)
+  // Delete asks twice in place: the controls also live in the floating window, where a page dialog can't be seen.
+  const [deleteArmed, setDeleteArmed] = useState(false)
+  const deleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [level, setLevel] = useState(0)
+  // Why the mic can't be opened, kept apart from `error` so a camera that opens fine doesn't clear it.
+  const [micError, setMicError] = useState<string | null>(null)
+  const [pending, setPending] = useState(0)
+  const [error, setError] = useState<string | null>(null)
+  const [full, setFull] = useState<LibraryFull | null>(null)
+  const [pipWindow, setPipWindow] = useState<Window | null>(null)
+  const [savedTakes, setSavedTakes] = useState<Array<BackupTake>>([])
+  const [recovering, setRecovering] = useState<string | null>(null)
+  const [failedId, setFailedId] = useState<string | null>(null)
+  const session = useRef<Session | null>(null)
+  const finishing = useRef(false)
+  // Set when the recorder finishes itself at the six-hour limit, so the share page can say why.
+  const stoppedAtLimit = useRef(false)
+  // The plan's length rule for this take. `enforce` false is a courtesy take: no countdown, it runs on and saves whole.
+  const [rule, setRule] = useState<{ capSeconds: number | null; enforce: boolean }>({ capSeconds: null, enforce: false })
+  const ruleRef = useRef(rule)
+  ruleRef.current = rule
+  const stopRef = useRef<(() => Promise<void>) | null>(null)
+  const lastElapsed = useRef(0)
+  // Called from the one-second timer and from the recorder's own data events, which a hidden tab does not throttle.
+  const checkLimit = useRef((current: Session, seconds: number) => {
+    const { capSeconds, enforce } = ruleRef.current
+    const cap = enforcedCap(capSeconds, enforce)
+    const warned = crossedWarning(lastElapsed.current, seconds, cap)
+    if (warned !== null) setLimitNote(warningText(warned, cap))
+    if (!enforce && passedCap(lastElapsed.current, seconds, capSeconds)) setLimitNote(courtesyText(capSeconds!))
+    lastElapsed.current = seconds
+    const parts = Math.max(current.uploader.partCount, current.cameraUploader?.partCount ?? 0)
+    const state = limitState(seconds, parts, cap)
+    if (state.stop && !finishing.current) {
+      stoppedAtLimit.current = state.by === "limit"
+      setLimitNote(state.by === "cap" ? `Reached the ${Math.round((cap ?? 0) / 60)}-minute limit for Free recordings. Saving your recording.` : "Reached the six-hour limit. Saving your recording.")
+      void stopRef.current?.()
+    }
+  })
+  const [limitNote, setLimitNote] = useState<string | null>(null)
+  const safeToLeave = useRef(false)
+  const skipCountdown = useRef<(() => void) | null>(null)
+  const pipRef = useRef<Window | null>(null)
+  const screenRef = useRef<MediaStream | null>(null)
+  pipRef.current = pipWindow
+  screenRef.current = screenStream
+
+  const { mode, cameraOn, micOn, cameraId, micId, notes, background } = prefs
+  const update = (patch: Partial<Prefs>) =>
+    setPrefs((current) => {
+      const next = { ...current, ...patch }
+      try {
+        localStorage.setItem(PREFS_KEY, JSON.stringify(next))
+      } catch {
+        // Private mode: settings just won't stick.
+      }
+      return next
+    })
+
+  useEffect(() => {
+    setPrefs(
+      embedded
+        ? { ...loadPrefs(), mode: "screen", cameraOn: false }
+        : loadPrefs(),
+    )
+    setScreenSupported(
+      typeof browserMediaDevices()?.getDisplayMedia === "function",
+    )
+    setCanBlurBackground(backgroundSupported())
+  }, [embedded])
+  useEffect(() => void unfinishedTakes().then(setSavedTakes), [])
+
+  // Reading device names never opens the camera or mic. Permission is requested
+  // by the preview effects only after a visitor chooses to use the recorder.
+  const refreshDevices = useCallback(async () => {
+    const mediaDevices = browserMediaDevices()
+    if (!mediaDevices) return
+    const devices = await mediaDevices.enumerateDevices()
+    setCameras(devices.filter((device) => device.kind === "videoinput"))
+    setMics(devices.filter((device) => device.kind === "audioinput"))
+  }, [])
+
+  useEffect(() => {
+    const mediaDevices = browserMediaDevices()
+    if (!devicesEnabled || !mediaDevices) return
+    void refreshDevices().catch(() => {})
+    mediaDevices.addEventListener("devicechange", refreshDevices)
+    return () =>
+      mediaDevices.removeEventListener("devicechange", refreshDevices)
+  }, [refreshDevices, devicesEnabled])
+
+  // Live camera preview; also the bubble and the camera track while recording.
+  const wantCamera = cameraOn || mode === "camera"
+  const done = phase === "finishing"
+  useEffect(() => {
+    if (!devicesEnabled || !wantCamera || done) return
+    const mediaDevices = browserMediaDevices()
+    if (!mediaDevices) {
+      setError(
+        "Camera recording isn’t available in this browser. Try a current desktop browser.",
+      )
+      return
+    }
+    let cancelled = false
+    let stream: MediaStream | null = null
+    let stopEffect = () => {}
+    void mediaDevices
+      .getUserMedia({
+        video: {
+          deviceId: cameraId ? { exact: cameraId } : undefined,
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30 },
+        },
+      })
+      .then(async (next) => {
+        if (cancelled) return stopStreams([next])
+        stream = next
+        const effect = await applyBackground(next, background)
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- cleanup can run during the await
+        if (cancelled) {
+          effect.stop()
+          return
+        }
+        stopEffect = effect.stop
+        setCameraStream(effect.stream)
+        void refreshDevices().catch(() => {})
+        // Only a camera problem is cleared here: the preview restarts after a failed upload, and wiping that error left a blank page.
+        setError((current) => (current?.startsWith("Couldn't open the camera") ? null : current))
+      })
+      .catch(() =>
+        setError(
+          "Couldn't open the camera. Check the browser's camera permission, or turn the camera off.",
+        ),
+      )
+    return () => {
+      cancelled = true
+      stopEffect()
+      if (stream) stopStreams([stream])
+      setCameraStream(null)
+    }
+  }, [wantCamera, cameraId, background, done, devicesEnabled, refreshDevices])
+
+  // Mic meter before recording, so you know you're being heard.
+  useEffect(() => {
+    if (!devicesEnabled || !micOn || (phase !== "setup" && phase !== "ready"))
+      return
+    const mediaDevices = browserMediaDevices()
+    if (!mediaDevices) return
+    let stream: MediaStream | null = null
+    let context: AudioContext | null = null
+    let frame = 0
+    let cancelled = false
+    void mediaDevices
+      .getUserMedia({
+        audio: { deviceId: micId ? { exact: micId } : undefined },
+      })
+      .then((next) => {
+        if (cancelled) return stopStreams([next])
+        stream = next
+        setMicError(null)
+        void refreshDevices().catch(() => {})
+        context = new AudioContext()
+        // A context made outside a click can start suspended, and a suspended analyser reads silence.
+        void context.resume().catch(() => {})
+        const analyser = context.createAnalyser()
+        analyser.fftSize = 512
+        context.createMediaStreamSource(next).connect(analyser)
+        const buffer = new Uint8Array(analyser.fftSize)
+        const tick = () => {
+          setLevel(readLevel(analyser, buffer))
+          frame = requestAnimationFrame(tick)
+        }
+        tick()
+      })
+      .catch((err: unknown) => {
+        setLevel(0)
+        if (!cancelled) setMicError(micProblem(err))
+      })
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(frame)
+      if (stream) stopStreams([stream])
+      void context?.close()
+      setLevel(0)
+      setMicError(null)
+    }
+  }, [micOn, micId, phase, devicesEnabled, refreshDevices])
+
+  // Timer, mic level and upload health while recording. Ticks from the floating
+  // window when there is one: a hidden tab's timers get throttled hard.
+  useEffect(() => {
+    if (phase !== "recording") return
+    const host = pipWindow ?? window
+    const buffer = new Uint8Array(512)
+    const timer = host.setInterval(() => {
+      const current = session.current
+      if (!current) return
+      const seconds = secondsRecorded(current)
+      setElapsed(seconds)
+      checkLimit.current(current, seconds)
+      if (current.analyser) setLevel(readLevel(current.analyser, buffer))
+      setPending(
+        current.uploader.pendingBytes +
+          (current.cameraUploader?.pendingBytes ?? 0),
+      )
+    }, 150)
+    return () => host.clearInterval(timer)
+  }, [phase, pipWindow])
+
+  useEffect(() => {
+    if (phase !== "recording" && phase !== "countdown" && phase !== "finishing")
+      return
+    const warn = (event: BeforeUnloadEvent) => {
+      if (!safeToLeave.current) event.preventDefault()
+    }
+    window.addEventListener("beforeunload", warn)
+    return () => window.removeEventListener("beforeunload", warn)
+  }, [phase])
+
+  useEffect(() => {
+    if (!panel || !onClose || (phase !== "setup" && phase !== "ready")) return
+    const close = (event: KeyboardEvent) => event.key === "Escape" && onClose()
+    window.addEventListener("keydown", close)
+    return () => window.removeEventListener("keydown", close)
+  }, [panel, onClose, phase])
+
+  // Panel mode: one click picks the screen and, once it is shared, starts the countdown.
+  const [autoStart, setAutoStart] = useState(false)
+  useEffect(() => {
+    if (autoStart && phase === "ready" && screenStream) {
+      setAutoStart(false)
+      void start()
+    }
+  })
+
+  async function chooseScreen(): Promise<boolean> {
+    setError(null)
+    setFull(null)
+    const mediaDevices = browserMediaDevices()
+    if (!mediaDevices?.getDisplayMedia) {
+      setError(
+        "Screen capture isn’t available in this browser. Use a desktop browser, or choose Camera only.",
+      )
+      return false
+    }
+    try {
+      const Controller = (
+        window as unknown as {
+          CaptureController?: new () => {
+            setFocusBehavior: (b: string) => void
+          }
+        }
+      ).CaptureController
+      const controller = Controller ? new Controller() : undefined
+      const stream = await mediaDevices.getDisplayMedia({
+        video: {
+          frameRate: { ideal: 30 },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+        audio: true,
+        ...(controller ? { controller } : {}),
+        selfBrowserSurface: "exclude",
+        systemAudio: "include",
+        surfaceSwitching: "include",
+      } as DisplayMediaStreamOptions)
+      try {
+        // Keep focus here so Start is one click away.
+        controller?.setFocusBehavior("no-focus-change")
+      } catch {
+        // Only valid for tab and window captures.
+      }
+      const track = stream.getVideoTracks()[0]
+      const kind =
+        (
+          track.getSettings() as MediaTrackSettings & {
+            displaySurface?: Surface
+          }
+        ).displaySurface ?? "monitor"
+      track.addEventListener("ended", () => {
+        if (session.current) void stop()
+        else {
+          setScreenStream(null)
+          setPhase("setup")
+        }
+      })
+      if (screenRef.current) stopStreams([screenRef.current])
+      setSurface(kind)
+      setScreenStream(stream)
+      setDevicesEnabled(true)
+      setPhase("ready")
+      return true
+    } catch {
+      // Picker dismissed.
+      return false
+    }
+  }
+
+  /**
+   * The floating window. Sharing a tab or window doesn't capture it, so it
+   * shows your camera bubble. Sharing the whole screen would bake it into the
+   * video next to the real camera track, so then it's just a slim control bar.
+   */
+  async function openFloating(): Promise<Window | null> {
+    if (!window.documentPictureInPicture) return null
+    const bubble = cameraOn && surface !== "monitor"
+    const size = bubble
+      ? { width: 240, height: notes.trim() ? 420 : 280 }
+      : { width: 340, height: 64 }
+    try {
+      const win = await window.documentPictureInPicture.requestWindow(size)
+      for (const sheet of document.querySelectorAll(
+        "link[rel=stylesheet], style",
+      )) {
+        win.document.head.appendChild(sheet.cloneNode(true))
+      }
+      win.document.body.style.margin = "0"
+      win.document.body.style.background = "#0a0a0a"
+      win.addEventListener("keydown", (event) => {
+        if (event.code === "Space") {
+          event.preventDefault()
+          togglePause()
+        }
+      })
+      win.addEventListener("pagehide", () => setPipWindow(null))
+      pipRef.current = win
+      setPipWindow(win)
+      return win
+    } catch {
+      return null
+    }
+  }
+
+  async function start() {
+    safeToLeave.current = false
+    setError(null)
+    setFull(null)
+    setPaused(false)
+    if (mode === "screen" && !pipRef.current) await openFloating()
+    setPhase("countdown")
+    try {
+      if (beforeStart && !(await beforeStart())) {
+        throw new Error(
+          "Couldn’t open your recording session. Try again, or sign in to continue.",
+        )
+      }
+      const streams: Array<MediaStream> = []
+      let micStream: MediaStream | null = null
+      if (micOn) {
+        micStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            deviceId: micId ? { exact: micId } : undefined,
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+        })
+        streams.push(micStream)
+      }
+
+      const screenTrack =
+        mode === "screen" ? screenStream?.getVideoTracks()[0] : null
+      const cameraTrack = cameraStream?.getVideoTracks()[0] ?? null
+      const mainTrack = mode === "screen" ? screenTrack : cameraTrack
+      if (!mainTrack)
+        throw new Error(
+          "Nothing to record. Pick a screen or turn the camera on.",
+        )
+      // Recorded on its own track so the layout can change after recording.
+      const separateCamera =
+        mode === "screen" && cameraOn && cameraTrack ? cameraTrack : null
+
+      // Mic and tab/system audio mixed into one track.
+      const audioSources = [
+        ...(micStream ? [micStream] : []),
+        ...(mode === "screen" && screenStream?.getAudioTracks().length
+          ? [screenStream]
+          : []),
+      ]
+      let audioContext: AudioContext | null = null
+      let audioTrack: MediaStreamTrack | null = null
+      let analyser: AnalyserNode | null = null
+      if (audioSources.length > 0) {
+        audioContext = new AudioContext()
+        const destination = audioContext.createMediaStreamDestination()
+        analyser = audioContext.createAnalyser()
+        analyser.fftSize = 512
+        for (const source of audioSources) {
+          const node = audioContext.createMediaStreamSource(source)
+          node.connect(destination)
+          if (source === micStream) node.connect(analyser)
+        }
+        audioTrack = destination.stream.getAudioTracks()[0]
+      }
+
+      const mimeType = pickVideoMimeType()
+      const cameraMimeType = separateCamera ? pickCameraMimeType() : null
+      const settings = mainTrack.getSettings()
+      const response = await fetch("/api/recordings", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          mimeType,
+          cameraMimeType,
+          surface: mode === "camera" ? "camera" : surface,
+          width: settings.width ?? null,
+          height: settings.height ?? null,
+          spaceId: spaceId ?? null,
+        }),
+      })
+      if (!response.ok)
+        throw await startError(
+          response,
+          "Couldn't start the recording. Are you still signed in?",
+        )
+      const { id, url, capSeconds = null, enforce = false }: { id: string; url: string; capSeconds?: number | null; enforce?: boolean } = await response.json()
+      ruleRef.current = { capSeconds, enforce }
+      setRule({ capSeconds, enforce })
+      startBackup({
+        id,
+        startedAt: Date.now(),
+        mimeType,
+        cameraMimeType,
+        surface: mode === "camera" ? "camera" : surface,
+        width: settings.width ?? null,
+        height: settings.height ?? null,
+      })
+
+      const uploader = new PartUploader(id, "screen")
+      const recorder = new MediaRecorder(
+        new MediaStream([mainTrack, ...(audioTrack ? [audioTrack] : [])]),
+        {
+          mimeType,
+          videoBitsPerSecond: mode === "screen" ? 3_500_000 : 2_500_000,
+          audioBitsPerSecond: 128_000,
+        },
+      )
+      recorder.ondataavailable = (event) => {
+        backupChunk(id, "screen", event.data)
+        uploader.push(event.data)
+      }
+
+      const cameraUploader = separateCamera
+        ? new PartUploader(id, "camera")
+        : null
+      const cameraRecorder =
+        separateCamera && cameraMimeType && cameraUploader
+          ? new MediaRecorder(new MediaStream([separateCamera]), {
+              mimeType: cameraMimeType,
+              videoBitsPerSecond: 1_200_000,
+            })
+          : null
+      if (cameraRecorder && cameraUploader) {
+        cameraRecorder.ondataavailable = (event) => {
+          backupChunk(id, "camera", event.data)
+          cameraUploader.push(event.data)
+        }
+      }
+
+      const audioMime = audioTrack ? pickAudioMimeType() : null
+      const audioChunks: Array<Blob> = []
+      const audioRecorder =
+        audioTrack && audioMime
+          ? new MediaRecorder(new MediaStream([audioTrack]), {
+              mimeType: audioMime,
+              audioBitsPerSecond: 32_000,
+            })
+          : null
+      if (audioRecorder) {
+        audioRecorder.ondataavailable = (event) => {
+          backupChunk(id, "audio", event.data)
+          audioChunks.push(event.data)
+        }
+      }
+
+      await new Promise<void>((resolve) => {
+        let n = 3
+        setCountdown(n)
+        const finish = () => {
+          clearInterval(timer)
+          skipCountdown.current = null
+          resolve()
+        }
+        const timer = setInterval(() => {
+          n -= 1
+          if (n <= 0) finish()
+          else setCountdown(n)
+        }, 1000)
+        skipCountdown.current = finish
+      })
+
+      // Same tick, so the screen and camera tracks line up on playback.
+      recorder.start(1000)
+      cameraRecorder?.start(1000)
+      audioRecorder?.start(1000)
+      session.current = {
+        id,
+        url,
+        recorder,
+        cameraRecorder,
+        audioRecorder,
+        audioChunks,
+        uploader,
+        cameraUploader,
+        streams,
+        audioContext,
+        analyser,
+        startedAt: performance.now(),
+        pausedAt: null,
+        pausedTotal: 0,
+        width: settings.width ?? null,
+        height: settings.height ?? null,
+      }
+      recorder.addEventListener("dataavailable", () => {
+        const live = session.current
+        if (live && live.recorder === recorder) checkLimit.current(live, secondsRecorded(live))
+      })
+      setElapsed(0)
+      lastElapsed.current = 0
+      stoppedAtLimit.current = false
+      setLimitNote(null)
+      setPhase("recording")
+      // The first second is usually this page; by 4s you've switched to what you're showing,
+      // and 20s in is a more typical frame still.
+      setTimeout(() => void capturePoster(id, mainTrack), 4000)
+      setTimeout(() => void capturePoster(id, mainTrack), 20000)
+    } catch (err) {
+      pipRef.current?.close()
+      if (err instanceof LibraryFullError) setFull(err.library)
+      setError(
+        micProblem(err) ??
+          (err instanceof Error ? err.message : "Recording failed to start."),
+      )
+      setPhase(mode === "screen" && screenRef.current ? "ready" : "setup")
+    }
+  }
+
+  const recorders = (current: Session) =>
+    [current.recorder, current.cameraRecorder, current.audioRecorder].filter(
+      (recorder): recorder is MediaRecorder => recorder !== null,
+    )
+
+  function togglePause() {
+    const current = session.current
+    if (!current) return
+    if (current.recorder.state === "recording") {
+      for (const recorder of recorders(current)) recorder.pause()
+      current.pausedAt = performance.now()
+      setPaused(true)
+    } else if (current.recorder.state === "paused") {
+      for (const recorder of recorders(current)) recorder.resume()
+      if (current.pausedAt)
+        current.pausedTotal += performance.now() - current.pausedAt
+      current.pausedAt = null
+      setPaused(false)
+    }
+  }
+
+  const stopRecorders = (current: Session) =>
+    Promise.all(
+      recorders(current)
+        .filter((recorder) => recorder.state !== "inactive")
+        .map(
+          (recorder) =>
+            new Promise<void>((resolve) => {
+              recorder.addEventListener("stop", () => resolve(), { once: true })
+              recorder.stop()
+            }),
+        ),
+    )
+
+  function releaseDevices(current: Session, keepScreen = false) {
+    stopStreams(current.streams)
+    void current.audioContext?.close()
+    if (!keepScreen) {
+      if (screenRef.current) stopStreams([screenRef.current])
+      setScreenStream(null)
+    }
+  }
+
+  /** Hands a finished recording to the person who requested it. */
+  async function submitToRequest(uploadId: string) {
+    let name = ""
+    try {
+      name = sessionStorage.getItem("vertov_request_name") ?? ""
+    } catch {
+      // The name is optional.
+    }
+    const sent = await fetch(`/api/requests/${requestId}/submit`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ uploadId, name: name || null }),
+    })
+    if (!sent.ok) {
+      const body = (await sent.json().catch(() => null)) as {
+        error?: string
+      } | null
+      throw new Error(body?.error ?? "The video couldn't be sent.")
+    }
+  }
+
+  async function stop(copyFrom?: Window) {
+    const current = session.current
+    if (!current || finishing.current) return
+    finishing.current = true
+    const duration = reportedDuration(secondsRecorded(current))
+    // Copy while the click that stopped us still counts as a user gesture.
+    void (copyFrom ?? window).navigator.clipboard
+      .writeText(current.url)
+      .catch(() => {})
+    setPhase("finishing")
+    await stopRecorders(current)
+    releaseDevices(current)
+    pipRef.current?.close()
+    try {
+      const [partCount, cameraPartCount] = await Promise.all([
+        current.uploader.finish(duration),
+        current.cameraUploader
+          ? current.cameraUploader.finish(duration).catch(() => 0)
+          : Promise.resolve(0),
+      ])
+      if (current.audioChunks.length > 0) {
+        const audio = new Blob(current.audioChunks, {
+          type: current.audioChunks[0].type,
+        })
+        await fetch(`/api/recordings/${current.id}/sidecar?kind=audio`, {
+          method: "PUT",
+          headers: { "content-type": audio.type.split(";")[0] },
+          body: audio,
+        }).catch(() => {})
+      }
+      const response = await fetch(`/api/recordings/${current.id}/complete`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          duration,
+          partCount,
+          cameraPartCount,
+          width: current.width,
+          height: current.height,
+        }),
+      })
+      if (!response.ok) {
+        const reason = (await response.json().catch(() => null)) as { error?: string } | null
+        throw new Error(response.status === 422 && reason?.error ? reason.error : "The upload couldn't be finished.")
+      }
+      if (requestId) {
+        await submitToRequest(current.id)
+        await removeBackup(current.id)
+        safeToLeave.current = true
+        window.location.href = `/request/${requestId}?done=1`
+        return
+      }
+      await removeBackup(current.id)
+      safeToLeave.current = true
+      if (embed && handBack(current.id)) return
+      const completed = (await response.json().catch(() => null)) as { long?: boolean } | null
+      const long = completed?.long ?? reachedCap(duration, ruleRef.current.capSeconds)
+      window.location.href = `/${current.id}?new=1${stoppedAtLimit.current ? "&limit=1" : ""}${long ? (enforcedCap(ruleRef.current.capSeconds, ruleRef.current.enforce) != null ? "&long=cap" : "&long=1") : ""}`
+    } catch (err) {
+      setError(
+        `${err instanceof Error ? err.message : "Upload failed."} Your recording is safe in this browser, so you can upload it again.`,
+      )
+      setFailedId(current.id)
+      setPhase("error")
+    } finally {
+      session.current = null
+      finishing.current = false
+    }
+  }
+
+  stopRef.current = () => stop()
+
+  /** Throws the take away. With `again`, starts a fresh one on the same screen. */
+  async function discard(again = false) {
+    const current = session.current
+    if (!current) return
+    if (!again && !deleteArmed) {
+      setDeleteArmed(true)
+      if (deleteTimer.current) clearTimeout(deleteTimer.current)
+      deleteTimer.current = setTimeout(() => setDeleteArmed(false), 3000)
+      return
+    }
+    setDeleteArmed(false)
+    session.current = null
+    await stopRecorders(current)
+    releaseDevices(current, again)
+    // Restarting keeps the floating window: reopening it would need another click.
+    if (!again) pipRef.current?.close()
+    await fetch(`/api/recordings/${current.id}`, { method: "DELETE" }).catch(
+      () => {},
+    )
+    void removeBackup(current.id)
+    setPaused(false)
+    if (again) void start()
+    else setPhase(screenRef.current ? "ready" : "setup")
+  }
+
+  /** Sends a take saved in this browser up as a fresh recording. */
+  async function recoverTake(take: BackupTake) {
+    setRecovering(take.id)
+    setError(null)
+    setFull(null)
+    try {
+      if (beforeStart && !(await beforeStart()))
+        throw new Error(
+          "Couldn’t open your recording session. Try again, or sign in to continue.",
+        )
+      if (take.seconds > MAX_RECORDING_SECONDS)
+        throw new Error(
+          "That recording is longer than six hours, which Vertov can't hold as one video. Download it to keep it.",
+        )
+      const tracks = await readTake(take.id)
+      if (!tracks.screen) throw new Error("That recording has nothing in it.")
+      const response = await fetch("/api/recordings", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          mimeType: take.mimeType,
+          cameraMimeType: tracks.camera ? take.cameraMimeType : null,
+          surface: take.surface,
+          width: take.width,
+          height: take.height,
+        }),
+      })
+      if (!response.ok)
+        throw await startError(
+          response,
+          "Couldn't start the upload. Are you still signed in?",
+        )
+      const { id }: { id: string } = await response.json()
+      const send = (track: "screen" | "camera", blob: Blob) => {
+        const uploader = new PartUploader(id, track)
+        uploader.push(blob)
+        return uploader.finish(take.seconds)
+      }
+      const [partCount, cameraPartCount] = await Promise.all([
+        send("screen", tracks.screen),
+        tracks.camera
+          ? send("camera", tracks.camera).catch(() => 0)
+          : Promise.resolve(0),
+      ])
+      if (tracks.audio) {
+        await fetch(`/api/recordings/${id}/sidecar?kind=audio`, {
+          method: "PUT",
+          headers: { "content-type": tracks.audio.type.split(";")[0] },
+          body: tracks.audio,
+        }).catch(() => {})
+      }
+      const completed = await fetch(`/api/recordings/${id}/complete`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          duration: take.seconds,
+          partCount,
+          cameraPartCount,
+          width: take.width,
+          height: take.height,
+        }),
+      })
+      if (!completed.ok) throw new Error("The upload couldn't be finished.")
+      const done = (await completed.json().catch(() => null)) as { long?: boolean } | null
+      // The half-finished original is replaced by this one.
+      await fetch(`/api/recordings/${take.id}`, { method: "DELETE" }).catch(
+        () => {},
+      )
+      if (requestId) await submitToRequest(id)
+      await removeBackup(take.id)
+      if (requestId) {
+        window.location.href = `/request/${requestId}?done=1`
+        return
+      }
+      window.location.href = `/${id}?new=1${done?.long ? "&long=1" : ""}`
+    } catch (err) {
+      if (err instanceof LibraryFullError) setFull(err.library)
+      setError(
+        `${err instanceof Error ? err.message : "Upload failed."} It's still saved here; ${err instanceof LibraryFullError ? "make room or upgrade, then try again" : "try again in a moment"}.`,
+      )
+      setRecovering(null)
+    }
+  }
+
+  async function downloadTake(take: BackupTake) {
+    const tracks = await readTake(take.id)
+    for (const [track, blob] of [
+      ["screen", tracks.screen],
+      ["camera", tracks.camera],
+    ] as const) {
+      if (!blob) continue
+      const link = document.createElement("a")
+      link.href = URL.createObjectURL(blob)
+      link.download = `${APP_NAME} ${new Date(take.startedAt).toLocaleString()} ${track}.${blob.type.includes("webm") ? "webm" : "mp4"}`
+      link.click()
+      setTimeout(() => URL.revokeObjectURL(link.href), 10_000)
+    }
+  }
+
+  async function discardTake(take: BackupTake) {
+    if (!(await askConfirm({ title: "Delete this saved recording?", body: "It's only stored in this browser, so it can't be recovered.", confirmLabel: "Delete", danger: true }))) return
+    await removeBackup(take.id)
+    setSavedTakes((takes) => takes.filter((item) => item.id !== take.id))
+  }
+
+  const uploadNote =
+    pending > 6 * 1024 * 1024
+      ? `Catching up · ${Math.round(pending / 1024 / 1024)} MB to send`
+      : "Uploading live"
+
+  const cap = enforcedCap(rule.capSeconds, rule.enforce)
+  const limitLevel = phase === "recording" ? limitState(elapsed, 0, cap).level : "ok"
+  const limitLine = limitNote && (limitLevel === "now" || limitLevel === "ok" ? limitNote : warningText(limitState(elapsed, 0, cap).remaining, cap))
+
+  const controls = (where: "page" | "bubble") => (
+    <div className="flex items-center gap-1.5">
+      <button
+        type="button"
+        onClick={(event) =>
+          void stop(
+            where === "bubble" ? (event.view as unknown as Window) : undefined,
+          )
+        }
+        title="Stop and copy link"
+        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-red-600 transition-transform hover:scale-105 hover:bg-red-500"
+      >
+        <span className="size-3 rounded-[3px] bg-white" />
+      </button>
+      <span
+        className={`min-w-11 font-mono text-sm tabular-nums ${limitLevel === "soon" ? "text-red-400" : limitLevel === "notice" ? "text-amber-300" : "text-white"}`}
+        title={cap != null ? `Free recordings stop and save by themselves at ${Math.round(cap / 60)} minutes` : limitLevel === "ok" ? undefined : "Recordings stop and save by themselves just before six hours"}
+      >
+        {formatDuration(elapsed)}
+      </span>
+      {cap != null && (
+        <span className={`font-mono text-xs tabular-nums ${limitLevel === "soon" ? "text-red-400" : "text-amber-300"}`} aria-label={`${capClock(limitState(elapsed, 0, cap).remaining)} of your free recording`}>
+          {capClock(limitState(elapsed, 0, cap).remaining)}
+        </span>
+      )}
+      <LevelBars level={paused ? 0 : level} />
+      <IconButton
+        title={paused ? "Resume (Space)" : "Pause (Space)"}
+        onClick={togglePause}
+      >
+        <VertovIcon name={paused ? "play" : "pause"} size={18} />
+      </IconButton>
+      <IconButton title="Restart" onClick={() => void discard(true)}>
+        <VertovIcon name="restart" size={18} />
+      </IconButton>
+      {deleteArmed ? (
+        <button
+          type="button"
+          onClick={() => void discard()}
+          className="h-9 shrink-0 rounded-full bg-red-600 px-3 text-xs font-semibold text-white hover:bg-red-500"
+        >
+          Delete?
+        </button>
+      ) : (
+        <IconButton title="Delete" onClick={() => void discard()}>
+          <VertovIcon name="trash" size={18} />
+        </IconButton>
+      )}
+    </div>
+  )
+
+  const bubbleMode = cameraOn && surface !== "monitor"
+
+  const setupActions = panel ? (
+    <button
+      type="button"
+      disabled={mode === "screen" ? !screenSupported : !cameraStream}
+      onClick={() => {
+        if (mode === "screen" && !screenStream) void chooseScreen().then((chosen) => chosen && setAutoStart(true))
+        else void start()
+      }}
+      className="flex w-full items-center justify-center gap-2 rounded-xl bg-neutral-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-neutral-700 disabled:opacity-40"
+    >
+      <span className="size-2.5 rounded-full bg-red-500" /> Start recording
+    </button>
+  ) : (
+    <div className="v-recorder-actions flex flex-wrap gap-3">
+      {mode === "screen" && (
+        <button
+          type="button"
+          onClick={() => void chooseScreen()}
+          disabled={!screenSupported}
+          className={`rounded-xl px-5 py-3 text-sm font-semibold transition-colors ${
+            screenStream
+              ? "bg-white/10 hover:bg-white/20"
+              : "bg-indigo-600 hover:bg-indigo-500"
+          }`}
+        >
+          {screenStream ? "Change what you share" : "Choose a screen"}
+        </button>
+      )}
+      <button
+        type="button"
+        disabled={mode === "screen" ? !screenStream : !cameraStream}
+        onClick={() => void start()}
+        className="flex items-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold transition-colors hover:bg-red-500 disabled:opacity-40"
+      >
+        <span className="size-2.5 rounded-full bg-white" /> Start recording
+      </button>
+    </div>
+  )
+
+  const stagePreview = (
+    <StagePreview
+      screen={mode === "screen" ? screenStream : null}
+      camera={wantCamera ? cameraStream : null}
+      cameraOnly={mode === "camera"}
+    />
+  )
+
+  const Shell = embedded || panel ? "section" : "main"
+  const compactBar = panel && (phase === "countdown" || phase === "recording" || phase === "finishing")
+  return (
+    <Shell
+      aria-label={embedded || panel ? "Record your video" : undefined}
+      className={
+        panel
+          ? compactBar
+            ? "fixed bottom-4 left-4 z-50 rounded-2xl bg-neutral-950 text-white shadow-2xl ring-1 ring-white/10"
+            : `v-record-light fixed z-50 w-[min(26rem,calc(100vw-1.5rem))] overflow-y-auto ${panelAnchor === "top" ? "top-16 right-3 max-h-[calc(100dvh-5rem)]" : "bottom-20 left-3 max-h-[calc(100dvh-6rem)]"} rounded-2xl bg-white text-neutral-900 shadow-2xl ring-1 ring-black/10`
+          : embedded
+            ? "v-inline-recorder bg-neutral-950 text-white"
+            : "min-h-dvh bg-neutral-950 text-white"
+      }
+    >
+      {!embedded && !panel && (
+        <header className="flex h-14 items-center justify-between border-b border-white/10 px-4">
+          <a
+            href="/home"
+            className="flex items-center gap-2 font-semibold tracking-tight"
+          >
+            <BrandMark />
+            {APP_NAME}
+          </a>
+          <a href="/home" className="text-sm text-neutral-400 hover:text-white">
+            My library
+          </a>
+        </header>
+      )}
+
+      <div
+        className={
+          panel
+            ? compactBar
+              ? "flex flex-col gap-2 p-2.5"
+              : "flex flex-col gap-3 p-4"
+            : embedded
+              ? "v-inline-recorder-content flex flex-col gap-4 p-5"
+              : "mx-auto flex max-w-3xl flex-col gap-5 px-4 py-8"
+        }
+      >
+        {panel && !compactBar && (
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold">Record a video</p>
+            <button type="button" aria-label="Close" onClick={onClose} className="rounded-full p-1 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900">
+              ✕
+            </button>
+          </div>
+        )}
+        {(phase === "setup" || phase === "ready") &&
+          savedTakes.map((take) => (
+            <div
+              key={take.id}
+              className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4"
+            >
+              <p className="text-sm font-semibold text-amber-100">
+                We saved a recording that didn't finish uploading
+              </p>
+              <p className="mt-0.5 text-sm text-amber-200/80">
+                {new Date(take.startedAt).toLocaleString(undefined, {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}{" "}
+                · {formatDuration(take.seconds)}. It's kept in this browser
+                until it's safely uploaded.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={recovering !== null}
+                  onClick={() => void recoverTake(take)}
+                  className="rounded-lg bg-amber-300 px-3 py-1.5 text-sm font-semibold text-neutral-950 hover:bg-amber-200 disabled:opacity-60"
+                >
+                  {recovering === take.id ? "Uploading…" : "Upload it now"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void downloadTake(take)}
+                  className="rounded-lg bg-white/10 px-3 py-1.5 text-sm hover:bg-white/20"
+                >
+                  Download
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void discardTake(take)}
+                  className="rounded-lg px-3 py-1.5 text-sm text-amber-200/80 hover:bg-white/10"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        {(phase === "setup" || phase === "ready") && (
+          <>
+            <div className="v-recorder-modes flex flex-wrap gap-2">
+              {(
+                [
+                  { label: "Screen and camera", mode: "screen", cameraOn: true },
+                  { label: "Screen only", mode: "screen", cameraOn: false },
+                  { label: "Camera only", mode: "camera", cameraOn: cameraOn },
+                ] as const
+              ).map((option) => {
+                const active = option.mode === "camera" ? mode === "camera" : mode === "screen" && cameraOn === option.cameraOn
+                return (
+                  <button
+                    key={option.label}
+                    type="button"
+                    onClick={() => {
+                      update({ mode: option.mode, cameraOn: option.cameraOn })
+                      if (option.mode === "camera" || option.cameraOn) setDevicesEnabled(true)
+                    }}
+                    aria-pressed={active}
+                    className={`rounded-full ${panel ? "px-3 py-1.5 text-xs" : "px-4 py-2 text-sm"} font-medium transition-colors ${
+                      active ? "bg-white text-neutral-900" : "bg-white/10 hover:bg-white/20"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                )
+              })}
+            </div>
+
+            {embedded && setupActions}
+            {embedded && stagePreview}
+
+            <div className={`v-recorder-devices grid gap-3 ${panel ? "" : "sm:grid-cols-2"}`}>
+              <DeviceRow
+                label="Camera"
+                enabled={mode === "camera" || cameraOn}
+                canToggle={mode === "screen"}
+                onToggle={() => {
+                  update({ cameraOn: !cameraOn })
+                  if (!cameraOn) setDevicesEnabled(true)
+                }}
+                devices={cameras}
+                value={cameraId}
+                onChange={(value) => update({ cameraId: value })}
+              />
+              {(mode === "camera" || cameraOn) && canBlurBackground && (
+                <div className="flex items-center gap-2 rounded-xl bg-white/5 p-2.5 sm:col-span-2">
+                  <span className="shrink-0 px-1 text-xs font-semibold text-neutral-400">
+                    Background
+                  </span>
+                  <select
+                    aria-label="Camera background"
+                    value={background}
+                    onChange={(event) =>
+                      update({ background: event.target.value as WebBackground })
+                    }
+                    className="min-w-0 flex-1 rounded-lg bg-neutral-900 px-2 py-1.5 text-sm"
+                  >
+                    {WEB_BACKGROUNDS.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <DeviceRow
+                label="Mic"
+                enabled={micOn}
+                canToggle
+                onToggle={() => {
+                  update({ micOn: !micOn })
+                  if (!micOn) setDevicesEnabled(true)
+                }}
+                devices={mics}
+                value={micId}
+                onChange={(value) => update({ micId: value })}
+                meter={micOn ? level : null}
+              />
+            </div>
+
+            {!embedded && !panel && stagePreview}
+            {panel && wantCamera && cameraStream && stagePreview}
+
+            {mode === "screen" && !embedded && !panel && (
+              <details className="rounded-xl bg-white/5 px-4 py-3 text-sm open:pb-4">
+                <summary className="cursor-pointer text-neutral-300 select-none">
+                  <VertovIcon name="notes" className="mr-1.5" /> Speaker notes {notes.trim() ? "· ready" : "(optional)"}
+                </summary>
+                <textarea
+                  value={notes}
+                  onChange={(event) => update({ notes: event.target.value })}
+                  rows={4}
+                  placeholder="Talking points. They float under your camera bubble while you record and aren't in the video."
+                  className="mt-3 w-full rounded-lg bg-neutral-900 p-3 text-sm text-white placeholder:text-neutral-500"
+                />
+              </details>
+            )}
+
+            {mode === "screen" && surface && !panel && (
+              <p className="text-sm text-neutral-400">
+                {surface === "monitor"
+                  ? "Sharing your whole screen. A slim control bar floats on top; your camera is recorded separately and placed on playback."
+                  : `Sharing a ${surface === "browser" ? "tab" : "window"}.${cameraOn ? " Your camera bubble floats on top and is recorded separately." : ""}`}
+              </p>
+            )}
+
+            {!embedded && setupActions}
+          </>
+        )}
+
+        {phase === "countdown" && (
+          <button
+            type="button"
+            onClick={() => skipCountdown.current?.()}
+            className={`flex flex-col items-center justify-center gap-3 ${panel ? "h-20 w-48" : "h-80"}`}
+          >
+            <span
+              key={countdown}
+              className={`pop-in font-bold tabular-nums ${panel ? "text-5xl" : "text-9xl"}`}
+            >
+              {countdown}
+            </span>
+            <span className="text-sm text-neutral-400">Click to skip</span>
+          </button>
+        )}
+
+        {phase === "recording" && panel && (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2.5 px-1">
+              <span className={`size-2.5 rounded-full ${paused ? "bg-yellow-400" : "animate-pulse bg-red-500"}`} />
+              {controls("page")}
+            </div>
+            {limitNote && (
+              <p role="status" className="max-w-xs rounded-lg bg-amber-400/15 px-3 py-1.5 text-xs text-amber-200">
+                {limitLine}
+              </p>
+            )}
+          </div>
+        )}
+        {phase === "recording" && !panel && (
+          <div className="flex flex-col items-center gap-6 py-8">
+            <div className="flex items-center gap-2 text-sm text-neutral-300">
+              <span
+                className={`size-2.5 rounded-full ${paused ? "bg-yellow-400" : "animate-pulse bg-red-500"}`}
+              />
+              {paused ? "Paused" : "Recording"} ·{" "}
+              <span className="text-neutral-400">{uploadNote}</span>
+            </div>
+            {mode === "camera" && (
+              <StagePreview screen={null} camera={cameraStream} cameraOnly />
+            )}
+            {limitNote && (
+              <>
+                <p aria-hidden="true" className="max-w-md rounded-xl bg-amber-400/15 px-4 py-2 text-center text-sm text-amber-200">
+                  {limitLine}
+                </p>
+                <p role="status" aria-live="polite" className="sr-only">
+                  {limitNote}
+                </p>
+              </>
+            )}
+            <div className="rounded-full bg-white/10 px-3 py-2">
+              {controls("page")}
+            </div>
+            {mode === "screen" && (
+              <p className="max-w-md text-center text-sm text-neutral-400">
+                Go show what you want to show. Stop from the floating{" "}
+                {pipWindow && bubbleMode ? "bubble" : "bar"} or here; the link
+                is copied the moment you stop.
+              </p>
+            )}
+          </div>
+        )}
+
+        {phase === "finishing" && (
+          <div className={`flex flex-col items-center justify-center gap-2 ${panel ? "h-24 w-56" : "h-80"}`}>
+            <span className="size-8 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+            <p className="mt-2 text-lg font-semibold">Finishing up…</p>
+            <p className="text-sm text-neutral-400">
+              Your link is on the clipboard. Opening it now.
+            </p>
+          </div>
+        )}
+
+        {embedded && !screenSupported && mode === "screen" && (
+          <p className="text-sm text-neutral-400">
+            Screen recording needs a desktop browser. You can record a camera
+            video here.
+          </p>
+        )}
+        {micError && micOn && micError !== error && (
+          <p
+            role="alert"
+            className="rounded-lg bg-red-950 px-4 py-3 text-sm text-red-200"
+          >
+            {micError}
+          </p>
+        )}
+        {full && <LibraryFullCard library={full} />}
+        {error && !full && (
+          <p
+            role="alert"
+            className="rounded-lg bg-red-950 px-4 py-3 text-sm text-red-200"
+          >
+            {error}
+            {embedded && error.includes("recording session") && (
+              <>
+                {" "}
+                <a href="/signin?redirect=/record" className="underline">
+                  Sign in
+                </a>
+              </>
+            )}
+          </p>
+        )}
+        {phase === "error" && failedId && (
+          <button
+            type="button"
+            disabled={recovering !== null}
+            onClick={() =>
+              void unfinishedTakes().then((takes) => {
+                const take = takes.find((item) => item.id === failedId)
+                if (take) void recoverTake(take)
+                else setError("The saved copy isn't in this browser anymore.")
+              })
+            }
+            className="self-start rounded-xl bg-white px-4 py-2 text-sm font-semibold text-neutral-900 hover:bg-neutral-200 disabled:opacity-60"
+          >
+            {recovering ? "Uploading…" : "Upload it again"}
+          </button>
+        )}
+        {phase === "error" && (
+          <button
+            type="button"
+            onClick={() => {
+              setError(null)
+    setFull(null)
+              setPhase("setup")
+            }}
+            className="self-start rounded-xl bg-white/10 px-4 py-2 text-sm hover:bg-white/20"
+          >
+            Record again
+          </button>
+        )}
+      </div>
+
+      {pipWindow &&
+        createPortal(
+          bubbleMode && cameraStream ? (
+            <div className="group relative flex h-dvh w-full flex-col items-center bg-neutral-950 pt-2">
+              <Bubble stream={cameraStream} />
+              {phase === "recording" && (
+                <div className="absolute inset-x-0 top-[170px] flex justify-center opacity-0 transition-opacity group-hover:opacity-100">
+                  <div className="rounded-full bg-black/75 px-1.5 py-1 backdrop-blur">
+                    {controls("bubble")}
+                  </div>
+                </div>
+              )}
+              {phase === "recording" && (
+                <span
+                  className={`absolute top-3 right-3 size-2.5 rounded-full ${paused ? "bg-yellow-400" : "animate-pulse bg-red-500"}`}
+                />
+              )}
+              {notes.trim() && (
+                <div className="mt-2 min-h-0 w-full flex-1 overflow-y-auto px-3 pb-3 text-[13px] leading-snug whitespace-pre-wrap text-neutral-200">
+                  {notes}
+                </div>
+              )}
+              {phase === "countdown" && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-6xl font-bold text-white">
+                  {countdown}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex h-dvh w-full items-center justify-center bg-neutral-950 px-2">
+              {phase === "recording" ? (
+                controls("bubble")
+              ) : (
+                <span className="text-sm text-white">
+                  Starting in {countdown}…
+                </span>
+              )}
+            </div>
+          ),
+          pipWindow.document.body,
+        )}
+    </Shell>
+  )
+}
+
+function IconButton({
+  title,
+  onClick,
+  children,
+}: {
+  title: string
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      aria-label={title}
+      onClick={onClick}
+      className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs text-white transition-colors hover:bg-white/25"
+    >
+      {children}
+    </button>
+  )
+}
+
+function LevelBars({ level }: { level: number }) {
+  return (
+    <div className="flex h-4 items-end gap-0.5" aria-hidden>
+      {[0.15, 0.35, 0.6, 0.85].map((threshold, index) => (
+        <span
+          key={index}
+          className={`w-1 rounded-sm transition-colors ${level >= threshold ? "bg-green-400" : "bg-white/20"}`}
+          style={{ height: `${40 + index * 20}%` }}
+        />
+      ))}
+    </div>
+  )
+}
+
+function DeviceRow(props: {
+  label: string
+  enabled: boolean
+  canToggle: boolean
+  onToggle: () => void
+  devices: Array<MediaDeviceInfo>
+  value: string
+  onChange: (value: string) => void
+  meter?: number | null
+}) {
+  return (
+    <div className="flex items-center gap-2 rounded-xl bg-white/5 p-2.5">
+      <button
+        type="button"
+        disabled={!props.canToggle}
+        aria-pressed={props.enabled}
+        onClick={props.onToggle}
+        className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${props.enabled ? "bg-green-600" : "bg-white/10 text-neutral-400"}`}
+      >
+        {props.label} {props.enabled ? "on" : "off"}
+      </button>
+      <select
+        aria-label={`${props.label} device`}
+        value={props.value}
+        onChange={(event) => props.onChange(event.target.value)}
+        disabled={!props.enabled}
+        className="min-w-0 flex-1 rounded-lg bg-neutral-900 px-2 py-1.5 text-sm disabled:opacity-40"
+      >
+        <option value="">Default {props.label.toLowerCase()}</option>
+        {props.devices.map((device) => (
+          <option key={device.deviceId} value={device.deviceId}>
+            {device.label || props.label}
+          </option>
+        ))}
+      </select>
+      {props.meter != null && <LevelBars level={props.meter} />}
+    </div>
+  )
+}
+
+/** What the video will look like: the shared screen with the camera bubble where playback puts it. */
+function StagePreview({
+  screen,
+  camera,
+  cameraOnly,
+}: {
+  screen: MediaStream | null
+  camera: MediaStream | null
+  cameraOnly: boolean
+}) {
+  return (
+    <div
+      data-empty={!screen && !camera ? true : undefined}
+      className="relative aspect-video w-full overflow-hidden rounded-2xl bg-white/5"
+    >
+      {cameraOnly ? (
+        camera && (
+          <StreamVideo
+            stream={camera}
+            mirror
+            className="size-full object-cover"
+          />
+        )
+      ) : screen ? (
+        <StreamVideo stream={screen} className="size-full object-contain" />
+      ) : (
+        <div className="flex size-full items-center justify-center text-sm text-neutral-500">
+          Choose a screen, window or tab to preview it here
+        </div>
+      )}
+      {!cameraOnly && camera && (
+        <div className="absolute bottom-[4%] left-[2.5%] aspect-square w-[20%] overflow-hidden rounded-full shadow-xl ring-2 ring-white/80">
+          <StreamVideo
+            stream={camera}
+            mirror
+            className="size-full object-cover"
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function StreamVideo({
+  stream,
+  mirror,
+  className,
+}: {
+  stream: MediaStream
+  mirror?: boolean
+  className?: string
+}) {
+  const ref = useRef<HTMLVideoElement>(null)
+  useEffect(() => {
+    if (ref.current) ref.current.srcObject = stream
+  }, [stream])
+  return (
+    <video
+      ref={ref}
+      autoPlay
+      muted
+      playsInline
+      className={`${className ?? ""} ${mirror ? "-scale-x-100" : ""}`}
+    />
+  )
+}
+
+function Bubble({ stream }: { stream: MediaStream }) {
+  return (
+    <div className="aspect-square w-[92%] max-w-[224px] shrink-0 overflow-hidden rounded-full ring-2 ring-white/70">
+      <StreamVideo stream={stream} mirror className="size-full object-cover" />
+    </div>
+  )
+}
+
+/** First frame of the recording as the poster, so the link unfurls with a picture immediately. */
+async function capturePoster(id: string, track: MediaStreamTrack) {
+  if (track.readyState !== "live") return
+  const video = document.createElement("video")
+  video.muted = true
+  video.srcObject = new MediaStream([track])
+  try {
+    await video.play()
+    const scale = Math.min(1, 1280 / (video.videoWidth || 1280))
+    const canvas = document.createElement("canvas")
+    canvas.width = Math.round(video.videoWidth * scale)
+    canvas.height = Math.round(video.videoHeight * scale)
+    canvas.getContext("2d")?.drawImage(video, 0, 0, canvas.width, canvas.height)
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", 0.85),
+    )
+    if (blob) {
+      await fetch(`/api/recordings/${id}/sidecar?kind=poster`, {
+        method: "PUT",
+        headers: { "content-type": "image/jpeg" },
+        body: blob,
+      })
+    }
+  } catch {
+    // A missing poster only means a plainer link preview.
+  } finally {
+    video.srcObject = null
+  }
+}
+
+/** The server's reason when it gave one (a full library, say), else the fallback. A full library carries its numbers for the library-full screen. */
+async function startError(
+  response: Response,
+  fallback: string,
+): Promise<Error> {
+  const body = (await response.json().catch(() => null)) as {
+    error?: string
+  } | null
+  const library = libraryFromBody(body)
+  if (response.status === 402 && library && body?.error) return new LibraryFullError(body.error, library)
+  return new Error(response.status === 402 && body?.error ? body.error : fallback)
+}

@@ -1,0 +1,685 @@
+import { sql } from "drizzle-orm";
+import {
+  index,
+  integer,
+  primaryKey,
+  real,
+  sqliteTable,
+  text,
+} from "drizzle-orm/sqlite-core";
+
+export const uploads = sqliteTable(
+  "uploads",
+  {
+    id: text("id").primaryKey(),
+    filename: text("filename").notNull(),
+    contentType: text("content_type").notNull(),
+    size: integer("size").notNull(),
+    width: integer("width"),
+    height: integer("height"),
+    r2Key: text("r2_key").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    mediaType: text("media_type").notNull().default("image"),
+    duration: real("duration"),
+    // Human title shown on the share page; falls back to filename.
+    title: text("title"),
+    // R2 keys for sidecar assets uploaded after the media itself.
+    posterKey: text("poster_key"),
+    transcriptKey: text("transcript_key"),
+    // Scrub-preview sprite sheet plus its JSON grid metadata
+    // ({ tileWidth, tileHeight, columns, interval, count }).
+    storyboardKey: text("storyboard_key"),
+    storyboardMeta: text("storyboard_meta"),
+    // Optional JSON array of { title, start } chapter markers.
+    chapters: text("chapters"),
+    views: integer("views").notNull().default(0),
+    ctaClicks: integer("cta_clicks").notNull().default(0),
+    // Off switch for comments + likes on this upload, chosen at upload
+    // time. When false, both features are hidden on the share page and
+    // rejected server-side.
+    socialEnabled: integer("social_enabled", { mode: "boolean" })
+      .notNull()
+      .default(true),
+    // Better Auth user id; null for token uploads from the Screendrop app.
+    ownerId: text("owner_id"),
+    // "recording" while parts are still arriving, "ready" once playable.
+    status: text("status").notNull().default("ready"),
+    multipartUploadId: text("multipart_upload_id"),
+    // Audio-only sidecar the recorder uploads for transcription.
+    audioKey: text("audio_key"),
+    summary: text("summary"),
+    aiStatus: text("ai_status"),
+    cameraKey: text("camera_key"),
+    cameraContentType: text("camera_content_type"),
+    cameraMultipartUploadId: text("camera_multipart_upload_id"),
+    // Generated narration (ElevenLabs, the workspace's own key): an audio file synced to the source timeline.
+    voiceKey: text("voice_key"),
+    voiceText: text("voice_text"),
+    voiceVoiceId: text("voice_voice_id"),
+    voiceVoiceName: text("voice_voice_name"),
+    voiceModel: text("voice_model"),
+    voiceOffset: real("voice_offset").notNull().default(0),
+    // monitor, window, browser or camera: what the main track captured.
+    captureSurface: text("capture_surface"),
+    // JSON StageStyle; see src/lib/stage.ts.
+    style: text("style"),
+    trimStart: real("trim_start"),
+    trimEnd: real("trim_end"),
+    ctaLabel: text("cta_label"),
+    ctaUrl: text("cta_url"),
+    exportKey: text("export_key"),
+    exportStatus: text("export_status"),
+    exportSignature: text("export_signature"),
+    // "pbkdf2$<salt>$<hash>"; viewers unlock with a signed cookie.
+    passwordHash: text("password_hash"),
+    // ISO time after which only the owner can open the link.
+    expiresAt: text("expires_at"),
+    // JSON [[start, end], ...] of removed source seconds, skipped at playback and in exports.
+    cuts: text("cuts"),
+    // The copy of an edited video that viewers get, with the removed footage blanked; see src/lib/viewer-copy.ts.
+    viewerCopy: text("viewer_copy"),
+    // null, "pending", "done" or "failed" for the latest render of that copy.
+    viewerStatus: text("viewer_status"),
+    viewerRun: text("viewer_run"),
+    // Epoch ms of the last edit or render step: debounces new renders and spots stuck ones.
+    viewerEditedAt: integer("viewer_edited_at"),
+    downloadsEnabled: integer("downloads_enabled", { mode: "boolean" })
+      .notNull()
+      .default(true),
+    workspaceId: text("workspace_id"),
+    // Null keeps the video in its owner's own library; set, every member sees it in that space.
+    spaceId: text("space_id"),
+    folderId: text("folder_id"),
+    archivedAt: text("archived_at"),
+    // "link": anyone with the link; "workspace": signed-in members only.
+    visibility: text("visibility").notNull().default("link"),
+    // ISO 639-1 code Whisper detected.
+    language: text("language"),
+    transcriptText: text("transcript_text"),
+    // Last view by someone other than the owner; drives free-plan retention.
+    lastViewedAt: text("last_viewed_at"),
+    retentionNoticeAt: text("retention_notice_at"),
+    retentionFinalAt: text("retention_final_at"),
+    // Removed for inactivity: hidden and unplayable until restored or purged.
+    deletedAt: text("deleted_at"),
+    // Where an import came from, e.g. a Loom share URL.
+    sourceUrl: text("source_url"),
+    // JSON array of on-video annotations; see src/lib/overlays.ts.
+    overlays: text("overlays"),
+    captionStyle: text("caption_style").notNull().default("off"),
+    gifKey: text("gif_key"),
+    // The video request this was recorded for, if any.
+    requestId: text("request_id"),
+    // Viewers must give an email address before the video plays.
+    requireEmail: integer("require_email", { mode: "boolean" }).notNull().default(false),
+    // Owner opted in to search engines; see isIndexable in src/lib/seo.ts for what else must hold.
+    searchIndexing: integer("search_indexing", { mode: "boolean" }).notNull().default(false),
+    // JSON { [kind]: { text, at } } of generated documents (summary doc, SOP, bug report, notes, action items).
+    aiDocs: text("ai_docs"),
+    // JSON bookkeeping for the AI title, summary and chapters (src/lib/ai-text.server.ts); holds replaced text, so never sent to a browser.
+    aiText: text("ai_text"),
+  },
+  (table) => [
+    index("idx_uploads_created_at").on(table.createdAt),
+    index("idx_uploads_owner").on(table.ownerId, table.createdAt),
+    index("idx_uploads_workspace").on(table.workspaceId, table.createdAt),
+    index("idx_uploads_space").on(table.spaceId),
+  ],
+);
+
+export const workspaces = sqliteTable("workspaces", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  plan: text("plan").notNull().default("free"),
+  planInterval: text("plan_interval"),
+  planStatus: text("plan_status"),
+  planPeriodEnd: text("plan_period_end"),
+  /** Business only: the size, in steps of 500 hours above the base library (see plans.ts). Zero on every other plan. */
+  extraBlocks: integer("extra_blocks").notNull().default(0),
+  polarCustomerId: text("polar_customer_id"),
+  polarSubscriptionId: text("polar_subscription_id"),
+  polarExtraSubscriptionId: text("polar_extra_subscription_id"),
+  planEndedAt: text("plan_ended_at"),
+  defaultVisibility: text("default_visibility").notNull().default("link"),
+  // Share-page branding: hex accent color and an R2 key for the logo.
+  brandColor: text("brand_color"),
+  /** Automatic thumbnails: "designed" covers or the plain best "frame". */
+  coverStyle: text("cover_style").notNull().default("designed"),
+  /** The workspace's ElevenLabs API key, AES-GCM encrypted (src/lib/secret-box.server.ts). */
+  elevenKey: text("eleven_key"),
+  voiceCredits: integer("voice_credits").notNull().default(0),
+  brandLogoKey: text("brand_logo_key"),
+  // Slack incoming-webhook URL for new-video and comment notices.
+  slackWebhook: text("slack_webhook"),
+  // Days without a viewer before a video is removed; null uses the plan's default.
+  retentionDays: integer("retention_days"),
+  // Comma-separated email domains allowed to join; null means anyone with an invite.
+  allowedDomains: text("allowed_domains"),
+  downloadsDefault: integer("downloads_default", { mode: "boolean" }).notNull().default(true),
+  // sha256 of the SCIM bearer token.
+  scimTokenHash: text("scim_token_hash"),
+  /** ISO time the reverse trial of polish, protect and insights ends; null before the account is claimed. */
+  trialEndsAt: text("trial_ends_at"),
+  /** Hours from referrals, on top of the plan and extra blocks. */
+  bonusHours: real("bonus_hours").notNull().default(0),
+  /** False on a Free workspace that is not its owner's first, so it has no hours of its own. */
+  freeBank: integer("free_bank", { mode: "boolean" }).notNull().default(true),
+  referralCode: text("referral_code"),
+  createdBy: text("created_by").notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+/** Monthly counters per workspace (AI teaser runs, long-video courtesy). `period` is YYYY-MM. */
+export const workspaceUsage = sqliteTable(
+  "workspace_usage",
+  {
+    workspaceId: text("workspace_id").notNull(),
+    kind: text("kind").notNull(),
+    period: text("period").notNull(),
+    count: integer("count").notNull().default(0),
+  },
+  (table) => [primaryKey({ columns: [table.workspaceId, table.kind, table.period] })],
+);
+
+/** One reward per referred user; the primary key keeps settling idempotent. */
+export const referrals = sqliteTable(
+  "referrals",
+  {
+    refereeUserId: text("referee_user_id").primaryKey(),
+    referrerWorkspaceId: text("referrer_workspace_id").notNull(),
+    refereeWorkspaceId: text("referee_workspace_id"),
+    status: text("status").notNull().default("pending"),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    rewardedAt: text("rewarded_at"),
+    /** Hours each side was granted: the workspace cap can shrink a grant, so these are what a revoke takes back. */
+    referrerHours: real("referrer_hours").notNull().default(0),
+    refereeHours: real("referee_hours").notNull().default(0),
+    revokedAt: text("revoked_at"),
+  },
+  (table) => [index("idx_referrals_referrer").on(table.referrerWorkspaceId)],
+);
+
+export const workspaceMembers = sqliteTable(
+  "workspace_members",
+  {
+    workspaceId: text("workspace_id").notNull(),
+    userId: text("user_id").notNull(),
+    // owner, admin or member
+    role: text("role").notNull().default("member"),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    primaryKey({ columns: [table.workspaceId, table.userId] }),
+    index("idx_members_user").on(table.userId),
+  ],
+);
+
+export const videoRequests = sqliteTable(
+  "video_requests",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    createdBy: text("created_by").notNull(),
+    title: text("title").notNull(),
+    message: text("message"),
+    spaceId: text("space_id"),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    expiresAt: text("expires_at").notNull(),
+    revokedAt: text("revoked_at"),
+  },
+  (table) => [index("idx_requests_workspace").on(table.workspaceId)],
+);
+
+export const workspaceInvites = sqliteTable(
+  "workspace_invites",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    role: text("role").notNull().default("member"),
+    createdBy: text("created_by").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    expiresAt: text("expires_at").notNull(),
+    revokedAt: text("revoked_at"),
+  },
+  (table) => [index("idx_invites_workspace").on(table.workspaceId)],
+);
+
+export const spaces = sqliteTable(
+  "spaces",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    name: text("name").notNull(),
+    createdBy: text("created_by").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [index("idx_spaces_workspace").on(table.workspaceId)],
+);
+
+export const playlists = sqliteTable(
+  "playlists",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    ownerId: text("owner_id").notNull(),
+    title: text("title").notNull(),
+    description: text("description"),
+    // "link": anyone with the link; "workspace": signed-in members only.
+    visibility: text("visibility").notNull().default("link"),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => [index("idx_playlists_workspace").on(table.workspaceId, table.createdAt)],
+);
+
+export const playlistItems = sqliteTable(
+  "playlist_items",
+  {
+    playlistId: text("playlist_id").notNull(),
+    uploadId: text("upload_id").notNull(),
+    position: integer("position").notNull(),
+    addedAt: text("added_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => [primaryKey({ columns: [table.playlistId, table.uploadId] }), index("idx_playlist_items_upload").on(table.uploadId)],
+);
+
+export type Playlist = typeof playlists.$inferSelect;
+
+export const folders = sqliteTable(
+  "folders",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    spaceId: text("space_id"),
+    ownerId: text("owner_id"),
+    name: text("name").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [index("idx_folders_workspace").on(table.workspaceId)],
+);
+
+export const uploadParts = sqliteTable(
+  "upload_parts",
+  {
+    uploadId: text("upload_id").notNull(),
+    track: text("track").notNull().default("screen"),
+    partNumber: integer("part_number").notNull(),
+    etag: text("etag").notNull(),
+    size: integer("size").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.uploadId, table.track, table.partNumber] }),
+  ],
+);
+
+export const reactions = sqliteTable(
+  "reactions",
+  {
+    id: text("id").primaryKey(),
+    uploadId: text("upload_id").notNull(),
+    viewerId: text("viewer_id").notNull(),
+    viewerName: text("viewer_name"),
+    emoji: text("emoji").notNull(),
+    timestamp: real("timestamp").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [index("idx_reactions_upload").on(table.uploadId)],
+);
+
+export const viewProgress = sqliteTable(
+  "view_progress",
+  {
+    uploadId: text("upload_id").notNull(),
+    viewerKey: text("viewer_key").notNull(),
+    viewerName: text("viewer_name"),
+    viewerAvatar: text("viewer_avatar"),
+    percent: real("percent").notNull().default(0),
+    seconds: real("seconds").notNull().default(0),
+    country: text("country"),
+    city: text("city"),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    // Copied from the upload so insights never join across databases (see events-db.server.ts).
+    workspaceId: text("workspace_id"),
+  },
+  (table) => [primaryKey({ columns: [table.uploadId, table.viewerKey] }), index("idx_view_progress_workspace").on(table.workspaceId)],
+);
+
+export const comments = sqliteTable(
+  "comments",
+  {
+    id: text("id").primaryKey(),
+    uploadId: text("upload_id").notNull(),
+    // Comment ownership key. Anonymous mode: a random id minted
+    // client-side and kept in localStorage. When OAuth sign-in is
+    // configured: the provider identity from the session cookie
+    // ("github:1234" / "google:5678"), enforced server-side.
+    viewerId: text("viewer_id").notNull(),
+    authorName: text("author_name").notNull(),
+    // Provider avatar URL when the comment was made signed-in.
+    authorAvatar: text("author_avatar"),
+    text: text("text").notNull(),
+    // Video time the comment is anchored to, in seconds; null for
+    // general comments.
+    timestamp: real("timestamp"),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [index("idx_comments_upload_id").on(table.uploadId)],
+);
+
+export const likes = sqliteTable(
+  "likes",
+  {
+    uploadId: text("upload_id").notNull(),
+    // Same identity model as comments.viewer_id: the OAuth subject when
+    // sign-in is configured, an anonymous localStorage id otherwise.
+    viewerId: text("viewer_id").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [primaryKey({ columns: [table.uploadId, table.viewerId] })],
+);
+
+export const viewEvents = sqliteTable(
+  "view_events",
+  {
+    id: text("id").primaryKey(),
+    uploadId: text("upload_id").notNull(),
+    // Viewer geo from Cloudflare's request metadata.
+    country: text("country"),
+    city: text("city"),
+    // document.referrer of the visit; null for direct opens.
+    referrer: text("referrer"),
+    // Coarse device label derived from the User-Agent ("Mac", "iPhone", …).
+    device: text("device"),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    workspaceId: text("workspace_id"),
+  },
+  (table) => [index("idx_view_events_upload_id").on(table.uploadId), index("idx_view_events_workspace").on(table.workspaceId, table.createdAt)],
+);
+
+export const apiKeys = sqliteTable(
+  "api_keys",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    workspaceId: text("workspace_id").notNull(),
+    name: text("name").notNull(),
+    tokenHash: text("token_hash").notNull(),
+    prefix: text("prefix").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    lastUsedAt: text("last_used_at"),
+    revokedAt: text("revoked_at"),
+  },
+  (table) => [index("idx_api_keys_user").on(table.userId)],
+);
+
+export type Upload = typeof uploads.$inferSelect;
+export type NewUpload = typeof uploads.$inferInsert;
+export type Comment = typeof comments.$inferSelect;
+export type NewComment = typeof comments.$inferInsert;
+export type Like = typeof likes.$inferSelect;
+export type ViewEvent = typeof viewEvents.$inferSelect;
+export type Workspace = typeof workspaces.$inferSelect;
+export type Space = typeof spaces.$inferSelect;
+export type Folder = typeof folders.$inferSelect;
+
+/** An upload as the browser sees it; the password hash never leaves the server. */
+export type PublicUpload = Omit<Upload, "passwordHash" | "voiceText" | "voiceVoiceId" | "voiceModel" | "sourceUrl" | "aiDocs" | "aiText" | "transcriptText" | "viewerCopy" | "viewerRun"> & { hasPassword: boolean };
+
+export type VideoRequest = typeof videoRequests.$inferSelect;
+
+export const viewerEmails = sqliteTable(
+  "viewer_emails",
+  {
+    uploadId: text("upload_id").notNull(),
+    email: text("email").notNull(),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => [primaryKey({ columns: [table.uploadId, table.email] })],
+);
+
+export const watchLater = sqliteTable(
+  "watch_later",
+  {
+    userId: text("user_id").notNull(),
+    uploadId: text("upload_id").notNull(),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.uploadId] })],
+);
+
+export const auditLog = sqliteTable(
+  "audit_log",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    actorId: text("actor_id"),
+    action: text("action").notNull(),
+    target: text("target"),
+    detail: text("detail"),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => [index("idx_audit_workspace").on(table.workspaceId, table.createdAt)],
+);
+
+export const webhookEndpoints = sqliteTable(
+  "webhook_endpoints",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    createdBy: text("created_by").notNull(),
+    url: text("url").notNull(),
+    // Signing secret, "whsec_" + base64 key; shown once at creation.
+    secret: text("secret").notNull(),
+    // Comma-separated event names.
+    events: text("events").notNull(),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    disabledAt: text("disabled_at"),
+  },
+  (table) => [index("idx_webhook_endpoints_workspace").on(table.workspaceId)],
+);
+
+export const webhookDeliveries = sqliteTable(
+  "webhook_deliveries",
+  {
+    id: text("id").primaryKey(),
+    endpointId: text("endpoint_id").notNull(),
+    event: text("event").notNull(),
+    status: integer("status"),
+    error: text("error"),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => [index("idx_webhook_deliveries_endpoint").on(table.endpointId, table.createdAt)],
+);
+
+export const notificationPreferences = sqliteTable("notification_preferences", {
+  userId: text("user_id").primaryKey(),
+  comments: integer("comments", { mode: "boolean" }).notNull().default(true),
+  firstView: integer("first_view", { mode: "boolean" }).notNull().default(true),
+})
+// Per-user preferences; `language` is the app UI language, null to follow the browser.
+export const userPreferences = sqliteTable("user_preferences", {
+  userId: text("user_id").primaryKey(),
+  language: text("language"),
+  updatedAt: text("updated_at").notNull(),
+})
+export const videoNotifications = sqliteTable("video_notifications", {
+  videoId: text("video_id").primaryKey(),
+  firstViewSeen: integer("first_view_seen").notNull().default(0),
+  pendingViews: integer("pending_views").notNull().default(0),
+  pendingComments: integer("pending_comments").notNull().default(0),
+  scheduled: integer("scheduled").notNull().default(0),
+})
+
+export const lifecyclePreferences = sqliteTable("lifecycle_preferences", {
+  userId: text("user_id").primaryKey(),
+  optedOut: integer("opted_out").notNull().default(0),
+  token: text("token").notNull().unique(),
+  lastChecked: integer("last_checked").notNull().default(0),
+});
+export const lifecycleSends = sqliteTable("lifecycle_sends", {
+  userId: text("user_id").notNull(), lesson: text("lesson").notNull(),
+  claimedAt: integer("claimed_at").notNull(), status: text("status").notNull().default("claimed"),
+  messageId: text("message_id"),
+}, table => [primaryKey({ columns: [table.userId, table.lesson] }), index("lifecycle_recent").on(table.userId, table.claimedAt), index("lifecycle_status").on(table.status)]);
+
+export const tutorialJobs = sqliteTable(
+  "tutorial_jobs",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    createdBy: text("created_by").notNull(),
+    recipeId: text("recipe_id").notNull(),
+    recipeVersion: integer("recipe_version").notNull(),
+    title: text("title").notNull(),
+    // JSON of the resolved recipe parameters; never credentials or browser state.
+    parameters: text("parameters").notNull(),
+    presenter: integer("presenter", { mode: "boolean" }).notNull().default(false),
+    // queued | running | completed | failed | cancelled
+    state: text("state").notNull().default("queued"),
+    attempts: integer("attempts").notNull().default(0),
+    claimedBy: text("claimed_by"),
+    claimExpiresAt: text("claim_expires_at"),
+    stage: text("stage"),
+    step: text("step"),
+    message: text("message"),
+    percent: integer("percent").notNull().default(0),
+    error: text("error"),
+    videoId: text("video_id"),
+    verified: text("verified"),
+    cancelRequested: integer("cancel_requested", { mode: "boolean" }).notNull().default(false),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+    completedAt: text("completed_at"),
+  },
+  (table) => [index("idx_tutorial_jobs_workspace").on(table.workspaceId, table.createdAt)],
+);
+
+/** The app a workspace lets Vertov's hosted recorder open, with its demo login (sealed). One per workspace. */
+export const recorderApps = sqliteTable("recorder_apps", {
+  workspaceId: text("workspace_id").primaryKey(),
+  origin: text("origin").notNull(),
+  verifyToken: text("verify_token").notNull(),
+  verifiedAt: text("verified_at"),
+  loginUrl: text("login_url"),
+  loginUser: text("login_user"),
+  loginSecret: text("login_secret"),
+  updatedBy: text("updated_by").notNull(),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+});
+
+/** A tutorial an agent asked the hosted recorder to make: its own steps (a recipe), run once in a Cloudflare container. */
+export const recorderJobs = sqliteTable(
+  "recorder_jobs",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    createdBy: text("created_by").notNull(),
+    origin: text("origin").notNull(),
+    title: text("title").notNull(),
+    recipe: text("recipe").notNull(),
+    voiceId: text("voice_id"),
+    // record: play steps into a video | explore: the agent works out the steps from `goal` (0031_agent_explore.sql)
+    kind: text("kind").notNull().default("record"),
+    goal: text("goal"),
+    startPath: text("start_path"),
+    trace: text("trace"),
+    liveKey: text("live_key"),
+    modelTokens: text("model_tokens"),
+    // queued | running | completed | failed; an explore job ends as draft (steps ready to review) instead of completed
+    state: text("state").notNull().default("queued"),
+    stage: text("stage"),
+    error: text("error"),
+    failedStep: text("failed_step"),
+    note: text("note"),
+    screenshotKey: text("screenshot_key"),
+    videoId: text("video_id"),
+    verified: text("verified"),
+    credits: integer("credits").notNull().default(0),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+    completedAt: text("completed_at"),
+  },
+  (table) => [index("idx_recorder_jobs_workspace").on(table.workspaceId, table.createdAt)],
+);
+
+export const tutorialRunners = sqliteTable(
+  "tutorial_runners",
+  {
+    workspaceId: text("workspace_id").notNull(),
+    runnerId: text("runner_id").notNull(),
+    lastSeenAt: text("last_seen_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => [primaryKey({ columns: [table.workspaceId, table.runnerId] })],
+);
+
+/** Every change to a workspace's Vertov-voices balance: grants (positive), narrations (negative), refunds (positive). */
+export const voiceCreditLedger = sqliteTable("voice_credit_ledger", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull(),
+  delta: integer("delta").notNull(),
+  reason: text("reason").notNull(),
+  uploadId: text("upload_id"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+})
+
+/** One row per distinct failure (error-report.server.ts); `fingerprint` is a hash of the source, name, scrubbed message and top stack frames. */
+export const errorEvents = sqliteTable(
+  "error_events",
+  {
+    fingerprint: text("fingerprint").primaryKey(),
+    source: text("source").notNull(),
+    name: text("name").notNull(),
+    message: text("message").notNull(),
+    stack: text("stack"),
+    route: text("route"),
+    status: text("status").notNull().default("open"),
+    count: integer("count").notNull().default(1),
+    firstSeen: integer("first_seen").notNull(),
+    lastSeen: integer("last_seen").notNull(),
+    alertedAt: integer("alerted_at"),
+    resolvedAt: integer("resolved_at"),
+    fixRef: text("fix_ref"),
+  },
+  (table) => [index("idx_error_events_last_seen").on(table.lastSeen), index("idx_error_events_status").on(table.status, table.lastSeen)],
+);
+
+/** The accounts and videos a failure touched, so a fix can tell them to try again. Ids only. */
+export const errorAffected = sqliteTable(
+  "error_affected",
+  {
+    fingerprint: text("fingerprint").notNull(),
+    userId: text("user_id").notNull().default(""),
+    uploadId: text("upload_id").notNull().default(""),
+    createdAt: integer("created_at").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.fingerprint, table.userId, table.uploadId] })],
+);

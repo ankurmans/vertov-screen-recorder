@@ -1,0 +1,18 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.ankurmans/vertov",
+  "description": "Search recordings, read transcripts and briefs, and upload videos for share links.",
+  "title": "Vertov",
+  "version": "1.0.1",
+  "websiteUrl": "https://vertov.app/docs/mcp",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://vertov.app/mcp"
+    }
+  ],
+  "repository": {
+    "url": "https://github.com/ankurmans/vertov-screen-recorder",
+    "source": "github"
+  }
+}

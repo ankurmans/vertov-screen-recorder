@@ -1,0 +1,2 @@
+CREATE TABLE IF NOT EXISTS notification_preferences (user_id TEXT PRIMARY KEY, comments INTEGER NOT NULL DEFAULT 1, first_view INTEGER NOT NULL DEFAULT 1);
+CREATE TABLE IF NOT EXISTS video_notifications (video_id TEXT PRIMARY KEY, first_view_seen INTEGER NOT NULL DEFAULT 0, pending_views INTEGER NOT NULL DEFAULT 0, pending_comments INTEGER NOT NULL DEFAULT 0, scheduled INTEGER NOT NULL DEFAULT 0);

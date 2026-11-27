@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';import ts from 'typescript';
+const exports={};const captured=[];const trials=[];let ok=true,n=1,guest=true,fail=false;
+const response=()=>new Response('{}',{status:ok?200:400});
+const auth={handler:async()=>response(),api:{getSession:async()=>({user:{id:'fixture',isAnonymous:guest}})}};
+const DB={prepare(){return {bind(){return this},async first(){if(fail)throw Error('fixture failure');return {n}}}}};
+vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/routes/api/auth/$.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports,URL,require(name){if(name==='cloudflare:workers')return {env:{DB}};if(name==='@tanstack/react-router')return {createFileRoute:()=>config=>config};if(name==='@/lib/auth.server')return {getAuth:()=>auth};if(name==='@/lib/posthog.server')return {captureServer:(...args)=>captured.push(args)};if(name==='@/lib/workspace.server')return {startTrialFor:async id=>{trials.push(id)}};throw Error(name)}});
+const run=path=>exports.Route.server.handlers.POST({request:new Request('http://localhost'+path,{method:'POST'})});
+await run('/api/auth/passkey/verify-registration');assert.equal(captured.length,1);assert.equal(captured[0][0],'account_saved');assert.equal(captured[0][2].method,'passkey');assert.deepEqual(trials,['fixture'],'saving the passkey starts the free trial');
+n=2;await run('/api/auth/passkey/verify-registration');guest=false;n=1;await run('/api/auth/passkey/verify-registration');guest=true;ok=false;await run('/api/auth/passkey/verify-registration');ok=true;await run('/api/auth/passkey/generate-register-options');assert.equal(captured.length,1,'extra keys, existing accounts, errors and button/options calls are not signups');assert.equal(trials.length,1,'and none of them starts another trial');
+fail=true;assert.equal((await run('/api/auth/passkey/verify-registration')).status,200,'analytics cannot break auth');
+console.log('PASS: verified first passkey conversion, additional keys, existing accounts, failed verification, non-conversion routes and analytics failure isolation');

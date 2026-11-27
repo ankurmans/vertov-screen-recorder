@@ -1,0 +1,12 @@
+# Vite names every file in /assets by its content hash, so a given URL never changes: browsers can keep it for a year and skip the
+# revalidation round trip they were making for each script and stylesheet on every page view.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Same names can be replaced in place, so these keep a shorter lifetime.
+/fonts/*
+  Cache-Control: public, max-age=604800
+/landing/*
+  Cache-Control: public, max-age=86400
+/avatars/*
+  Cache-Control: public, max-age=86400

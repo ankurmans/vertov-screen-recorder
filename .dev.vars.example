@@ -1,0 +1,17 @@
+# Copy to .dev.vars for local development. For a deployed Worker, set the same names with `wrangler secret put`.
+
+# Required once deployed; optional on localhost.
+BETTER_AUTH_SECRET=
+
+# Optional: Google sign-in. Callback URL: https://<your-worker>/api/auth/callback/google
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+
+# Optional: transcribe with Groq instead of Workers AI.
+GROQ_API_KEY=
+
+# Optional: send email (sign-in links, invites) through Amazon SES.
+SES_ACCESS_KEY_ID=
+SES_SECRET_ACCESS_KEY=
+SES_REGION=
+EMAIL_FROM=

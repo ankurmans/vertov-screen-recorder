@@ -1,0 +1,12 @@
+{
+  "name": "vertov",
+  "interface": { "displayName": "Vertov" },
+  "plugins": [
+    {
+      "name": "vertov",
+      "source": { "source": "local", "path": "./plugins/openai/vertov" },
+      "policy": { "installation": "AVAILABLE", "authentication": "ON_USE" },
+      "category": "Productivity"
+    }
+  ]
+}

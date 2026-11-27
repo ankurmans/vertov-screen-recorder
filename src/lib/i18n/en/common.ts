@@ -1,0 +1,23 @@
+/** English is the source: it defines every key. Other languages are typed against it, so a missing key fails the typecheck. */
+export const common = {
+  "common.cancel": "Cancel",
+  "common.save": "Save",
+  "common.saving": "Saving…",
+  "common.saved": "Saved",
+  "common.close": "Close",
+  "common.delete": "Delete",
+  "common.copy": "Copy",
+  "common.copied": "Copied",
+  "common.loading": "Loading…",
+  "common.tryAgain": "Try again",
+  "common.somethingWrong": "Something went wrong. Try again.",
+  "language.label": "Language",
+  "language.description": "The language of menus, buttons and messages in Vertov. Your videos, titles and transcripts stay as they are.",
+  "language.saved": "Language saved.",
+  "language.saveFailed": "Could not save your language. Try again.",
+  "language.selectorLabel": "Language",
+  "common.views": { one: "{count} view", other: "{count} views" },
+  "common.viewsCompact": "{count} views",
+  "common.poweredBy": "Powered by {app}",
+  "common.justNow": "just now",
+} as const

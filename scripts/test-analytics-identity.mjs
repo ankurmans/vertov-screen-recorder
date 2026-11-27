@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+import ts from 'typescript';
+const exports={};let status='pending',identified=null;const calls=[];
+const events=new EventTarget();
+const window={posthog:{__loaded:true,get_explicit_consent_status:()=>status,get_property:()=>identified,opt_in_capturing(){status='granted'},opt_out_capturing(){status='denied'},identify(id){identified=id;calls.push(['identify',id])},reset(){identified=null;calls.push(['reset'])},capture(name,props){calls.push(['capture',name,props])}},dispatchEvent:event=>events.dispatchEvent(event)};
+vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/lib/posthog.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports,window,Event});
+exports.syncAnalyticsUser('one');assert.equal(calls.length,0,'no identity before consent');
+events.addEventListener(exports.ANALYTICS_CONSENT_CHANGED,()=>exports.syncAnalyticsUser('one'));
+exports.acceptAnalytics();assert.equal(calls[0][0],'identify');assert.equal(calls[1][1],'$pageview');assert.equal(calls[1][2].consent_entry,true);
+exports.acceptAnalytics();assert.equal(calls.filter(c=>c[0]==='capture').length,1,'repeat accept cannot add pageviews');
+const before=calls.length;exports.syncAnalyticsUser(undefined);assert.equal(calls.length,before,'pending auth cannot reset');
+exports.syncAnalyticsUser('two');assert.deepEqual(calls.slice(-2),[['reset'],['identify','two']]);
+exports.syncAnalyticsUser(null);assert.deepEqual(calls.at(-1),['reset']);assert.equal(identified,null,'logout clears previous account');
+exports.declineAnalytics();const denied=calls.length;exports.syncAnalyticsUser('three');assert.equal(calls.length,denied,'no identity after decline');
+console.log('PASS: pending/denied consent, immediate consent linking, consented funnel entry, pending auth, account switches and logout');

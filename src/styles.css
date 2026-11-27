@@ -1,0 +1,810 @@
+@source "../node_modules/@cloudflare/kumo/dist/**/*.{js,jsx,ts,tsx}";
+@import "@cloudflare/kumo/styles/tailwind";
+@import "tailwindcss";
+
+@layer base {
+
+  body {
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+button:enabled:not([aria-disabled="true"]),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+
+select:not([multiple]):not([size]),
+select:not([multiple])[size="1"] {
+  appearance: none;
+  padding-inline-end: 2.25rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='m4 6 4 4 4-4' stroke='%23737373' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+}
+
+@media (forced-colors: active) {
+  select:not([multiple]):not([size]),
+  select:not([multiple])[size="1"] {
+    appearance: auto;
+    background-image: none;
+  }
+}
+
+/* ─── Video.js player layout ─── */
+
+.video-player {
+  width: 100%;
+  border-radius: inherit;
+}
+
+.video-player video {
+  object-fit: contain;
+}
+
+.video-zoom-captions::cue {
+  visibility: hidden;
+}
+
+/* While the poster (a finished cover) is showing, the screen frame of a framed layout would sit on top of it as an empty rounded box, and the live camera would show the presenter twice; show both once playback starts. */
+.video-player:has(img[data-visible]) .video-player__frame,
+.video-player:has(img[data-visible]) .video-player__camera {
+  opacity: 0;
+}
+.video-player__frame,
+.video-player__camera {
+  transition: opacity 0.2s;
+}
+
+.video-player--fill,
+.video-player--fill video {
+  height: 100%;
+}
+
+.media-default-skin {
+  border-radius: 0 !important;
+}
+
+.video-player.media-default-skin .media-overlay {
+  background-image: linear-gradient(to top, rgb(0 0 0 / 0.45), transparent 6rem);
+}
+
+/* The skin's glass is 10% white, which leaves white text unreadable over light footage, and most screen recordings
+   are of light apps. Dark glass reads on any video: menus nearly opaque, the control bar lighter. */
+.video-player.media-default-skin .media-popover,
+.video-player.media-default-skin .media-menu {
+  background-color: rgb(20 20 18 / 0.86) !important;
+}
+.video-player.media-default-skin .media-controls {
+  background-color: rgb(20 20 18 / 0.42) !important;
+}
+
+/* ─── Transcript frame-preview popover ───
+   Springy-but-snappy open/close: fade + cross-blur + slight scale,
+   sliding out from the anchor side. Open uses the slower clock, the
+   resting (closed) transition the faster one, so toggling one class
+   gives the open/close asymmetry. Shadow lives in drop-shadow() so it
+   wraps the notch silhouette, not the card's box. */
+
+.transcript-preview {
+  --tp-open: 320ms;
+  --tp-close: 200ms;
+  --tp-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --card-border: rgb(0 0 0 / 0.07);
+  opacity: 0;
+  transform: translateX(10px) scale(0.96);
+  transform-origin: right center;
+  filter: blur(2px);
+  will-change: transform, opacity, filter;
+  transition:
+    opacity var(--tp-close) var(--tp-ease),
+    transform var(--tp-close) var(--tp-ease),
+    filter var(--tp-close) var(--tp-ease);
+}
+
+.transcript-preview.is-open {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+  filter: blur(0);
+  transition:
+    opacity var(--tp-open) var(--tp-ease),
+    transform var(--tp-open) var(--tp-ease),
+    filter var(--tp-open) var(--tp-ease);
+}
+
+/* Thin ring drawn outside the card edge (continued around the notch by
+   its SVG stroke) plus a soft, low-opacity shadow that keeps the white
+   card white. */
+.transcript-preview-card {
+  box-shadow:
+    0 0 0 1px var(--card-border),
+    0 12px 28px rgb(0 0 0 / 0.09),
+    0 2px 6px rgb(0 0 0 / 0.04);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .transcript-preview {
+    transition: none !important;
+  }
+}
+
+/* ─── Like button heart animation ───
+   From Transitions.dev: liking fills the heart, springs a pop, and
+   fires an 8-dot burst whose per-particle vectors (--px/--py/--pdur/
+   --pdelay/--psize) are seeded from JS on each like. The .t-like root
+   is a span inside a regular Kumo Button. */
+
+.t-like {
+  --like-color: #f40051;
+  --like-fill: 150ms;
+  --like-pop: 350ms;
+  --like-pop-ease: cubic-bezier(0.34, 1.96, 0.64, 1);
+  --like-particle-dur: 600ms;
+  --like-particle-size: 2.5px;
+  --like-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.t-like-heart {
+  color: currentColor;
+  transition: color var(--like-fill) var(--like-ease);
+}
+.t-like-heart path {
+  fill: transparent;
+  stroke: currentColor;
+  transition:
+    fill var(--like-fill) var(--like-ease),
+    stroke var(--like-fill) var(--like-ease);
+}
+.t-like[data-liked="true"] .t-like-heart {
+  color: var(--like-color);
+}
+.t-like[data-liked="true"] .t-like-heart path {
+  fill: currentColor;
+}
+/* Pop scale lives on an HTML wrapper, never the <svg> itself:
+   transforming an inline SVG makes Chromium rasterise it at 1×
+   (pixelated on hi-DPI). Wrapping keeps the vector crisp. */
+.t-like[data-liked="true"] .t-like-icon {
+  animation: t-like-pop var(--like-pop) var(--like-pop-ease);
+}
+@keyframes t-like-pop {
+  0% { transform: scale(1); }
+  30% { transform: scale(0.82); }
+  100% { transform: scale(1); }
+}
+
+/* Particle burst — 8 dots flung along per-particle vectors. */
+.t-like-particles {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  color: var(--like-color);
+}
+.t-like-particles i {
+  position: absolute;
+  left: calc(var(--like-particle-size) * var(--psize, 1) / -2);
+  top: calc(var(--like-particle-size) * var(--psize, 1) / -2);
+  width: calc(var(--like-particle-size) * var(--psize, 1));
+  height: calc(var(--like-particle-size) * var(--psize, 1));
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0;
+}
+@keyframes t-like-burst {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.4); }
+  20% { opacity: 1; transform: translate(calc(var(--px) * 0.25), calc(var(--py) * 0.25)) scale(1); }
+  100% { opacity: 0; transform: translate(var(--px), var(--py)) scale(var(--p-end-scale, 0.6)); }
+}
+.t-like.is-bursting .t-like-particles i {
+  animation: t-like-burst var(--pdur, var(--like-particle-dur)) ease-out var(--pdelay, 0ms) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-like-icon,
+  .t-like-particles i {
+    animation: none !important;
+  }
+}
+
+/* Reactions drift up and fade over the video. */
+@keyframes reaction-float {
+  0% { transform: translateY(0) scale(0.6); opacity: 0; }
+  12% { transform: translateY(-12px) scale(1.15); opacity: 1; }
+  100% { transform: translateY(-220px) scale(1); opacity: 0; }
+}
+.reaction-float { animation: reaction-float 2.6s cubic-bezier(.2,.8,.2,1) forwards; }
+
+@keyframes end-card-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.end-card { animation: end-card-in 300ms ease-out; }
+
+@keyframes pop-in {
+  0% { transform: scale(0.85); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.pop-in { animation: pop-in 220ms cubic-bezier(.2,.8,.2,1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .reaction-float, .end-card, .pop-in { animation-duration: 1ms; }
+}
+
+/* ─── Landing page motion ───
+   Hero rises in on load; later sections fade up as they scroll into
+   view. Off entirely for reduced motion. */
+
+@media (prefers-reduced-motion: no-preference) {
+  .land-rise {
+    animation: land-rise 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  @supports (animation-timeline: view()) {
+    .land-reveal {
+      animation: land-rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 22%;
+    }
+  }
+}
+
+@keyframes land-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ─── Kino-Eye landing page ───
+   One class on the page root remaps the shared sections: the neutral scale, the accent, the corners
+   and the typeface. Condensed Archivo is for headlines only. */
+
+@font-face {
+  font-family: "Archivo";
+  font-style: normal;
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  font-display: swap;
+  src: url(/fonts/archivo-latin.woff2) format("woff2");
+}
+
+.kino {
+  --color-zinc-50: #ecedeb;
+  --color-zinc-100: #e2e3e0;
+  --color-zinc-200: #c9cbc8;
+  --color-zinc-300: #b3b6b3;
+  --color-zinc-400: #8e9196;
+  --color-zinc-500: #6e7176;
+  --color-zinc-600: #585b60;
+  --color-zinc-700: #3c3f45;
+  --color-zinc-800: #26282c;
+  --color-zinc-900: #141518;
+  --color-zinc-950: #0c0d0f;
+  --color-white: #f6f6f4;
+  --color-red-600: #d92b14;
+  --color-red-500: #ff4a2e;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --radius-2xl: 0;
+  --radius-3xl: 0;
+  font-family: "Archivo", ui-sans-serif, system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  .kino {
+    --color-red-600: #ff4a2e;
+  }
+}
+
+.kino h1,
+.kino h2 {
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.kino .kino-h1 {
+  line-height: 1.04;
+  font-size: clamp(2.25rem, 5.4vw, 3.9rem);
+}
+
+.kino-eye .kino-eye-ball {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 90ms;
+}
+
+.kino-eye.is-blinking .kino-eye-ball {
+  transform: scaleY(0.06);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kino-eye .kino-eye-ball {
+    transition: none;
+  }
+}
+
+/* Library: warm paper, a single signal color, and quiet controls. */
+.library-shell {
+  background: #f6f6f2;
+  font-family: "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --color-red-600: #d92b14;
+  --color-red-500: #c42512;
+}
+.library-shell :is(button, a, select, input):focus-visible {
+  outline: 2px solid #d92b14;
+  outline-offset: 3px;
+}
+.library-body > :not(nav) {
+  min-width: 0;
+  flex: 1;
+  padding: 1.75rem 1rem;
+}
+@media (min-width: 1024px) {
+  .library-body > :not(nav) {
+    padding: 2rem 2rem;
+  }
+}
+.library-heading {
+  color: #20221f;
+  font-size: clamp(1.65rem, 2.8vw, 2.1rem);
+  font-weight: 650;
+  letter-spacing: -0.045em;
+  line-height: 1.15;
+}
+.library-shell nav button[aria-current="page"] {
+  background: #e9ece3;
+  color: #a82919;
+}
+.create-space-dialog::backdrop,
+.app-dialog::backdrop {
+  background: rgb(0 0 0 / 0.35);
+}
+.library-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+.library-video-card {
+  border: 1px solid #e0e1da;
+  border-radius: 14px;
+  background: #fff;
+  transition: border-color 150ms;
+}
+.library-video-card:focus-within {
+  border-color: #aaada1;
+}
+.library-thumbnail {
+  border-radius: 13px 13px 0 0;
+  background: #e8e9e2;
+}
+.library-poster-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #777e6d;
+  background-color: #e9ece4;
+  background-image:
+    linear-gradient(#66715a09 1px, transparent 1px), linear-gradient(90deg, #66715a09 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.library-frame-corner {
+  position: absolute;
+  inset: 15px;
+  border: 1px solid #c4cabb;
+  border-radius: 4px;
+}
+.library-frame-label {
+  position: absolute;
+  left: 27px;
+  bottom: 25px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.library-frame-label::before {
+  content: "";
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #d92b14;
+  margin-right: 6px;
+  vertical-align: 1px;
+}
+.library-play-cue {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  padding-left: 2px;
+  border: 1px solid #ffffff70;
+  border-radius: 50%;
+  color: #fff;
+  background: #20251ec9;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms;
+}
+.library-video-card:focus-within .library-play-cue {
+  opacity: 1;
+}
+.library-copy-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 30px;
+  border: 1px solid #e6e7e1;
+  border-radius: 7px;
+  padding: 5px 7px;
+  color: #62685a;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.library-copy-button.is-copied {
+  color: #326238;
+  background: #eff6ed;
+  border-color: #cbdcc4;
+}
+.library-video-card.is-list {
+  display: grid;
+  grid-template-columns: 10rem minmax(0, 1fr);
+}
+.library-video-card.is-list .library-thumbnail {
+  border-radius: 13px 0 0 13px;
+  height: 100%;
+  min-height: 96px;
+}
+.library-video-card.is-list .library-card-body {
+  align-items: center;
+}
+.library-video-card.is-list .library-frame-label {
+  display: none;
+}
+.library-welcome {
+  margin-top: 1.75rem;
+  border: 1px solid #dddfd6;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #eeefe8;
+}
+.library-welcome-intro {
+  position: relative;
+  padding: 3rem 2rem 2.5rem;
+}
+.library-welcome-eye {
+  display: block;
+  margin-bottom: 2rem;
+  color: #565b4f;
+  --color-zinc-50: #fafbf6;
+}
+.library-welcome-actions {
+  display: grid;
+  gap: 0;
+  border-top: 1px solid #d9dcd0;
+  background: #ffffff80;
+}
+.library-start-action {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 1.25rem 2rem;
+  color: #4d5445;
+  text-align: left;
+  border-bottom: 1px solid #d9dcd0;
+}
+.library-start-action:last-child {
+  border-bottom: 0;
+}
+.library-start-action > span {
+  flex: 1;
+}
+.library-start-action strong {
+  display: block;
+  color: #242820;
+  font-weight: 600;
+  font-size: 14px;
+}
+.library-start-action small {
+  display: block;
+  margin-top: 3px;
+  color: #6b7263;
+  font-size: 12px;
+}
+.library-start-action-primary > svg:first-child {
+  color: #d92b14;
+}
+.library-empty {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 18rem;
+  margin-top: 2rem;
+  border: 1px dashed #d9dcd2;
+  border-radius: 16px;
+  padding: 2rem;
+  text-align: center;
+}
+@media (hover: hover) and (pointer: fine) {
+  .library-video-card:hover {
+    border-color: #c1c6b7;
+  }
+  .library-video-card:hover .library-play-cue {
+    opacity: 1;
+  }
+  .library-copy-button:hover {
+    background: #f2f3ee;
+  }
+  .library-start-action:hover {
+    background: #fff;
+  }
+}
+@media (min-width: 900px) {
+  .library-welcome {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .library-welcome-actions {
+    align-content: center;
+    border-top: 0;
+    border-left: 1px solid #d9dcd0;
+  }
+}
+@media (max-width: 640px) {
+  .library-video-card.is-list {
+    grid-template-columns: 7rem minmax(0, 1fr);
+  }
+  .library-video-card.is-list .library-card-body {
+    padding: 10px;
+    gap: 6px;
+  }
+  .library-video-card.is-list .library-copy-button > span {
+    display: none;
+  }
+  .library-welcome-intro {
+    padding: 2rem 1.5rem;
+  }
+  .library-start-action {
+    padding: 1.25rem 1.5rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .library-shell *,
+  .library-shell *::before,
+  .library-shell *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+.library-next-step {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid #e1e4d9;
+  border-radius: 12px;
+  background: #eef0e7;
+}
+.library-guide {
+  margin-top: 1.25rem;
+  padding: 1rem 1.25rem 0.75rem;
+  border: 1px solid #e1e4d9;
+  border-radius: 12px;
+  background: #eef0e7;
+}
+.library-guide-head {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+}
+.library-guide-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.25rem 1rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.library-guide-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding: 0.5rem 0.5rem;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+a.library-guide-step:hover {
+  background: #fafbf6;
+}
+.library-guide-step strong {
+  display: block;
+  font-weight: 600;
+}
+.library-guide-step small {
+  display: block;
+  margin-top: 0.125rem;
+  font-size: 0.75rem;
+  color: #6c7462;
+}
+.library-guide-tick {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  border: 1.5px solid #b9bfae;
+  border-radius: 999px;
+  color: #fff;
+}
+.library-guide-tick.is-done {
+  border-color: #6c7462;
+  background: #6c7462;
+}
+.library-next-eye {
+  display: flex;
+  color: #6c7462;
+  --color-zinc-50: #fafbf6;
+}
+.library-video-card.is-list .library-thumbnail {
+  width: 100%;
+  aspect-ratio: auto;
+}
+@media (max-width: 640px) {
+  .library-next-step {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    padding: 1.25rem;
+  }
+  .library-next-step > div {
+    grid-column: 2;
+  }
+}
+
+/* The record panel over the library: a light card like Loom's, with the red kept to the record dot. */
+.v-record-light .bg-white\/5 { background: #f4f4ef; }
+.v-record-light .bg-white\/10 { background: #ebebe4; }
+.v-record-light .hover\:bg-white\/20:hover { background: #e0e0d8; }
+.v-record-light .text-neutral-300,
+.v-record-light .text-neutral-400,
+.v-record-light .text-neutral-500 { color: #6b6d66; }
+.v-record-light select.bg-neutral-900 { background: #fff; color: #20221f; border: 1px solid #dcdcd3; }
+.v-record-light [aria-pressed="true"].rounded-full { background: #20221f; color: #fff; }
+.v-record-light [aria-pressed="false"].rounded-full { background: #f1f1ec; color: #20221f; }
+.v-record-light [aria-pressed="false"].rounded-full:hover { background: #e6e6df; }
+.v-record-light .bg-green-600 { background: #e3f1e5; color: #1f6a35; }
+.v-record-light [aria-pressed="false"].rounded-lg { background: #ebebe4; color: #6b6d66; }
+.v-record-light .bg-red-950 { background: #fbf0ea; color: #8a3a2a; }
+.v-record-light .text-red-200 { color: #8a3a2a; }
+.v-record-light .bg-amber-400\/10 { background: #fbf4e2; border-color: #ecd9a0; }
+.v-record-light .text-amber-100 { color: #5e4410; }
+.v-record-light .text-amber-200\/80 { color: #7a5c1c; }
+.v-record-light .bg-amber-300 { background: #20221f; color: #fff; }
+
+/* ─── Dark theme for the signed-in app ───
+   Tailwind's palette is CSS variables, so the neutral scale and the pale status tints are flipped here once instead of
+   adding dark: variants to every component. theme.ts sets data-theme/data-surface on <html>; marketing, share and
+   sign-in pages stay light. */
+html[data-theme="dark"][data-surface="app"] {
+  color-scheme: dark;
+  --color-neutral-50: #0f0f10;
+  --color-neutral-100: #19191b;
+  --color-neutral-200: #27272a;
+  --color-neutral-300: #3a3a3e;
+  --color-neutral-400: #77777d;
+  --color-neutral-500: #b0b0b7;
+  --color-neutral-600: #c6c6cc;
+  --color-neutral-700: #d8d8dd;
+  --color-neutral-800: #e6e6e9;
+  --color-neutral-900: #f4f4f5;
+  --color-neutral-950: #fafafa;
+  --color-red-50: #2a1214;
+  --color-red-700: #fca5a5;
+  --color-red-600: #ef4444;
+  --color-amber-50: #271c08;
+  --color-amber-100: #33240a;
+  --color-amber-200: #5a410f;
+  --color-amber-700: #fcd34d;
+  --color-amber-900: #fde68a;
+  --color-amber-950: #fef3c7;
+  --color-emerald-50: #0c2219;
+  --color-emerald-100: #11301f;
+  --color-emerald-200: #1c5a3b;
+  --color-emerald-700: #6ee7b7;
+  --color-emerald-900: #a7f3d0;
+  background: var(--color-neutral-50);
+  color: var(--color-neutral-900);
+}
+
+html[data-theme="dark"][data-surface="app"] body {
+  background: var(--color-neutral-50);
+  color: var(--color-neutral-900);
+  /* `antialiased` (set on body above) renders light text on a dark ground noticeably thinner on macOS. */
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
+}
+
+html[data-theme="dark"][data-surface="app"] .bg-white {
+  background-color: var(--color-neutral-100);
+}
+
+html[data-theme="dark"][data-surface="app"] :is(.bg-white\/60, .bg-white\/70, .bg-white\/80, .bg-white\/85, .bg-white\/90) {
+  background-color: color-mix(in oklab, var(--color-neutral-50) 85%, transparent);
+}
+
+/* Solid dark buttons (bg-neutral-900 text-white) become light buttons with dark text. */
+html[data-theme="dark"][data-surface="app"] :is([class*="bg-neutral-900"], [class*="bg-neutral-800"], [class*="bg-neutral-950"], [class*="bg-amber-900"]).text-white {
+  color: var(--color-neutral-50);
+}
+
+html[data-theme="dark"][data-surface="app"] select:not([multiple]):not([size]),
+html[data-theme="dark"][data-surface="app"] select:not([multiple])[size="1"] {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='m4 6 4 4 4-4' stroke='%23a1a1a8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+html[data-theme="dark"][data-surface="app"] input,
+html[data-theme="dark"][data-surface="app"] textarea,
+html[data-theme="dark"][data-surface="app"] select {
+  color-scheme: dark;
+}
+
+/* Library surfaces carry hard-coded paper colors; these are their dark counterparts. */
+html[data-theme="dark"][data-surface="app"] .library-shell {
+  background: #0f0f10;
+  --color-red-600: #f0482d;
+  --color-red-500: #f0674f;
+}
+html[data-theme="dark"][data-surface="app"] .library-heading { color: #f1f1f2; }
+html[data-theme="dark"][data-surface="app"] .library-shell nav button[aria-current="page"] { background: #2a2a2e; color: #ff8a73; }
+html[data-theme="dark"][data-surface="app"] .library-video-card { border-color: #2a2a2e; background: #19191b; }
+html[data-theme="dark"][data-surface="app"] .library-video-card:focus-within { border-color: #5a5a60; }
+html[data-theme="dark"][data-surface="app"] .library-thumbnail { background: #232326; }
+html[data-theme="dark"][data-surface="app"] .library-poster-placeholder { color: #8d8d94; background-color: #232326; }
+html[data-theme="dark"][data-surface="app"] .library-frame-corner { border-color: #44444a; }
+html[data-theme="dark"][data-surface="app"] .library-copy-button { border-color: #2f2f34; color: #b9b9bf; }
+html[data-theme="dark"][data-surface="app"] .library-copy-button.is-copied { color: #86efac; background: #11301f; border-color: #1c5a3b; }
+html[data-theme="dark"][data-surface="app"] .library-welcome { border-color: #2a2a2e; background: #19191b; color: #b9b9bf; }
+html[data-theme="dark"][data-surface="app"] .library-welcome-eye { color: #b9b9bf; --color-zinc-50: #19191b; }
+html[data-theme="dark"][data-surface="app"] .library-welcome-actions { border-color: #2a2a2e; background: #ffffff08; }
+html[data-theme="dark"][data-surface="app"] .library-start-action { color: #d0d0d5; border-color: #2a2a2e; }
+html[data-theme="dark"][data-surface="app"] .library-start-action strong { color: #f4f4f5; }
+html[data-theme="dark"][data-surface="app"] .library-start-action small { color: #a1a1a8; }
+html[data-theme="dark"][data-surface="app"] .library-empty { border-color: #3a3a3e; }
+html[data-theme="dark"][data-surface="app"] .library-next-step,
+html[data-theme="dark"][data-surface="app"] .library-guide { border-color: #2a2a2e; background: #19191b; }
+@media (hover: hover) {
+  html[data-theme="dark"][data-surface="app"] .library-video-card:hover { border-color: #5a5a60; }
+  html[data-theme="dark"][data-surface="app"] .library-copy-button:hover { background: #26262a; }
+  html[data-theme="dark"][data-surface="app"] .library-start-action:hover { background: #232326; }
+}
+@media (min-width: 900px) {
+  html[data-theme="dark"][data-surface="app"] .library-welcome-actions { border-color: #2a2a2e; }
+}
+html[data-theme="dark"][data-surface="app"] a.library-guide-step:hover { background: #232326; }

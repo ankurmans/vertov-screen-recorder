@@ -1,0 +1,107 @@
+import { env } from "cloudflare:workers"
+import type { PublicUpload, Upload } from "@/db/schema"
+import { withCors } from "@/lib/api.server"
+import { getSessionUser } from "@/lib/auth.server"
+import { HOSTED_EDITION } from "@/lib/edition"
+import { roleIn } from "@/lib/workspace.server"
+
+export type Access = "open" | "members" | "removed" | "email" | "unclaimed"
+
+const UNLOCK_DAYS = 30
+
+function hex(bytes: ArrayBuffer | Uint8Array): string {
+  return [...new Uint8Array(bytes)].map((byte) => byte.toString(16).padStart(2, "0")).join("")
+}
+
+const emailCookieName = (id: string) => `rl_email_${id}`
+
+async function hmacHex(text: string): Promise<string> {
+  const secret = (env as unknown as Record<string, string | undefined>).BETTER_AUTH_SECRET || "local-dev-secret"
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, [
+    "sign",
+  ])
+  return hex(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(text)))
+}
+
+/** Cookie proving this browser gave an email address for this video. */
+export async function emailCookie(upload: Upload, email: string, request: Request): Promise<string> {
+  const secure = new URL(request.url).protocol === "https:" ? "; Secure" : ""
+  const value = `${hex(new TextEncoder().encode(email))}.${await hmacHex(`${upload.id}:email:${email}`)}`
+  return `${emailCookieName(upload.id)}=${value}; Path=/; Max-Age=${UNLOCK_DAYS * 86400}; HttpOnly; SameSite=Lax${secure}`
+}
+
+async function hasEmailCookie(upload: Upload, request: Request): Promise<boolean> {
+  const value = readCookie(request, emailCookieName(upload.id))
+  const [encoded, signature] = (value ?? "").split(".")
+  if (!encoded || !signature || encoded.length % 2 !== 0 || /[^0-9a-f]/.test(encoded)) return false
+  const bytes = new Uint8Array(encoded.length / 2)
+  for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(encoded.slice(i * 2, i * 2 + 2), 16)
+  const email = new TextDecoder().decode(bytes)
+  return (await hmacHex(`${upload.id}:email:${email}`)) === signature
+}
+
+function readCookie(request: Request, name: string): string | null {
+  const header = request.headers.get("cookie") ?? ""
+  for (const part of header.split(";")) {
+    const [key, ...rest] = part.trim().split("=")
+    if (key === name) return rest.join("=")
+  }
+  return null
+}
+
+/**
+ * True for a guest who has not signed up with Google, an email link or a passkey. Hosted only: their share links work for
+ * nobody else until they do. Passkey accounts stay anonymous in the auth table but can sign back in, so they count as claimed.
+ */
+export async function isUnclaimedGuest(userId: string | null): Promise<boolean> {
+  if (!HOSTED_EDITION || !userId) return false
+  const row = await env.DB.prepare(
+    'SELECT 1 AS guest FROM "user" WHERE id = ? AND "isAnonymous" = 1 AND id NOT IN (SELECT "userId" FROM passkey)',
+  )
+    .bind(userId)
+    .first<{ guest: number }>()
+  return Boolean(row)
+}
+
+/**
+ * Who may watch. The recorder always can (even a removed video, to restore it). Otherwise: removed
+ * videos nobody; members-only videos signed-in members of the workspace; then expiry and password.
+ */
+export async function accessFor(upload: Upload, request: Request, readUser = () => getSessionUser(request)): Promise<Access> {
+  const membersOnly = upload.visibility === "workspace"
+  const guestOwned = await isUnclaimedGuest(upload.ownerId)
+  if (!membersOnly && !upload.deletedAt && !upload.requireEmail && !guestOwned) return "open"
+  const user = await readUser()
+  if (user && upload.ownerId === user.sub) return "open"
+  if (upload.deletedAt) return "removed"
+  if (guestOwned) return "unclaimed"
+  const readRole = () => user && roleIn(upload.workspaceId, user.sub)
+  if (membersOnly && !(await readRole())) return "members"
+  // Members of the video's workspace never have to give an address.
+  if (upload.requireEmail && !(await readRole()) && !(await hasEmailCookie(upload, request))) return "email"
+  return "open"
+}
+
+const DENIED: Record<Exclude<Access, "open">, string> = {
+  members: "Only workspace members can watch this",
+  removed: "This video was removed",
+  email: "Email required",
+  unclaimed: "This video hasn't been shared yet",
+}
+
+/** For media/asset routes: a 403 when the viewer can't see this upload, otherwise null. */
+export async function denyUnlessViewable(upload: Upload | null, request: Request): Promise<Response | null> {
+  if (!upload) return null
+  const access = await accessFor(upload, request)
+  if (access === "open") return null
+  return withCors(new Response(DENIED[access], { status: access === "removed" ? 404 : 403 }))
+}
+
+/**
+ * The upload as the page may see it: never ship the password hash to the browser, nor the import's fetch address, the search copy
+ * of the transcript (it is not trimmed per viewer) or the AI documents (read only through the routes that check the caller may manage the video).
+ */
+export function publicUpload(upload: Upload): PublicUpload {
+  const { passwordHash, voiceText, voiceVoiceId, voiceModel, sourceUrl, aiDocs, aiText, transcriptText, viewerCopy, viewerRun, ...rest } = upload
+  return { ...rest, hasPassword: false }
+}

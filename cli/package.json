@@ -1,0 +1,10 @@
+{
+  "name": "vertov-cli",
+  "version": "0.1.0",
+  "description": "Command line for Vertov: list recordings, copy share links, start a recording.",
+  "type": "module",
+  "bin": { "vertov": "./vertov.mjs" },
+  "files": ["vertov.mjs", "README.md"],
+  "engines": { "node": ">=18" },
+  "license": "AGPL-3.0-only"
+}
